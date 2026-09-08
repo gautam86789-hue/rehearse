@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Rehearse",
+    "slug": "rehearse",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "entryPoint": "./index.ts",
+    "backgroundColor": "#07100D",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rehearse.app",
+      "backgroundColor": "#07100D"
+    },
+    "android": {
+      "package": "com.rehearse.app",
+      "backgroundColor": "#07100D"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "backgroundColor": "#07100D"
+    }
+  }
+}

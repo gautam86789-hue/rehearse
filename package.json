@@ -1,0 +1,23 @@
+{
+  "name": "rehearse-workspace",
+  "version": "1.0.0",
+  "description": "Rehearse - AI Difficult Conversation Roleplay & Executive Coaching Platform",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev --prefix backend\" \"npm run web --prefix frontend\"",
+    "dev:tunnel": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev --prefix backend\" \"npm run start:tunnel --prefix frontend\"",
+    "dev:expo": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run web --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "test:backend": "npm test --prefix backend",
+    "test": "npm run test:backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
