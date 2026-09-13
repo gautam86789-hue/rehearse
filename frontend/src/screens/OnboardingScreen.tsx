@@ -446,29 +446,39 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
             <Text style={[styles.connectionLine, { color: themeColors.textSecondary }]}>
               Got it — we'll build around <Text style={{ color: themeColors.primary, fontWeight: '700' }}>{roles.find((r) => r.id === selectedAudience)?.desc.toLowerCase()}</Text>.
             </Text>
-
-            {/* CTA */}
-            <View style={styles.ctaWrapper}>
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  { backgroundColor: themeColors.primary }
-                ]}
-                onPress={() => goToStep(2)}
-                activeOpacity={0.88}
-              >
-                <Text
-                  style={[
-                    styles.primaryButtonText,
-                    { color: themeColors.textInverse }
-                  ]}
-                >
-                  Continue
-                </Text>
-                <ArrowRight size={18} color={themeColors.textInverse} />
-              </TouchableOpacity>
-            </View>
           </Animated.View>
+        )}
+
+        {/* CTA — kept as a plain (non-animated) sibling rather than a child of
+            the translateY-animated step body above. Nesting it inside that
+            Animated.View reliably produced a degenerate [0,0][0,0] layout
+            frame for this one element on at least one real Android 10 device
+            (confirmed via uiautomator — every sibling inside the animated
+            view measured correctly, only this button collapsed), surviving
+            multiple unrelated flex/style rewrites. Keeping it outside the
+            animated subtree sidesteps whatever Fabric/Yoga interaction caused
+            that rather than chasing the exact mechanism further. */}
+        {step === 1 && (
+          <View style={styles.ctaWrapper}>
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                { backgroundColor: themeColors.primary }
+              ]}
+              onPress={() => goToStep(2)}
+              activeOpacity={0.88}
+            >
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: themeColors.textInverse }
+                ]}
+              >
+                Continue
+              </Text>
+              <ArrowRight size={18} color={themeColors.textInverse} />
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* ============================================================ */}
@@ -560,36 +570,39 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
             <Text style={[styles.connectionLine, { color: themeColors.textSecondary }]}>
               We'll start there — <Text style={{ color: themeColors.primary, fontWeight: '700' }}>{dreadScenarios.find((d) => d.id === selectedDreadId)?.desc.toLowerCase()}</Text>
             </Text>
-
-            {/* CTA */}
-            <View style={styles.ctaWrapper}>
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  { backgroundColor: themeColors.primary }
-                ]}
-                onPress={handleFinish}
-                disabled={isSubmitting}
-                activeOpacity={0.88}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color={themeColors.textInverse} />
-                ) : (
-                  <>
-                    <Text
-                      style={[
-                        styles.primaryButtonText,
-                        { color: themeColors.textInverse }
-                      ]}
-                    >
-                      Continue to Rehearsal Setup
-                    </Text>
-                    <ArrowRight size={18} color={themeColors.textInverse} />
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
           </Animated.View>
+        )}
+
+        {/* CTA — see the matching comment on step 1's CTA above for why this
+            lives outside the animated step body. */}
+        {step === 2 && (
+          <View style={styles.ctaWrapper}>
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                { backgroundColor: themeColors.primary }
+              ]}
+              onPress={handleFinish}
+              disabled={isSubmitting}
+              activeOpacity={0.88}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={themeColors.textInverse} />
+              ) : (
+                <>
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: themeColors.textInverse }
+                    ]}
+                  >
+                    Continue to Rehearsal Setup
+                  </Text>
+                  <ArrowRight size={18} color={themeColors.textInverse} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -601,14 +614,9 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    flexGrow: 1,
-    justifyContent: 'space-between'
+    paddingHorizontal: 20
   },
-  stepBody: {
-    flex: 1,
-    justifyContent: 'space-between'
-  },
+  stepBody: {},
   trackerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -829,8 +837,15 @@ const styles = StyleSheet.create({
     flex: 1
   },
   ctaWrapper: {
-    marginTop: 'auto',
-    gap: 10
+    marginTop: 28,
+    marginBottom: 12,
+    // Defensive floor: this wrapper measured a real Rect(0,0-720,0) — full
+    // width, zero height — on a real Android 10 device (confirmed via
+    // logcat's AccessibilityNodeInfoDumper), collapsing its clickable child
+    // to an untappable, invisible node. minHeight guarantees a nonzero box
+    // regardless of whatever upstream Yoga/ScrollView measurement race
+    // produced that on first paint.
+    minHeight: 52
   },
   primaryButton: {
     height: 52,

@@ -13,6 +13,8 @@
     "dev:expo": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run web --prefix frontend",
+    "build": "npm run build --prefix backend",
+    "start": "npm run start --prefix backend",
     "build:backend": "npm run build --prefix backend",
     "test:backend": "npm test --prefix backend",
     "test": "npm run test:backend"

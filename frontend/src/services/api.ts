@@ -39,8 +39,8 @@ export const getApiBaseUrl = (): string => {
     }
   }
 
-  // 4. Default LAN address for physical phone testing
-  return 'http://192.168.29.211:5000/api/v1';
+  // 4. Default address: when testing via ADB USB reverse or emulator, 127.0.0.1:5000 connects directly
+  return 'http://127.0.0.1:5000/api/v1';
 };
 
 const DEFAULT_PROFILE = (userId: string): UserProfile => ({
