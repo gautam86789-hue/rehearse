@@ -9,6 +9,7 @@ import { useTheme, CardCategoryKey } from '../context/ThemeContext';
 import { CURATED_SCENARIOS } from '../data/scenariosData';
 import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
+import { useFabClearance } from '../context/FabClearanceContext';
 
 // Flagship, audience-matched personas — one-tap fast path straight into a
 // Roleplay session, skipping the multi-step Describe-Your-Situation form.
@@ -62,6 +63,11 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const fitScroll = useFitScreenScroll();
+  // The "Talk to..." row is the last thing on this screen and, on shorter
+  // content, rests at exactly the height the floating AI Assistant button
+  // sits at above the tab bar — reported directly as covering the cards.
+  // This tops up the button's usual tab-bar clearance for this one screen.
+  useFabClearance(150);
 
   useFocusEffect(
     React.useCallback(() => {

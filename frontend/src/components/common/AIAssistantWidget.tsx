@@ -105,17 +105,23 @@ export const AIAssistantWidget: React.FC = () => {
     return navigationRef.addListener('state', computeRoute);
   }, []);
   // Any screen with its own fixed bottom UI (a chat input dock, a sticky
-  // CTA) claims clearance via useFabClearance — see FabClearanceContext.
-  // That's what keeps this generic across the whole app instead of this
-  // widget needing to know every route name that happens to have one.
+  // CTA, or on a tabs-root screen, content that rests where the FAB floats
+  // even without one) claims clearance via useFabClearance — see
+  // FabClearanceContext. That's what keeps this generic across the whole
+  // app instead of this widget needing to know every route name that
+  // happens to have one.
   const screenClearance = useFabClearanceValue();
   // 68 is the original hand-tuned clearance for sitting just above the
-  // floating tab bar; 0 on any other screen with no registered clearance
-  // tucks the FAB flush to the corner since there's nothing there to clear.
-  // The floor on insets.bottom matters most on that flush case — on a real
-  // Android 10 device insets.bottom under-reported the on-screen nav bar's
-  // true height, leaving the FAB sitting inside it.
-  const fabBottom = Math.max(insets.bottom, 16) + (onTabsRoot ? 68 : screenClearance);
+  // floating tab bar. Additive with screenClearance rather than either/or —
+  // a tabs-root screen (Home/Practice/Progress/Profile) still needs its own
+  // base clearance above the tab bar, but a specific one of those screens
+  // (Practice's horizontal "Talk to..." row, reported directly) can still
+  // need MORE on top of that when its own content rests at the same height
+  // the FAB floats at. 0 tab-bar clearance + whatever's registered on any
+  // other screen. The floor on insets.bottom matters most with neither
+  // applying — on a real Android 10 device insets.bottom under-reported the
+  // on-screen nav bar's true height, leaving the FAB sitting inside it.
+  const fabBottom = Math.max(insets.bottom, 16) + (onTabsRoot ? 68 : 0) + screenClearance;
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
