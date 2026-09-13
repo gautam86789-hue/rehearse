@@ -39,8 +39,10 @@ export const getApiBaseUrl = (): string => {
     }
   }
 
-  // 4. Default address: when testing via ADB USB reverse or emulator, 127.0.0.1:5000 connects directly
-  return 'http://127.0.0.1:5000/api/v1';
+  // 4. Last-resort default for a real distributed build (no dev-server host
+  // to infer from) — the deployed production backend, not a local address
+  // that only resolves on the machine the app happened to be built on.
+  return 'https://rehearse-backend-fu90.onrender.com/api/v1';
 };
 
 const DEFAULT_PROFILE = (userId: string): UserProfile => ({

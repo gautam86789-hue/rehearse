@@ -182,14 +182,21 @@ export class SubscriptionController {
   async handleRevenueCatWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const expectedSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
-      if (expectedSecret) {
-        const authHeader = req.headers['authorization'];
-        const provided = Array.isArray(authHeader) ? authHeader[0] : authHeader;
-        const isValid = provided === expectedSecret || provided === `Bearer ${expectedSecret}`;
-        if (!isValid) {
-          res.status(401).json({ error: 'Invalid webhook authorization' });
-          return;
-        }
+      if (!expectedSecret) {
+        // Fail closed: an unconfigured secret must reject every request, not
+        // skip verification — the previous `if (expectedSecret)` guard meant
+        // a missing env var silently accepted ANY caller as a legitimate
+        // RevenueCat webhook, letting them grant themselves free Pro access.
+        console.error('REVENUECAT_WEBHOOK_SECRET is not configured — rejecting webhook request');
+        res.status(401).json({ error: 'Webhook not configured' });
+        return;
+      }
+      const authHeader = req.headers['authorization'];
+      const provided = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+      const isValid = provided === expectedSecret || provided === `Bearer ${expectedSecret}`;
+      if (!isValid) {
+        res.status(401).json({ error: 'Invalid webhook authorization' });
+        return;
       }
 
       const event = req.body?.event;
