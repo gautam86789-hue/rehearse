@@ -41,6 +41,18 @@
         {
           "color": "#5B5FEF"
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F7FC",
+          "dark": {
+            "backgroundColor": "#F7F7FC"
+          }
+        }
       ]
     ]
   }
