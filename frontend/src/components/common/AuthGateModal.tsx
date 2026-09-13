@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { X, Mail, Lock } from 'lucide-react-native';
 import { useTheme, RADII } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -74,7 +74,15 @@ export const AuthGateModal: React.FC<AuthGateModalProps> = ({ visible, onAuthent
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
-      <View style={styles.overlay}>
+      {/* Without this, opening the keyboard on Android resizes the Modal's
+          native dialog window but leaves this content sized/centered for the
+          original bounds — the screen behind bleeds into the gap instead of
+          the card repositioning above the keyboard. Same fix already applied
+          in RoleplayScreen for the same Android-specific behavior. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
         <View style={[styles.card, elevation.md, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
           <TouchableOpacity
             style={styles.closeBtn}
@@ -147,7 +155,7 @@ export const AuthGateModal: React.FC<AuthGateModalProps> = ({ visible, onAuthent
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -1,23 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { Ticket } from 'lucide-react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { Ticket, X } from 'lucide-react-native';
 import { useTheme, RADII } from '../../context/ThemeContext';
 
 interface PromoCodeGateProps {
   visible: boolean;
   onRedeem: (code: string) => Promise<{ error?: string }>;
-  onNoCode: () => void;
+  onClose: () => void;
 }
 
-// Sits between sign-in and the real (store-billed) paywall — a Shipaton
-// judging-window / tester shortcut, not part of the normal purchase flow.
-// Someone with a code skips payment details entirely; everyone else taps
-// "No code" and falls through to the paywall exactly as before.
-export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem, onNoCode }) => {
+// A floating card over the payment section (Membership & Billing), opened
+// by its "Have a promo code?" link — not a forced step before payment.
+// Closing it just returns to the plan cards underneath, same as dismissing
+// any other overlay.
+export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem, onClose }) => {
   const { colors, elevation } = useTheme();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleClose = () => {
+    setCode('');
+    setError('');
+    onClose();
+  };
 
   const handleRedeem = async () => {
     if (!code.trim()) {
@@ -30,13 +36,29 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
     setIsSubmitting(false);
     if (result.error) {
       setError(result.error);
+    } else {
+      setCode('');
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      {/* Same Android keyboard-overlap fix as AuthGateModal — without it the
+          screen behind bleeds into the gap when the keyboard opens instead
+          of the card repositioning above it. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
         <View style={[styles.card, elevation.md, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={handleClose}
+            hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+          >
+            <X size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
           <View style={[styles.iconCircle, { backgroundColor: colors.primarySubtle }]}>
             <Ticket size={22} color={colors.primary} />
           </View>
@@ -65,12 +87,8 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
           >
             {isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.redeemBtnText}>Redeem</Text>}
           </TouchableOpacity>
-
-          <TouchableOpacity onPress={onNoCode} style={styles.noCodeBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-            <Text style={[styles.noCodeText, { color: colors.textSecondary }]}>No code</Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -90,6 +108,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 24,
     alignItems: 'center'
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    padding: 4,
+    zIndex: 10
   },
   iconCircle: {
     width: 52,
@@ -139,14 +164,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14.5,
     fontWeight: '700'
-  },
-  noCodeBtn: {
-    marginTop: 14,
-    padding: 4
-  },
-  noCodeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline'
   }
 });

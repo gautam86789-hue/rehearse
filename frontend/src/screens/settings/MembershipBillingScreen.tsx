@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Ticket
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
@@ -21,11 +22,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme, RADII } from '../../context/ThemeContext';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
 import { AuthGateModal } from '../../components/common/AuthGateModal';
+import { PromoCodeGate } from '../../components/common/PromoCodeGate';
 import { isPurchasesSupported, restorePurchases, presentCustomerCenter } from '../../services/purchases';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
+import { apiService } from '../../services/api';
+import { navigationRef } from '../../navigation/navigationRef';
 
 export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user, isPro, setIsPaywallVisible, setPaywallPreferredPlan, upgradeSubscription, refreshProfile } = useApp();
+  const { user, isPro, setIsPaywallVisible, setPaywallPreferredPlan, upgradeSubscription, refreshProfile, unlockMilestone } = useApp();
   const { isGuest } = useAuth();
   const { colors: themeColors, elevation } = useTheme();
   const insets = useSafeAreaInsets();
@@ -39,7 +43,15 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
     type: NotificationType;
   }>({ visible: false, message: '', type: 'info' });
   const [isSimulating, setIsSimulating] = useState(false);
-  const [showAuthGate, setShowAuthGate] = useState(false);
+  // Tracks which guest-gated action to resume once AuthGateModal succeeds —
+  // "Simulate Purchase" and "Redeem code" both need auth first, but need to
+  // continue into different follow-up calls afterward.
+  const [authGateAction, setAuthGateAction] = useState<'simulate' | 'redeem' | null>(null);
+
+  const [showPromoCard, setShowPromoCard] = useState(false);
+  // Set right before a guest hits the auth gate from inside the promo
+  // card, so the code survives into the post-auth redeem call below.
+  const [pendingPromoCode, setPendingPromoCode] = useState('');
 
   // Real Play Console / App Store Connect billing isn't configured yet
   // (deliberately deferred), so the actual RevenueCat paywall has nothing
@@ -50,7 +62,7 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
   // action, not hidden as if it were the real purchase button.
   const handleSimulatePurchase = async () => {
     if (isGuest) {
-      setShowAuthGate(true);
+      setAuthGateAction('simulate');
       return;
     }
     setIsSimulating(true);
@@ -59,6 +71,38 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
       setToast({ visible: true, message: 'Test purchase simulated — Pro features unlocked.', type: 'success' });
     } finally {
       setIsSimulating(false);
+    }
+  };
+
+  // Opened from a link in the payment section rather than gating it — a
+  // floating card over the plan cards, not a forced step before them.
+  // Someone without a code just closes it and picks a plan normally.
+  const handleRedeemCode = async (code: string): Promise<{ error?: string }> => {
+    if (isGuest) {
+      setPendingPromoCode(code);
+      setShowPromoCard(false);
+      setAuthGateAction('redeem');
+      return {};
+    }
+    try {
+      await apiService.redeemPromoCode(user.id, code);
+      await refreshProfile();
+      setShowPromoCard(false);
+      // Land back on Home underneath the congratulations modal — matches a
+      // real purchase's flow rather than leaving the user on this settings
+      // screen after unlocking Pro.
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('HomeTabs' as never);
+      }
+      unlockMilestone(
+        'promo_early_bird',
+        'Early Bird Unlocked!',
+        "You've got 7 days of full Pro access — no card required. Make it count.",
+        'sparkles'
+      );
+      return {};
+    } catch (err: any) {
+      return { error: err?.message || 'Something went wrong — please try again.' };
     }
   };
 
@@ -264,6 +308,23 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
               </Text>
             </TouchableOpacity>
           )}
+
+          {/* Promo code — a link in the payment section that opens a
+              floating card, not a forced step before it. No code, no
+              friction: the plan cards/Upgrade button above are the whole
+              flow either way. */}
+          {!isPlus && (
+            <TouchableOpacity
+              style={styles.promoToggle}
+              onPress={() => setShowPromoCard(true)}
+              activeOpacity={0.7}
+            >
+              <Ticket size={14} color={themeColors.textSecondary} />
+              <Text style={[styles.promoToggleText, { color: themeColors.textSecondary }]}>
+                Have a promo code?
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Section 4: Secondary Actions */}
@@ -308,13 +369,35 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
       />
 
       <AuthGateModal
-        visible={showAuthGate}
+        visible={authGateAction !== null}
         onAuthenticated={async () => {
-          // Calls upgradeSubscription directly rather than re-invoking
-          // handleSimulatePurchase — its isGuest check would read a stale
-          // closure value from before this render, since the AuthContext
-          // state update that just happened hasn't propagated here yet.
-          setShowAuthGate(false);
+          // Calls upgradeSubscription/redeem directly rather than
+          // re-invoking handleSimulatePurchase/handleRedeemCode — their
+          // isGuest check would read a stale closure value from before this
+          // render, since the AuthContext state update that just happened
+          // hasn't propagated here yet.
+          const action = authGateAction;
+          setAuthGateAction(null);
+          if (action === 'redeem') {
+            try {
+              await apiService.redeemPromoCode(user.id, pendingPromoCode);
+              await refreshProfile();
+              if (navigationRef.isReady()) {
+                navigationRef.navigate('HomeTabs' as never);
+              }
+              unlockMilestone(
+                'promo_early_bird',
+                'Early Bird Unlocked!',
+                "You've got 7 days of full Pro access — no card required. Make it count.",
+                'sparkles'
+              );
+            } catch (err: any) {
+              setToast({ visible: true, message: err?.message || 'Could not redeem that code — try again.', type: 'error' });
+            } finally {
+              setPendingPromoCode('');
+            }
+            return;
+          }
           setIsSimulating(true);
           try {
             await upgradeSubscription(selectedPlan);
@@ -323,7 +406,13 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
             setIsSimulating(false);
           }
         }}
-        onCancel={() => setShowAuthGate(false)}
+        onCancel={() => setAuthGateAction(null)}
+      />
+
+      <PromoCodeGate
+        visible={showPromoCard}
+        onRedeem={handleRedeemCode}
+        onClose={() => setShowPromoCard(false)}
       />
     </View>
   );
@@ -493,6 +582,19 @@ const styles = StyleSheet.create({
   testPurchaseText: {
     fontSize: 12,
     fontWeight: '600'
+  },
+  promoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: 6,
+    marginTop: 14
+  },
+  promoToggleText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    textDecorationLine: 'underline'
   },
   cardGroup: {
     borderRadius: RADII.md,

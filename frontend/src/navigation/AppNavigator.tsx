@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { enableFreeze } from 'react-native-screens';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -119,6 +120,16 @@ export const AppNavigator: React.FC = () => {
   const { isOnboarded, isLoading: isAppLoading } = useApp();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
+
+  // Pairs with the preventAutoHideAsync() call in App.tsx — releases the
+  // native splash only once there's real content to show, rather than the
+  // default (splash hides on RN's first frame, which lands on this loading
+  // placeholder, then again on the real screen once it's ready).
+  useEffect(() => {
+    if (!isAppLoading && !isAuthLoading) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isAppLoading, isAuthLoading]);
 
   if (isAppLoading || isAuthLoading) {
     return <View style={[styles.loadingContainer, { backgroundColor: themeColors.background }]} />;

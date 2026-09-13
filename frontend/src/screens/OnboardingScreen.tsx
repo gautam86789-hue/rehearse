@@ -351,11 +351,27 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScrollView
+        // The actual root cause of the CTA button's [0,0][0,0] layout,
+        // finally found via the full uiautomator tree dump rather than the
+        // single node: with no `style` here, only `contentContainerStyle`,
+        // the ScrollView's own box wasn't reliably filling/exceeding its
+        // parent's height on this device — its content wrapper measured at
+        // exactly the viewport height (1456px) instead of the larger height
+        // its actual content (cards + button) needs, so the last child
+        // (the button) had zero space left once everything above it had
+        // claimed the full budget. `style={{flex:1}}` on the ScrollView
+        // itself (not just contentContainerStyle, which only styles the
+        // inner scrollable content) is what lets it size independently of
+        // its content and actually scroll past the viewport.
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           {
             paddingTop: Math.max(insets.top, 20) + 8,
-            paddingBottom: Math.max(insets.bottom, 20) + 20
+            // The CTA footer below is a fixed sibling, not scrollable
+            // content, so this only needs to clear it visually — the
+            // footer itself handles nav-bar clearance.
+            paddingBottom: 12
           }
         ]}
         showsVerticalScrollIndicator={false}
@@ -447,38 +463,6 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
               Got it — we'll build around <Text style={{ color: themeColors.primary, fontWeight: '700' }}>{roles.find((r) => r.id === selectedAudience)?.desc.toLowerCase()}</Text>.
             </Text>
           </Animated.View>
-        )}
-
-        {/* CTA — kept as a plain (non-animated) sibling rather than a child of
-            the translateY-animated step body above. Nesting it inside that
-            Animated.View reliably produced a degenerate [0,0][0,0] layout
-            frame for this one element on at least one real Android 10 device
-            (confirmed via uiautomator — every sibling inside the animated
-            view measured correctly, only this button collapsed), surviving
-            multiple unrelated flex/style rewrites. Keeping it outside the
-            animated subtree sidesteps whatever Fabric/Yoga interaction caused
-            that rather than chasing the exact mechanism further. */}
-        {step === 1 && (
-          <View style={styles.ctaWrapper}>
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                { backgroundColor: themeColors.primary }
-              ]}
-              onPress={() => goToStep(2)}
-              activeOpacity={0.88}
-            >
-              <Text
-                style={[
-                  styles.primaryButtonText,
-                  { color: themeColors.textInverse }
-                ]}
-              >
-                Continue
-              </Text>
-              <ArrowRight size={18} color={themeColors.textInverse} />
-            </TouchableOpacity>
-          </View>
         )}
 
         {/* ============================================================ */}
@@ -573,44 +557,72 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
           </Animated.View>
         )}
 
-        {/* CTA — see the matching comment on step 1's CTA above for why this
-            lives outside the animated step body. */}
-        {step === 2 && (
-          <View style={styles.ctaWrapper}>
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                { backgroundColor: themeColors.primary }
-              ]}
-              onPress={handleFinish}
-              disabled={isSubmitting}
-              activeOpacity={0.88}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={themeColors.textInverse} />
-              ) : (
-                <>
-                  <Text
-                    style={[
-                      styles.primaryButtonText,
-                      { color: themeColors.textInverse }
-                    ]}
-                  >
-                    Continue to Rehearsal Setup
-                  </Text>
-                  <ArrowRight size={18} color={themeColors.textInverse} />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
       </ScrollView>
+
+      {/* CTA — pinned outside the ScrollView as a fixed footer, not the
+          last scrollable item. It used to sit inside the ScrollView's
+          content, which on a real Android 10 device meant its screen
+          position was purely a function of how much content came before it
+          — extra bottom padding on the scroll content never moved it,
+          since the content didn't overflow the viewport, so it landed
+          wherever the preceding cards happened to end. That spot fell
+          entirely inside the device's on-screen nav bar's touch-intercept
+          zone (confirmed via uiautomator + a real tap there triggering the
+          OS home gesture instead of the button, at a device where
+          safe-area-insets.bottom under-reported the bar's true height). As
+          a fixed footer with its own insets-aware padding, the button's
+          position is independent of content length and always clears the
+          system bar, on this device and any other. Always mounted (not
+          conditionally per step) — an earlier per-step-mounted version
+          nested inside the animated step body reliably produced a
+          degenerate [0,0][0,0] layout frame for this element specifically,
+          surviving several unrelated flex/style rewrites; switching only
+          onPress/label by `step` sidesteps whatever mount-timing/Yoga
+          interaction caused that. */}
+      <View
+        style={[
+          styles.ctaFooter,
+          {
+            backgroundColor: themeColors.background,
+            paddingBottom: Math.max(insets.bottom, 16) + 16
+          }
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            { backgroundColor: themeColors.primary }
+          ]}
+          onPress={step === 1 ? () => goToStep(2) : handleFinish}
+          disabled={step === 2 && isSubmitting}
+          activeOpacity={0.88}
+        >
+          {step === 2 && isSubmitting ? (
+            <ActivityIndicator color={themeColors.textInverse} />
+          ) : (
+            <>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: themeColors.textInverse }
+                ]}
+              >
+                {step === 1 ? 'Continue' : 'Continue to Rehearsal Setup'}
+              </Text>
+              <ArrowRight size={18} color={themeColors.textInverse} />
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1
+  },
+  scrollView: {
     flex: 1
   },
   scrollContent: {
@@ -836,16 +848,9 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     flex: 1
   },
-  ctaWrapper: {
-    marginTop: 28,
-    marginBottom: 12,
-    // Defensive floor: this wrapper measured a real Rect(0,0-720,0) — full
-    // width, zero height — on a real Android 10 device (confirmed via
-    // logcat's AccessibilityNodeInfoDumper), collapsing its clickable child
-    // to an untappable, invisible node. minHeight guarantees a nonzero box
-    // regardless of whatever upstream Yoga/ScrollView measurement race
-    // produced that on first paint.
-    minHeight: 52
+  ctaFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 16
   },
   primaryButton: {
     height: 52,
