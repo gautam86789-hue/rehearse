@@ -39,6 +39,17 @@ export function verifyPassword(password: string, hash: string, salt: string): bo
   }
 }
 
+// The in-memory store keeps password hash/salt on the same object it
+// serves reads from (there's no separate accounts-vs-profiles table like
+// Supabase has) — every method that returns a user to a controller needs
+// to strip them before the object reaches res.json, or the hash+salt pair
+// (everything needed to offline-brute-force the password) ships to the
+// client in plain JSON.
+function stripSensitive(account: UserAccount): UserProfile {
+  const { passwordHash, passwordSalt, isActive, ...profile } = account;
+  return profile;
+}
+
 
 // ---------------------------------------------------------------------------
 // Supabase client (optional — only wired up when creds are present in env)
@@ -450,15 +461,21 @@ class InMemoryDatabase {
       this.users.set(userId, user);
       this.persistToDisk();
     }
-    return user;
+    return stripSensitive(user);
   }
 
   private memoryUpdateUser(userId: string, updates: Partial<UserProfile>): UserProfile {
-    const user = this.memoryGetUser(userId);
+    // Reads the raw stored record directly rather than through
+    // memoryGetUser, which now strips password fields on its way out —
+    // this spread needs the real stored object underneath so a partial
+    // update (e.g. subscription-only) doesn't accidentally drop the
+    // account's password hash/salt from what gets persisted.
+    let user = this.users.get(userId);
+    if (!user) user = this.memoryGetUser(userId);
     const updated = { ...user, ...updates };
     this.users.set(userId, updated);
     this.persistToDisk();
-    return updated;
+    return stripSensitive(updated);
   }
 
   private memoryGetAllScenarios(): Scenario[] {
@@ -681,7 +698,7 @@ class InMemoryDatabase {
     this.persistToDisk();
 
     const session = await this.createSession(userId);
-    return { user: profile, token: session.token };
+    return { user: stripSensitive(profile), token: session.token };
   }
 
   async authenticateUser(email: string, password: string): Promise<{ user: UserProfile; token: string }> {
@@ -696,7 +713,7 @@ class InMemoryDatabase {
     }
 
     const session = await this.createSession(account.id);
-    return { user: account, token: session.token };
+    return { user: stripSensitive(account), token: session.token };
   }
 
   async createSession(userId: string): Promise<AuthSession> {
