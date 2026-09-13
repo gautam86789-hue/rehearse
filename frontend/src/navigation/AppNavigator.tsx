@@ -19,6 +19,8 @@ import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
+import { TermsOfServiceScreen } from '../screens/TermsOfServiceScreen';
+import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { PracticeHomeScreen } from '../screens/PracticeHomeScreen';
@@ -168,6 +170,8 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="SignUp" component={SignUpScreen} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           </>
         ) : !isOnboarded ? (
           // Authenticated but hasn't finished onboarding yet — this is the ONLY

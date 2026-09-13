@@ -117,6 +117,10 @@ export interface FrameworkOfTheDay {
   title: string;
   sourceCredit: string;
   audiences: Audience[];
+  /** Links this framework to the Word/Puzzle of the Day sharing the same
+   *  concept, so a day's three daily-content cards read as one narrative
+   *  (introduce → teach → apply) instead of three unrelated rotations. */
+  theme?: string;
   tagline: string;
   summary: string;
   components: {
@@ -133,6 +137,9 @@ export interface WordOfTheDay {
   id: string;
   term: string;
   audiences: Audience[];
+  /** See FrameworkOfTheDay.theme — this is the anchor: the day's word picks
+   *  the theme, framework/puzzle selection then prefers a same-theme match. */
+  theme?: string;
   meaning: string;
   whyItMatters: string;
   releaseDate: string;
@@ -151,6 +158,10 @@ export interface DailyPuzzle {
   id: string;
   date: string;
   title: string;
+  /** Undefined = shown to every audience. */
+  audiences?: Audience[];
+  /** See FrameworkOfTheDay.theme. */
+  theme?: string;
   scenarioContext: string;
   counterpartOpeningLine: string;
   options: DailyPuzzleOption[];

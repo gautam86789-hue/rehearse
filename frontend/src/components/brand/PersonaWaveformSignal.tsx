@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Animated, View, Dimensions, Easing } from 'react-native';
+import { StyleSheet, Animated, View, useWindowDimensions, Easing } from 'react-native';
 import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
 interface PersonaWaveformSignalProps {
@@ -7,13 +7,15 @@ interface PersonaWaveformSignalProps {
   reducedMotion?: boolean;
 }
 
-const { width } = Dimensions.get('window');
-const WAVE_WIDTH = Math.min(width * 0.75, 280);
-
 export const PersonaWaveformSignal: React.FC<PersonaWaveformSignalProps> = ({
   progress,
   reducedMotion = false
 }) => {
+  // Reactive, not a module-scope Dimensions.get() snapshot — see
+  // JourneyBackdrop's comment on why a foldable's fold/unfold needs this to
+  // recompute rather than staying pinned to the pre-fold width.
+  const { width } = useWindowDimensions();
+  const waveWidth = Math.min(width * 0.75, 280);
   const waveFloat = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -64,13 +66,15 @@ export const PersonaWaveformSignal: React.FC<PersonaWaveformSignalProps> = ({
       style={[
         styles.container,
         {
+          marginLeft: -waveWidth / 2,
+          width: waveWidth,
           opacity,
           transform: [{ scale }, { translateY }]
         }
       ]}
       pointerEvents="none"
     >
-      <Svg width={WAVE_WIDTH} height={70} viewBox="0 0 280 70" fill="none">
+      <Svg width={waveWidth} height={70} viewBox="0 0 280 70" fill="none">
         <Defs>
           <SvgLinearGradient id="waveGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
             <Stop offset="0%" stopColor="#5B5FEF" stopOpacity="0" />
@@ -120,9 +124,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    marginLeft: -WAVE_WIDTH / 2,
     marginTop: -35,
-    width: WAVE_WIDTH,
     height: 70,
     justifyContent: 'center',
     alignItems: 'center',

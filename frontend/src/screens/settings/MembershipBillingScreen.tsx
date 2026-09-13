@@ -17,13 +17,16 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme, RADII } from '../../context/ThemeContext';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
+import { AuthGateModal } from '../../components/common/AuthGateModal';
 import { isPurchasesSupported, restorePurchases, presentCustomerCenter } from '../../services/purchases';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
 
 export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, isPro, setIsPaywallVisible, setPaywallPreferredPlan, upgradeSubscription, refreshProfile } = useApp();
+  const { isGuest } = useAuth();
   const { colors: themeColors, elevation } = useTheme();
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 8;
@@ -36,6 +39,7 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
     type: NotificationType;
   }>({ visible: false, message: '', type: 'info' });
   const [isSimulating, setIsSimulating] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
 
   // Real Play Console / App Store Connect billing isn't configured yet
   // (deliberately deferred), so the actual RevenueCat paywall has nothing
@@ -45,6 +49,10 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
   // tested end-to-end before real billing exists. Clearly labeled as a test
   // action, not hidden as if it were the real purchase button.
   const handleSimulatePurchase = async () => {
+    if (isGuest) {
+      setShowAuthGate(true);
+      return;
+    }
     setIsSimulating(true);
     try {
       await upgradeSubscription(selectedPlan);
@@ -296,6 +304,25 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
         message={toast.message}
         type={toast.type}
         onDismiss={() => setToast((prev) => ({ ...prev, visible: false }))}
+      />
+
+      <AuthGateModal
+        visible={showAuthGate}
+        onAuthenticated={async () => {
+          // Calls upgradeSubscription directly rather than re-invoking
+          // handleSimulatePurchase — its isGuest check would read a stale
+          // closure value from before this render, since the AuthContext
+          // state update that just happened hasn't propagated here yet.
+          setShowAuthGate(false);
+          setIsSimulating(true);
+          try {
+            await upgradeSubscription(selectedPlan);
+            setToast({ visible: true, message: 'Test purchase simulated — Pro features unlocked.', type: 'success' });
+          } finally {
+            setIsSimulating(false);
+          }
+        }}
+        onCancel={() => setShowAuthGate(false)}
       />
     </View>
   );

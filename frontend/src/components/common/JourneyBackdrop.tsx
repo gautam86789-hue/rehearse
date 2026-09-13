@@ -1,8 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { View, StyleSheet, Animated, Easing, useWindowDimensions } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface Blob {
   size: number;
@@ -13,12 +11,6 @@ interface Blob {
   duration: number;
 }
 
-const BLOBS: Blob[] = [
-  { size: 260, left: -80, top: 40, colorKey: 'primary', driftRange: 18, duration: 7000 },
-  { size: 220, left: SCREEN_WIDTH - 160, top: SCREEN_HEIGHT * 0.35, colorKey: 'purple', driftRange: 14, duration: 8400 },
-  { size: 200, left: -40, top: SCREEN_HEIGHT * 0.7, colorKey: 'champagne', driftRange: 16, duration: 9200 }
-];
-
 // Purely decorative, coded (no image asset) drifting backdrop for the
 // Journey roadmap — theme-colored, low-opacity, transform-only animation.
 // Deliberately never animates opacity to gate visibility: a stuck native
@@ -27,14 +19,24 @@ const BLOBS: Blob[] = [
 // to gate whole-screen content).
 export const JourneyBackdrop: React.FC = () => {
   const { colors, isDark } = useTheme();
-  const anims = useRef(BLOBS.map(() => new Animated.Value(0))).current;
+  // Reactive, not a module-scope Dimensions.get() snapshot — a Galaxy
+  // foldable's fold/unfold fires a live resize event without remounting the
+  // JS module, so the blob positions need to recompute with it instead of
+  // staying pinned to whatever size the screen opened at.
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const blobs = useMemo<Blob[]>(() => [
+    { size: 260, left: -80, top: 40, colorKey: 'primary', driftRange: 18, duration: 7000 },
+    { size: 220, left: screenWidth - 160, top: screenHeight * 0.35, colorKey: 'purple', driftRange: 14, duration: 8400 },
+    { size: 200, left: -40, top: screenHeight * 0.7, colorKey: 'champagne', driftRange: 16, duration: 9200 }
+  ], [screenWidth, screenHeight]);
+  const anims = useRef(blobs.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
     const loops = anims.map((anim, i) =>
       Animated.loop(
         Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: BLOBS[i].duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim, { toValue: 0, duration: BLOBS[i].duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+          Animated.timing(anim, { toValue: 1, duration: blobs[i].duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: blobs[i].duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
         ])
       )
     );
@@ -50,7 +52,7 @@ export const JourneyBackdrop: React.FC = () => {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {BLOBS.map((blob, i) => (
+      {blobs.map((blob, i) => (
         <Animated.View
           key={i}
           style={[

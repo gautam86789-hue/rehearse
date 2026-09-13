@@ -493,19 +493,52 @@ class InMemoryDatabase {
 
   private memoryGetTodaysFramework(audience?: string): FrameworkOfTheDay {
     const all = Array.from(this.frameworks.values());
-    if (audience) {
+    const pool = audience ? (() => {
       const matching = all.filter((f) => f.audiences?.includes(audience as any));
-      if (matching.length > 0) return matching[0];
+      return matching.length > 0 ? matching : all;
+    })() : all;
+
+    // Prefer the framework sharing today's Word of the Day's theme, so the
+    // two read as one narrative (word introduces the concept, framework
+    // teaches it) rather than two unrelated rotations.
+    const theme = audience ? this.memoryGetTodaysWord(audience).theme : undefined;
+    if (theme) {
+      const themed = pool.find((f) => f.theme === theme);
+      if (themed) return themed;
     }
-    return all[0];
+    return pool[0];
   }
 
   private memoryGetAllFrameworks(): FrameworkOfTheDay[] {
     return Array.from(this.frameworks.values());
   }
 
-  private memoryGetTodaysPuzzle(): DailyPuzzle {
-    return Array.from(this.dailyPuzzles.values())[0];
+  private memoryGetTodaysPuzzle(audience?: string): DailyPuzzle {
+    const all = Array.from(this.dailyPuzzles.values());
+    const pool = audience ? (() => {
+      const matching = all.filter((p) => !p.audiences || p.audiences.includes(audience as any));
+      return matching.length > 0 ? matching : all;
+    })() : all;
+
+    // Same theme-preference as the framework lookup — puzzle is the "apply
+    // it" step, so it should test the same concept the word/framework just
+    // introduced whenever a matching puzzle exists yet.
+    const theme = audience ? this.memoryGetTodaysWord(audience).theme : undefined;
+    if (theme) {
+      const themed = pool.find((p) => p.theme === theme);
+      if (themed) return themed;
+    }
+
+    // No themed match — rotate through the audience-filtered pool by day of
+    // year instead of always returning the same first entry, so the puzzle
+    // still changes day to day even without a theme pairing yet.
+    const startOfYear = new Date(new Date().getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((Date.now() - startOfYear.getTime()) / 86400000);
+    return pool[dayOfYear % pool.length];
+  }
+
+  private memoryGetPuzzleById(puzzleId: string): DailyPuzzle | undefined {
+    return this.dailyPuzzles.get(puzzleId);
   }
 
   private memoryGetTodaysWord(audience?: string): WordOfTheDay {
@@ -974,8 +1007,12 @@ class InMemoryDatabase {
     return this.memoryGetAllFrameworks();
   }
 
-  async getTodaysPuzzle(): Promise<DailyPuzzle> {
-    return this.memoryGetTodaysPuzzle();
+  async getTodaysPuzzle(audience?: string): Promise<DailyPuzzle> {
+    return this.memoryGetTodaysPuzzle(audience);
+  }
+
+  async getPuzzleById(puzzleId: string): Promise<DailyPuzzle | undefined> {
+    return this.memoryGetPuzzleById(puzzleId);
   }
 
   async getTodaysWord(audience?: string): Promise<WordOfTheDay> {

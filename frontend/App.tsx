@@ -8,12 +8,14 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { navigateFromNotification } from './src/navigation/navigationRef';
 import { registerNotificationResponseHandler } from './src/services/notificationService';
 import { configurePurchases } from './src/services/purchases';
+import { initOneSignal } from './src/services/oneSignalService';
 
 // Must run once, before any other Purchases.* call — see RevenueCat setup
 // requirements. This is a synchronous call (module-level, not inside a
 // component) so it can never race a screen that checks entitlements on
 // first render.
 configurePurchases();
+initOneSignal();
 
 // Was also showing a custom animated JS splash (StartupSequence) on top of
 // the native OS splash screen before this — a redundant double-intro users

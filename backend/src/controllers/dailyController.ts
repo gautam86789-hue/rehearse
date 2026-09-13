@@ -23,9 +23,10 @@ export class DailyController {
     }
   }
 
-  async getDailyPuzzle(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getDailyPuzzle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const puzzle = await memoryDb.getTodaysPuzzle();
+      const audience = typeof req.query.audience === 'string' ? req.query.audience : undefined;
+      const puzzle = await memoryDb.getTodaysPuzzle(audience);
       res.json({ puzzle });
     } catch (err) {
       next(err);
@@ -46,7 +47,11 @@ export class DailyController {
     try {
       const { userId, puzzleId, selectedOptionId } = req.body;
       const resolvedUserId = userId || req.userId || 'demo-user-1';
-      const puzzle = await memoryDb.getTodaysPuzzle();
+      const puzzle = await memoryDb.getPuzzleById(puzzleId);
+      if (!puzzle) {
+        res.status(400).json({ error: `Puzzle ID ${puzzleId} was not found.` });
+        return;
+      }
 
       const chosenOption = puzzle.options.find((o) => o.id === selectedOptionId);
       if (!chosenOption) {

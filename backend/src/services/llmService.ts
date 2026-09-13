@@ -12,104 +12,38 @@ export interface LLMGenerateOptions {
   responseFormat?: 'json' | 'text';
 }
 
+// Single-provider setup: Gemini Flash-Lite handles every AI call site in the
+// app (roleplay turns, scoring, story generation, coach chat, reply
+// assistant, scenario briefs) — cheap enough that the high-volume roleplay
+// calls stay inexpensive, and simple enough to run on one API key with no
+// fallback-chain complexity. If a call fails or no key is configured, the
+// non-LLM heuristic simulation below keeps every feature functional.
 export class LLMService {
   private geminiApiKey: string | undefined;
-  private openaiApiKey: string | undefined;
-  private openrouterApiKey: string | undefined;
-  private openrouterModel: string;
+  private geminiModel: string;
 
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY;
-    this.openaiApiKey = process.env.OPENAI_API_KEY;
-    this.openrouterApiKey = process.env.OPENROUTER_API_KEY;
-    this.openrouterModel = process.env.OPENROUTER_MODEL || 'openrouter/free';
+    this.geminiModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
   }
 
   async generateCompletion(
     messages: LLMMessage[],
     options: LLMGenerateOptions = {}
   ): Promise<string> {
-    const { temperature = 0.7, maxTokens = 800, responseFormat = 'text' } = options;
+    const { temperature = 0.7, responseFormat = 'text' } = options;
 
-    // 1. Try OpenRouter if configured — free-tier router, tried first since
-    // it costs nothing; Gemini/OpenAI below are the paid fallbacks if the
-    // free route is unavailable or rate-limited.
-    if (this.openrouterApiKey) {
-      try {
-        const response = await this.callOpenRouter(messages, temperature, maxTokens, responseFormat);
-        if (response) return response;
-      } catch (err) {
-        console.warn('OpenRouter API call failed, attempting fallback...', err);
-      }
-    }
-
-    // 2. Try Gemini if configured
     if (this.geminiApiKey) {
       try {
         const response = await this.callGemini(messages, temperature, responseFormat);
         if (response) return response;
       } catch (err) {
-        console.warn('Gemini API call failed, attempting fallback...', err);
+        console.warn('Gemini API call failed, falling back to simulated response...', err);
       }
     }
 
-    // 3. Try OpenAI if configured
-    if (this.openaiApiKey) {
-      try {
-        const response = await this.callOpenAI(messages, temperature, responseFormat);
-        if (response) return response;
-      } catch (err) {
-        console.warn('OpenAI API call failed, attempting fallback...', err);
-      }
-    }
-
-    // 4. Fallback: Intelligent Simulated Engine
+    // Fallback: Intelligent Simulated Engine (no key configured, or the call above failed)
     return this.simulateFallback(messages);
-  }
-
-  private async callOpenRouter(
-    messages: LLMMessage[],
-    temperature: number,
-    maxTokens: number,
-    responseFormat: string
-  ): Promise<string> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-    try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.openrouterApiKey}`
-        },
-        body: JSON.stringify({
-          model: this.openrouterModel,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
-          temperature,
-          max_tokens: maxTokens,
-          // Some free OpenRouter models (Nemotron in particular) are hybrid
-          // reasoning models that spend tokens "thinking" before answering.
-          // With our tight per-reply maxTokens budget, that reasoning can
-          // consume the whole budget and get cut off before the real answer
-          // is written — sometimes leaking the raw scratch-thinking straight
-          // into `content` instead of a clean reply. Disabling reasoning
-          // keeps the full token budget on the actual response.
-          reasoning: { enabled: false },
-          response_format: responseFormat === 'json' ? { type: 'json_object' } : undefined
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error(`OpenRouter returned ${res.status}: ${await res.text()}`);
-      }
-
-      const data = await res.json() as any;
-      return data.choices?.[0]?.message?.content || '';
-    } finally {
-      clearTimeout(timeoutId);
-    }
   }
 
   private async callGemini(
@@ -118,7 +52,7 @@ export class LLMService {
     responseFormat: string
   ): Promise<string> {
     const prompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${this.geminiApiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -146,33 +80,6 @@ export class LLMService {
     } finally {
       clearTimeout(timeoutId);
     }
-  }
-
-  private async callOpenAI(
-    messages: LLMMessage[],
-    temperature: number,
-    responseFormat: string
-  ): Promise<string> {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.openaiApiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
-        temperature,
-        response_format: responseFormat === 'json' ? { type: 'json_object' } : undefined
-      })
-    });
-
-    if (!res.ok) {
-      throw new Error(`OpenAI returned ${res.status}: ${await res.text()}`);
-    }
-
-    const data = await res.json() as any;
-    return data.choices?.[0]?.message?.content || '';
   }
 
   private simulateFallback(messages: LLMMessage[]): string {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Easing, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { ArrowLeft, Lock, Check, Play, X, Trophy, Sparkles } from 'lucide-react-native';
@@ -15,8 +15,6 @@ const NODE_SPACING_Y = 132;
 const BANNER_HEIGHT = 56;
 const X_OFFSETS = [0, 74, 0, -74]; // center, right, center, left — the zigzag path
 const BURST_ANGLES = [0, 60, 120, 180, 240, 300].map((deg) => (deg * Math.PI) / 180);
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CENTER_X = SCREEN_WIDTH / 2 - 16; // account for horizontal screen padding below
 
 interface LayoutBanner {
   stageLabel: string;
@@ -43,7 +41,7 @@ const UPCOMING_NODE: JourneyNode = {
   icon: Sparkles
 };
 
-function computeLayout(nodes: JourneyNode[]) {
+function computeLayout(nodes: JourneyNode[], centerX: number) {
   const banners: LayoutBanner[] = [];
   const positions: LayoutNode[] = [];
   let y = 24;
@@ -59,7 +57,7 @@ function computeLayout(nodes: JourneyNode[]) {
       y += BANNER_HEIGHT + 26;
       lastStage = node.stageLabel;
     }
-    const x = CENTER_X + X_OFFSETS[pathIndex % X_OFFSETS.length];
+    const x = centerX + X_OFFSETS[pathIndex % X_OFFSETS.length];
     positions.push({ node, x, y });
     y += NODE_SPACING_Y;
     pathIndex++;
@@ -103,13 +101,18 @@ export const JourneyScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   const { user, unlockMilestone } = useApp();
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 8;
+  // Reactive, not a module-scope Dimensions.get() snapshot — see
+  // JourneyBackdrop's comment on why a foldable's fold/unfold needs this to
+  // recompute rather than staying pinned to the pre-fold width.
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const centerX = screenWidth / 2 - 16; // account for horizontal screen padding below
 
   const audience = user.audience || 'founders_investors';
   const journey = JOURNEYS[audience];
   const completed = new Set(user.completedJourneyNodeIds || []);
   const completedCount = journey.nodes.filter((n) => completed.has(n.id)).length;
 
-  const layout = useMemo(() => computeLayout([...journey.nodes, UPCOMING_NODE]), [journey]);
+  const layout = useMemo(() => computeLayout([...journey.nodes, UPCOMING_NODE], centerX), [journey, centerX]);
 
   const [previewNode, setPreviewNode] = useState<JourneyNode | null>(null);
   const [showUpcomingToast, setShowUpcomingToast] = useState(false);
@@ -124,7 +127,7 @@ export const JourneyScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     const target = layout.positions[currentIndex];
     if (!target) return;
     const timer = setTimeout(() => {
-      const viewportOffset = Dimensions.get('window').height * 0.42;
+      const viewportOffset = screenHeight * 0.42;
       scrollRef.current?.scrollTo({ y: Math.max(0, target.y - viewportOffset), animated: false });
     }, 60);
     return () => clearTimeout(timer);
@@ -257,7 +260,7 @@ export const JourneyScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         <Text style={[styles.tagline, { color: colors.textSecondary }]}>{journey.tagline}</Text>
 
         <View style={[styles.pathArea, { height: layout.totalHeight }]}>
-          <Svg width={SCREEN_WIDTH - 32} height={layout.totalHeight} style={StyleSheet.absoluteFill}>
+          <Svg width={screenWidth - 32} height={layout.totalHeight} style={StyleSheet.absoluteFill}>
             <Path d={layout.pathD} stroke={colors.surfaceBorder} strokeWidth={4} fill="none" strokeDasharray="2 14" strokeLinecap="round" />
           </Svg>
 

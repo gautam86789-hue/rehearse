@@ -12,6 +12,7 @@ import {
   addCustomerInfoListener,
   isPurchasesSupported
 } from '../services/purchases';
+import { linkExternalUserId, isOneSignalSupported } from '../services/oneSignalService';
 import type { CustomerInfo } from 'react-native-purchases';
 import { SubscriptionPlanId } from '../data/subscriptionPlans';
 
@@ -284,6 +285,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cancelled = true;
     };
   }, [currentUserId, syncFromCustomerInfo]);
+
+  // Same alignment, for OneSignal — ties its subscriber id to the same
+  // currentUserId scheme so a dashboard Journey can target a specific
+  // person's tags regardless of which device they're on.
+  useEffect(() => {
+    if (!isOneSignalSupported()) return;
+    linkExternalUserId(currentUserId);
+  }, [currentUserId]);
 
   // Live-updates isPro/subscription the moment a purchase, renewal, or
   // cancellation happens — including purchases completed via the hosted

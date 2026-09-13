@@ -724,9 +724,10 @@ class ApiService {
     }
   }
 
-  async getDailyPuzzle(): Promise<{ puzzle: DailyPuzzle }> {
+  async getDailyPuzzle(audience?: string): Promise<{ puzzle: DailyPuzzle }> {
     try {
-      return await this.request('/daily/puzzle');
+      const qs = audience ? `?audience=${encodeURIComponent(audience)}` : '';
+      return await this.request(`/daily/puzzle${qs}`);
     } catch {
       return { puzzle: DEFAULT_PUZZLE };
     }

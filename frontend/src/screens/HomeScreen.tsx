@@ -23,7 +23,8 @@ import {
   Building2,
   Bell,
   Sparkles,
-  BookOpen
+  BookOpen,
+  GraduationCap
 } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
 import { useTheme, CardCategoryKey } from '../context/ThemeContext';
@@ -33,7 +34,7 @@ import { getDailyQuote } from '../data/dailyQuotes';
 import { getFeatureIllustration } from '../data/generatedImages';
 import { CATEGORY_COLORS } from '../data/categoryColors';
 import { JOURNEYS } from '../data/journeys';
-import { Scenario, Audience, WordOfTheDay } from '../types';
+import { Scenario, Audience, WordOfTheDay, FrameworkOfTheDay } from '../types';
 import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
 import { WordOfDayModal } from '../components/common/WordOfDayModal';
@@ -94,6 +95,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [puzzleTitle, setPuzzleTitle] = useState<string | null>(null);
   const [wordOfDay, setWordOfDay] = useState<WordOfTheDay | null>(null);
   const [showWordModal, setShowWordModal] = useState(false);
+  const [frameworkOfDay, setFrameworkOfDay] = useState<FrameworkOfTheDay | null>(null);
 
   const audience: Audience = user.audience || 'professionals';
   const practiceTiles = AUDIENCE_TILES[audience];
@@ -104,11 +106,14 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   useEffect(() => {
     loadHomeData();
-    apiService.getDailyPuzzle().then((res) => {
+    apiService.getDailyPuzzle(audience).then((res) => {
       if (res?.puzzle?.title) setPuzzleTitle(res.puzzle.title);
     }).catch(() => {});
     apiService.getWordOfTheDay(audience).then((res) => {
       if (res?.word) setWordOfDay(res.word);
+    }).catch(() => {});
+    apiService.getFrameworkOfTheDay(audience).then((res) => {
+      if (res?.framework) setFrameworkOfDay(res.framework);
     }).catch(() => {});
   }, []);
 
@@ -227,7 +232,53 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ))}
         </View>
 
-        {/* 4. DAILY CHALLENGE TEASER */}
+        {/* 4. DAILY LEARNING FLOW — Word introduces a concept, Framework
+            teaches it, the Scenario/Puzzle lets you apply it. Same theme
+            where content coverage allows (see backend db/client.ts's
+            memoryGetTodaysFramework/Puzzle), so the three cards read as one
+            narrative instead of three unrelated rotations. */}
+        {wordOfDay && (
+          <TouchableOpacity
+            style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+            onPress={() => setShowWordModal(true)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.teal.subtle }]}>
+              <BookOpen size={18} color={colors.cardCategories.teal.solid} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>1 · TERM OF THE DAY</Text>
+              <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
+                {wordOfDay.term}
+              </Text>
+            </View>
+            <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
+              <Play size={13} color={colors.cardCategories.teal.solid} fill={colors.cardCategories.teal.solid} />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {frameworkOfDay && (
+          <TouchableOpacity
+            style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+            onPress={() => navigation.navigate('FrameworkDetail', { framework: frameworkOfDay })}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.purple.subtle }]}>
+              <GraduationCap size={18} color={colors.cardCategories.purple.solid} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>2 · FRAMEWORK OF THE DAY</Text>
+              <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
+                {frameworkOfDay.title}
+              </Text>
+            </View>
+            <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
+              <Play size={13} color={colors.cardCategories.purple.solid} fill={colors.cardCategories.purple.solid} />
+            </View>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
           onPress={() => navigation.navigate('DailyPuzzle')}
@@ -237,9 +288,9 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Zap size={18} color={colors.primary} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>TODAY'S CHALLENGE</Text>
+            <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>3 · PUT IT INTO PRACTICE</Text>
             <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
-              {puzzleTitle || 'Loading today\'s challenge...'}
+              {puzzleTitle || 'Loading today\'s scenario...'}
             </Text>
           </View>
           <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
@@ -247,7 +298,9 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* 4b. YOUR JOURNEY — the unified animated roadmap of lessons + story scenes */}
+        {/* 4b. YOUR JOURNEY — the unified animated roadmap of lessons + story
+            scenes; separate from the daily trio above since it's ongoing
+            progress, not a daily rotation. */}
         <TouchableOpacity
           style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
           onPress={() => navigation.navigate('Learn')}
@@ -268,30 +321,6 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Play size={13} color={colors.cardCategories.purple.solid} fill={colors.cardCategories.purple.solid} />
           </View>
         </TouchableOpacity>
-
-        {/* 4c. TERM OF THE DAY — one persona-relevant term, meaning, and why
-            it matters, kept intentionally short (Miller's Law: one bite-sized
-            idea, not a mini-article) */}
-        {wordOfDay && (
-          <TouchableOpacity
-            style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-            onPress={() => setShowWordModal(true)}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.teal.subtle }]}>
-              <BookOpen size={18} color={colors.cardCategories.teal.solid} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>TERM OF THE DAY</Text>
-              <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
-                {wordOfDay.term}
-              </Text>
-            </View>
-            <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
-              <Play size={13} color={colors.cardCategories.teal.solid} fill={colors.cardCategories.teal.solid} />
-            </View>
-          </TouchableOpacity>
-        )}
 
         {/* 6. TRIAL FOOTNOTE */}
         {isFreeTrial && (

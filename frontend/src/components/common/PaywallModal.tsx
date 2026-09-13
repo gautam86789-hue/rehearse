@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { Check, ShieldCheck, Sparkles, X, Crown } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { isPurchasesSupported, presentPaywallIfNeeded, PAYWALL_RESULT } from '../../services/purchases';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
+import { AuthGateModal } from './AuthGateModal';
 
 // On native (iOS/Android), `isPaywallVisible` triggers RevenueCat's hosted,
 // dashboard-designed Paywall — real purchases, real products (yearly /
@@ -23,6 +25,7 @@ import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '.
 // UI iteration, so it needs something to demo behind the same CTA.
 export const PaywallModal: React.FC = () => {
   const { isPaywallVisible, setIsPaywallVisible, paywallPreferredPlan, upgradeSubscription, refreshProfile } = useApp();
+  const { isGuest } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('annual');
 
@@ -50,7 +53,10 @@ export const PaywallModal: React.FC = () => {
   const isPresenting = useRef(false);
 
   useEffect(() => {
-    if (!isPurchasesSupported() || !isPaywallVisible || isPresenting.current) return;
+    // isGuest excluded here on purpose — a guest hits the AuthGateModal
+    // render branch below instead, and this effect naturally takes over
+    // once sign-up/sign-in flips isGuest false and re-renders.
+    if (!isPurchasesSupported() || !isPaywallVisible || isGuest || isPresenting.current) return;
     isPresenting.current = true;
     presentPaywallIfNeeded()
       .then(async (result) => {
@@ -65,7 +71,20 @@ export const PaywallModal: React.FC = () => {
         isPresenting.current = false;
         setIsPaywallVisible(false);
       });
-  }, [isPaywallVisible]);
+  }, [isPaywallVisible, isGuest]);
+
+  // Sign-in/sign-up is required only at the moment of actually paying, not
+  // any earlier — applies on both native (blocks the RevenueCat hosted
+  // paywall above) and web (blocks the hand-built modal below).
+  if (isPaywallVisible && isGuest) {
+    return (
+      <AuthGateModal
+        visible
+        onAuthenticated={() => {}}
+        onCancel={() => setIsPaywallVisible(false)}
+      />
+    );
+  }
 
   if (isPurchasesSupported()) return null;
 

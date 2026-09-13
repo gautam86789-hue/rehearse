@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '../types';
+import { syncUserTags } from './oneSignalService';
 
 /**
  * Local (on-device) reminders — no backend push server involved. Designed
@@ -89,6 +90,12 @@ function nextOccurrenceOf(hour: number): Date {
  * it repeatedly can never produce more than one pending notification.
  */
 export async function syncDailyReminder(user: UserProfile, enabled: boolean): Promise<void> {
+  // Additive, not a replacement for the local scheduling below — OneSignal
+  // Journeys (configured in its dashboard once that app exists) key off
+  // these tags for the "Keep Them Coming Back" category; the local
+  // notification is what actually delivers today, before that's set up.
+  syncUserTags(user);
+
   const key = dailyReminderKey(user.id);
   await cancelStored(key);
   if (!enabled) return;

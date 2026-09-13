@@ -416,6 +416,7 @@ export const FRAMEWORKS_CATALOG: FrameworkOfTheDay[] = [
     id: 'framework-nvc',
     title: 'Nonviolent Communication (NVC) Framework',
     audiences: ['new_managers', 'professionals', 'mba_students'],
+    theme: 'nvc',
     sourceCredit: 'Inspired by Marshall Rosenberg’s Nonviolent Communication model',
     tagline: 'Transform heated accusations into actionable, collaborative requests.',
     summary: 'A structured 4-step communication model that separates objective facts from subjective judgments, identifies underlying human needs, and formulates clear, do-able requests.',
@@ -452,6 +453,7 @@ export const FRAMEWORKS_CATALOG: FrameworkOfTheDay[] = [
     id: 'framework-batna',
     title: 'Harvard Negotiation Project: BATNA & Anchoring',
     audiences: ['founders_investors', 'mba_students', 'professionals'],
+    theme: 'batna',
     sourceCredit: 'Inspired by Fisher & Ury’s Getting to Yes principles',
     tagline: 'Negotiate from strength by knowing your Best Alternative to a Negotiated Agreement.',
     summary: 'Never enter a high-stakes conversation without knowing your walkaway point and anchoring first with data-backed justification.',
@@ -488,6 +490,7 @@ export const FRAMEWORKS_CATALOG: FrameworkOfTheDay[] = [
     id: 'framework-state',
     title: 'Crucial Conversations: The S.T.A.T.E. Model',
     audiences: ['new_managers', 'professionals', 'mba_students'],
+    theme: 'state',
     sourceCredit: 'Inspired by Patterson, Grenny, McMillan, Switzler’s Crucial Conversations',
     tagline: 'Deliver high-stakes, emotionally charged feedback without triggering defense mechanisms.',
     summary: 'A 5-step roadmap to talk about sensitive issues when stakes are high, opinions vary, and emotions run strong.',
@@ -534,6 +537,7 @@ export const WORDS_CATALOG: WordOfTheDay[] = [
     id: 'word-runway',
     term: 'Runway',
     audiences: ['founders_investors'],
+    theme: 'runway',
     meaning: 'The number of months of cash you have left before hitting $0 at your current burn rate.',
     whyItMatters: 'Running out of runway without knowing it is the #1 way founders lose leverage in their next raise — investors can smell desperation, and it shows up first in a fuzzy runway number.',
     releaseDate: '2026-09-01'
@@ -688,6 +692,7 @@ export const WORDS_CATALOG: WordOfTheDay[] = [
     id: 'word-anchoring',
     term: 'Anchoring',
     audiences: ['mba_students', 'professionals'],
+    theme: 'anchoring',
     meaning: 'The tendency to rely too heavily on the first number offered in a negotiation.',
     whyItMatters: 'Whoever anchors first often shapes the entire negotiation range — knowing this changes whether you open with a number or wait to hear theirs.',
     releaseDate: '2026-09-06'
@@ -713,6 +718,7 @@ export const WORDS_CATALOG: WordOfTheDay[] = [
     id: 'word-boundary-setting',
     term: 'Boundary Setting',
     audiences: ['professionals'],
+    theme: 'boundary-setting',
     meaning: 'Clearly communicating what you will and will not accept in how others treat your time or energy.',
     whyItMatters: 'Unclear boundaries get walked over, not respected — most people are not being malicious, they simply have not been told where the line is.',
     releaseDate: '2026-09-02'
@@ -737,6 +743,7 @@ export const WORDS_CATALOG: WordOfTheDay[] = [
     id: 'word-batna',
     term: 'BATNA (Best Alternative to a Negotiated Agreement)',
     audiences: ['professionals', 'founders_investors'],
+    theme: 'batna',
     meaning: 'Your fallback plan if the current negotiation fails to reach an agreement.',
     whyItMatters: 'Knowing your BATNA is what gives you real leverage, not bluffing — the strongest negotiators are calm because they genuinely have somewhere else to go.',
     releaseDate: '2026-09-05'
@@ -753,6 +760,7 @@ export const WORDS_CATALOG: WordOfTheDay[] = [
     id: 'word-active-listening',
     term: 'Active Listening',
     audiences: ['professionals'],
+    theme: 'nvc',
     meaning: 'Fully concentrating on and reflecting back what someone says before responding.',
     whyItMatters: 'Most "disagreements" are actually misunderstandings that active listening would have caught early, before either side dug in.',
     releaseDate: '2026-09-07'
@@ -778,6 +786,7 @@ export const WORDS_CATALOG: WordOfTheDay[] = [
     id: 'word-90-day-plan',
     term: '90-Day Plan',
     audiences: ['new_hires'],
+    theme: '90-day-plan',
     meaning: 'A written roadmap of what you will learn, do, and deliver in your first three months in a role.',
     whyItMatters: 'It shows a new hire understands they need to earn trust, not just show up — managers notice the difference immediately.',
     releaseDate: '2026-09-03'
@@ -821,6 +830,8 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
     id: 'puzzle-2026-09-07',
     date: '2026-09-07',
     title: 'The "Quick Weekend Favor" Dilemma',
+    audiences: ['professionals', 'new_managers', 'new_hires'],
+    theme: 'boundary-setting',
     scenarioContext: 'It is Friday at 6:15 PM. Your director sends a Slack: "Hey, know it is late, but could you quickly rewrite the 20-page board deck by tomorrow noon? The CEO wants new charts."',
     counterpartOpeningLine: 'Can you take care of this tonight? You are our fastest slide builder and I really need your help.',
     options: [
@@ -859,6 +870,8 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
     id: 'puzzle-2026-09-08',
     date: '2026-09-08',
     title: 'The Vague "HR Budget Freeze" Pushback',
+    audiences: ['professionals', 'founders_investors'],
+    theme: 'batna',
     scenarioContext: 'You just asked your VP for an overdue 15% salary review after delivering $2M in cost savings.',
     counterpartOpeningLine: 'Look, you are a rockstar, but HR has completely frozen all band raises across the entire company until next year.',
     options: [
@@ -891,6 +904,166 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
       optionA: 28,
       optionB: 62,
       optionC: 10
+    }
+  },
+  {
+    id: 'puzzle-runway-checkin',
+    date: '2026-09-09',
+    title: 'The Investor Update Nobody Wants to Send',
+    audiences: ['founders_investors'],
+    theme: 'runway',
+    scenarioContext: 'Your seed lead pings you two weeks before the board meeting: "Quick check-in — how\'s runway looking?" You have 5 months left and the extension conversation isn\'t ready yet.',
+    counterpartOpeningLine: 'Just want a temperature check before the board call — where are we on runway right now?',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Vague Reassurance',
+        responseText: 'We\'re in good shape, still executing the plan, nothing to worry about right now.',
+        isOptimal: false,
+        score: 30,
+        explanation: 'Dodging the actual number reads as evasive to an investor who will find out the real figure at the board meeting anyway — it trades two weeks of calm for a much worse conversation later.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Exact Number + Specific Ask',
+        responseText: 'About 5 months at current burn. We\'re trimming two non-core hires this month to stretch that to 8, and I\'d like 15 minutes before the board call to walk you through a bridge option in case we need one.',
+        isOptimal: true,
+        score: 96,
+        explanation: 'Leads with the real number, shows a concrete plan already in motion, and proactively opens the harder conversation on your own terms instead of waiting to be asked.'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Panic Dump',
+        responseText: 'Honestly it\'s tighter than I\'d like, I\'m not totally sure what we do if the round doesn\'t come together in time.',
+        isOptimal: false,
+        score: 35,
+        explanation: 'Accurate honesty without a plan attached reads as the founder not being in control of the situation, which is what actually spooks investors — the number alone isn\'t the problem.'
+      }
+    ],
+    communityDistribution: {
+      optionA: 22,
+      optionB: 66,
+      optionC: 12
+    }
+  },
+  {
+    id: 'puzzle-defensive-report',
+    date: '2026-09-10',
+    title: 'When Feedback Lands as an Attack',
+    audiences: ['new_managers'],
+    theme: 'nvc',
+    scenarioContext: 'You point out that a report\'s client email missed key details. They immediately get defensive: "I did include that, you just didn\'t read it properly."',
+    counterpartOpeningLine: 'I did include that, you just didn\'t read it properly.',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Back Down',
+        responseText: 'Oh, maybe I missed it, never mind, it\'s probably fine.',
+        isOptimal: false,
+        score: 30,
+        explanation: 'Retreating to avoid the tension teaches the report that defensiveness is an effective way to shut down feedback — the actual gap in the email still doesn\'t get fixed.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Observation, Not Accusation',
+        responseText: 'I want to make sure we\'re looking at the same thing — in the version I saw, the pricing breakdown wasn\'t there. Can we pull it up together?',
+        isOptimal: true,
+        score: 94,
+        explanation: 'States a concrete, checkable observation instead of a judgment, and invites collaboration rather than a standoff — the NVC move of separating the fact from the interpretation.'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Escalate the Correction',
+        responseText: 'I read it twice. It\'s not there. This is exactly the kind of thing that keeps happening.',
+        isOptimal: false,
+        score: 40,
+        explanation: 'Winning the factual point while raising the emotional temperature gets compliance without trust — and "this keeps happening" turns one email into a character indictment.'
+      }
+    ],
+    communityDistribution: {
+      optionA: 18,
+      optionB: 70,
+      optionC: 12
+    }
+  },
+  {
+    id: 'puzzle-lowball-anchor',
+    date: '2026-09-11',
+    title: 'The Signing Bonus Anchor',
+    audiences: ['mba_students'],
+    theme: 'anchoring',
+    scenarioContext: 'You\'re negotiating a signing bonus for your post-MBA offer. The recruiter opens: "Honestly, most people in your cohort are asking for around $5K — we can probably match that."',
+    counterpartOpeningLine: 'Most people in your cohort are asking for around $5K — we can probably match that.',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Accept the Anchor',
+        responseText: '$5K sounds fair, I appreciate it.',
+        isOptimal: false,
+        score: 25,
+        explanation: 'Accepting the first number handed to you is exactly how anchoring works against you — there was no verification that $5K is actually the cohort norm.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Counter-Anchor With Data',
+        responseText: 'I\'ve seen offers in this market closer to $12-15K for comparable roles — given the relocation costs on my end, I\'d like to start the conversation there.',
+        isOptimal: true,
+        score: 95,
+        explanation: 'Refuses to let their number set the range, re-anchors with independent market data, and ties the ask to a concrete cost rather than just "wanting more."'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Ask For More With No Basis',
+        responseText: 'Can we do $20K instead?',
+        isOptimal: false,
+        score: 45,
+        explanation: 'A bigger number without justification is easy to dismiss — anchoring works when the counter-anchor is credible, not just large.'
+      }
+    ],
+    communityDistribution: {
+      optionA: 20,
+      optionB: 68,
+      optionC: 12
+    }
+  },
+  {
+    id: 'puzzle-early-project-lead',
+    date: '2026-09-12',
+    title: 'Leading a Project in Week 2',
+    audiences: ['new_hires'],
+    theme: '90-day-plan',
+    scenarioContext: 'It\'s your second week. Your manager asks you to independently own a client-facing deliverable due Friday — before you\'ve even met most of the team.',
+    counterpartOpeningLine: 'Can you just take the lead on the Meridian deliverable? It\'s due Friday.',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Silent Overcommit',
+        responseText: 'Sure, I\'ll figure it out.',
+        isOptimal: false,
+        score: 35,
+        explanation: 'Agreeing without surfacing the real ramp-up gap sets up a Friday failure that reads as incompetence, when the actual issue was an unrealistic timeline nobody named out loud.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Name the Gap, Propose a Plan',
+        responseText: 'I want to own this well, not just fast — I don\'t have full context on Meridian yet. Can I get 20 minutes with whoever ran it last time today, and I\'ll have a full draft by Thursday EOD for your review before it goes out Friday?',
+        isOptimal: true,
+        score: 97,
+        explanation: 'Shows initiative and ownership while being upfront about the ramp-up need — exactly the "earning trust, not just showing up" instinct a strong first-90-days plan is built on.'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Push Back Entirely',
+        responseText: 'I don\'t think I should be leading anything this early, can someone more senior take it?',
+        isOptimal: false,
+        score: 40,
+        explanation: 'Declining the opportunity outright reads as a lack of confidence rather than appropriate caution — the goal is to reshape the ask, not opt out of it.'
+      }
+    ],
+    communityDistribution: {
+      optionA: 24,
+      optionB: 64,
+      optionC: 12
     }
   }
 ];
