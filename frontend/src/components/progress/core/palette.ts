@@ -37,32 +37,32 @@ export const progressPalette = (t: ThemeColors, isDark: boolean): ProgressPalett
   inkSoft: t.textSecondary,
   inkFaint: t.textMuted,
 
-  canvas: isDark ? '#0A1912' : '#FBF8F0',
-  canvasEdge: isDark ? '#132A20' : '#EFE9DA',
+  canvas: isDark ? '#1A1A2E' : '#F0EFFB',
+  canvasEdge: isDark ? '#242438' : '#E4E2F7',
   card: t.surfaceCard,
   hairline: t.surfaceBorder,
-  well: isDark ? '#0E1F17' : '#EDE8D9',
+  well: isDark ? '#20203A' : '#ECEAFA',
 
   accent: t.primary,
   accentSoft: t.primaryLight,
   accentWash: t.primarySubtle,
-  onAccent: isDark ? '#08130E' : '#FFFFFF',
+  onAccent: '#FFFFFF',
 
   band: {
-    emerging: isDark ? '#6E8478' : '#7C8C7F',
-    developing: isDark ? '#8F997F' : '#5F7053',
-    proficient: isDark ? '#C8AA6A' : '#B08D4F',
-    commanding: isDark ? '#E5CD82' : '#8A6A24'
+    emerging: isDark ? '#9394AD' : '#9C9DB0',
+    developing: isDark ? '#60A5FA' : '#3B82F6',
+    proficient: isDark ? '#8B8FF5' : '#5B5FEF',
+    commanding: isDark ? '#FBBF24' : '#D97706'
   },
   bandWash: {
-    emerging: isDark ? 'rgba(110, 132, 120, 0.16)' : 'rgba(124, 140, 127, 0.14)',
-    developing: isDark ? 'rgba(143, 153, 127, 0.18)' : 'rgba(95, 112, 83, 0.14)',
-    proficient: isDark ? 'rgba(200, 170, 106, 0.18)' : 'rgba(176, 141, 79, 0.15)',
-    commanding: isDark ? 'rgba(229, 205, 130, 0.22)' : 'rgba(138, 106, 36, 0.16)'
+    emerging: isDark ? 'rgba(147, 148, 173, 0.18)' : 'rgba(156, 157, 176, 0.14)',
+    developing: isDark ? 'rgba(96, 165, 250, 0.18)' : 'rgba(59, 130, 246, 0.14)',
+    proficient: isDark ? 'rgba(139, 143, 245, 0.2)' : 'rgba(91, 95, 239, 0.14)',
+    commanding: isDark ? 'rgba(251, 191, 36, 0.22)' : 'rgba(217, 119, 6, 0.16)'
   },
 
-  grid: isDark ? 'rgba(243, 239, 229, 0.07)' : 'rgba(23, 36, 30, 0.07)',
-  locked: isDark ? '#5C6B62' : '#9AA096'
+  grid: isDark ? 'rgba(241, 241, 247, 0.07)' : 'rgba(26, 27, 37, 0.06)',
+  locked: isDark ? '#4A4A66' : '#B4B3C9'
 });
 
 /** Opacity helper for hex colours coming from the theme. */

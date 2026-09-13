@@ -18,30 +18,30 @@ export class ScoringEngine {
       .map((t, idx) => `[Turn ${idx + 1}] ${t.speaker.toUpperCase()}: ${t.message}`)
       .join('\n');
 
-    const systemPrompt = `You are a world-class executive communications coach evaluating a high-stakes roleplay transcript.
-Evaluate the user's performance according to the 4-part SUBSTANCE RUBRIC:
+    const systemPrompt = `You are a world-class communications coach evaluating a high-stakes roleplay transcript.
+Evaluate the user's performance according to the 4-part COMMUNICATION RUBRIC:
 
-1. STATED THE ASK (0-100): Did the user clearly state their core goal, thesis, or boundary upfront without diluting it?
-2. HELD THE BOUNDARY (0-100): Did the user resist emotional guilt, deflection, false compromises, or backing down when challenged?
-3. STAYED SPECIFIC (0-100): Did the user use concrete numbers, verified facts, dates, and examples rather than vague generalizations?
-4. EMOTIONAL COMPOSURE (0-100): Was the tone calm, firm, non-defensive, professional, and free of unnecessary apologies?
+1. CLARITY (0-100): Did the user state their point directly, without hedging or diluting it?
+2. EMPATHY (0-100): Did the user acknowledge the counterpart's perspective or feelings before pressing their own point?
+3. ASSERTIVENESS (0-100): Did the user hold their position without backing down when challenged?
+4. LISTENING (0-100): Did the user respond to what the counterpart actually said, rather than talking past them or repeating a script?
 
 WEAKEST LINE REWRITE:
-Identify the SINGLE WEAKEST sentence spoken by the user (e.g. Most apologetic, most hedged, or most conceding), and rewrite it as an executive-level masterclass line.
+Identify the SINGLE WEAKEST sentence spoken by the user (e.g. Most apologetic, most hedged, or most conceding), and rewrite it as a confident, clear alternative.
 
 You MUST return a JSON object strictly matching this schema:
 {
-  "statedTheAsk": number (0-100),
-  "heldTheBoundary": number (0-100),
-  "stayedSpecific": number (0-100),
-  "emotionalComposure": number (0-100),
+  "clarity": number (0-100),
+  "empathy": number (0-100),
+  "assertiveness": number (0-100),
+  "listening": number (0-100),
   "overallScore": number (0-100),
   "strengths": ["Strength 1", "Strength 2"],
   "growthAreas": ["Growth area 1", "Growth area 2"],
   "weakestLineRewrite": {
     "originalLine": "Exact user line from transcript",
     "suggestedRewrite": "High-impact rewrite",
-    "coachingRationale": "Why this change makes the user 10x more persuasive",
+    "coachingRationale": "Why this change lands better",
     "techniqueApplied": "Name of technique (e.g. The Clean Ask, Boundary Anchoring, Non-Defensive Pivot)"
   },
   "keyTakeaways": [
@@ -58,7 +58,7 @@ Counterpart: ${scenario.counterpartName} (${scenario.counterpartRole})
 TRANSCRIPT:
 ${transcriptFormatted}
 
-Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
+Evaluate this transcript and generate the complete Communication Rubric JSON now.`;
 
     try {
       const rawResponse = await this.llm.generateCompletion(
@@ -84,11 +84,11 @@ Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
   }
 
   private validateAndNormalizeRubric(parsed: any, userTurns: MessageTurn[]): SubstanceRubric {
-    const ask = Math.min(100, Math.max(10, Number(parsed.statedTheAsk) || 75));
-    const boundary = Math.min(100, Math.max(10, Number(parsed.heldTheBoundary) || 70));
-    const specific = Math.min(100, Math.max(10, Number(parsed.stayedSpecific) || 70));
-    const composure = Math.min(100, Math.max(10, Number(parsed.emotionalComposure) || 80));
-    const overall = Math.min(100, Math.max(10, Number(parsed.overallScore) || Math.round((ask + boundary + specific + composure) / 4)));
+    const clarity = Math.min(100, Math.max(10, Number(parsed.clarity) || 75));
+    const empathy = Math.min(100, Math.max(10, Number(parsed.empathy) || 70));
+    const assertiveness = Math.min(100, Math.max(10, Number(parsed.assertiveness) || 70));
+    const listening = Math.min(100, Math.max(10, Number(parsed.listening) || 75));
+    const overall = Math.min(100, Math.max(10, Number(parsed.overallScore) || Math.round((clarity + empathy + assertiveness + listening) / 4)));
 
     let rewrite = parsed.weakestLineRewrite;
     if (!rewrite || !rewrite.originalLine) {
@@ -102,10 +102,10 @@ Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
     }
 
     return {
-      statedTheAsk: ask,
-      heldTheBoundary: boundary,
-      stayedSpecific: specific,
-      emotionalComposure: composure,
+      clarity,
+      empathy,
+      assertiveness,
+      listening,
       overallScore: overall,
       strengths: Array.isArray(parsed.strengths) && parsed.strengths.length > 0 ? parsed.strengths : ['Maintained professional tone', 'Addressed counterpart pushback'],
       growthAreas: Array.isArray(parsed.growthAreas) && parsed.growthAreas.length > 0 ? parsed.growthAreas : ['Use fewer hedging phrases', 'Anchor with concrete business metrics'],
@@ -115,10 +115,10 @@ Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
   }
 
   private heuristicScoring(scenario: Scenario, userTurns: MessageTurn[]): SubstanceRubric {
-    let askScore = 75;
-    let boundaryScore = 70;
-    let specificScore = 65;
-    let composureScore = 80;
+    let clarityScore = 75;
+    let empathyScore = 65;
+    let assertivenessScore = 70;
+    let listeningScore = 70;
 
     let weakestTurn = userTurns[0]?.message || '';
     let foundWeakness = false;
@@ -127,9 +127,8 @@ Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
       const msg = turn.message.toLowerCase();
 
       if (msg.includes('sorry') || msg.includes('just hoping') || msg.includes('i guess') || msg.includes('if that is okay')) {
-        askScore -= 10;
-        boundaryScore -= 10;
-        composureScore -= 5;
+        clarityScore -= 10;
+        assertivenessScore -= 10;
         if (!foundWeakness) {
           weakestTurn = turn.message;
           foundWeakness = true;
@@ -137,20 +136,27 @@ Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
       }
 
       if (/\d+/.test(msg) || msg.includes('percent') || msg.includes('$') || msg.includes('q1') || msg.includes('q2') || msg.includes('october')) {
-        specificScore += 15;
+        clarityScore += 10;
+      }
+
+      if (msg.includes('i understand') || msg.includes('i hear') || msg.includes('i know this is') || msg.includes('i get that')) {
+        empathyScore += 15;
       }
 
       if (msg.includes('my priority is') || msg.includes('we agreed') || msg.includes('i will deliver') || msg.includes('moving forward')) {
-        boundaryScore += 10;
-        askScore += 10;
+        assertivenessScore += 10;
+      }
+
+      if (msg.includes('what i hear you saying') || msg.includes('to your point') || msg.includes('you mentioned') || msg.includes('you said')) {
+        listeningScore += 15;
       }
     }
 
-    askScore = Math.min(95, Math.max(40, askScore));
-    boundaryScore = Math.min(95, Math.max(35, boundaryScore));
-    specificScore = Math.min(95, Math.max(40, specificScore));
-    composureScore = Math.min(95, Math.max(45, composureScore));
-    const overall = Math.round((askScore * 0.3) + (boundaryScore * 0.3) + (specificScore * 0.2) + (composureScore * 0.2));
+    clarityScore = Math.min(95, Math.max(40, clarityScore));
+    empathyScore = Math.min(95, Math.max(35, empathyScore));
+    assertivenessScore = Math.min(95, Math.max(35, assertivenessScore));
+    listeningScore = Math.min(95, Math.max(40, listeningScore));
+    const overall = Math.round((clarityScore * 0.3) + (assertivenessScore * 0.3) + (empathyScore * 0.2) + (listeningScore * 0.2));
 
     const weakestLine: WeakestLineRewrite = {
       originalLine: weakestTurn,
@@ -160,10 +166,10 @@ Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
     };
 
     return {
-      statedTheAsk: askScore,
-      heldTheBoundary: boundaryScore,
-      stayedSpecific: specificScore,
-      emotionalComposure: composureScore,
+      clarity: clarityScore,
+      empathy: empathyScore,
+      assertiveness: assertivenessScore,
+      listening: listeningScore,
       overallScore: overall,
       strengths: [
         'Maintained respectful, professional engagement under pushback',
@@ -183,10 +189,10 @@ Evaluate this transcript and generate the complete Substance Rubric JSON now.`;
 
   private getEmptyRubric(): SubstanceRubric {
     return {
-      statedTheAsk: 0,
-      heldTheBoundary: 0,
-      stayedSpecific: 0,
-      emotionalComposure: 0,
+      clarity: 0,
+      empathy: 0,
+      assertiveness: 0,
+      listening: 0,
       overallScore: 0,
       strengths: [],
       growthAreas: ['Complete at least 2 conversational turns to receive scoring'],

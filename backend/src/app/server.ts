@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import appRoutes from './routes.js';
 import { errorHandler } from '../middleware/errorHandler.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 dotenv.config();
 
@@ -17,6 +18,8 @@ export function createServer() {
   if (process.env.NODE_ENV !== 'test') {
     app.use(morgan('dev'));
   }
+
+  app.use(authMiddleware);
 
   app.use('/api/v1', appRoutes);
 

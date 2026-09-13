@@ -25,7 +25,8 @@ import {
   ArrowRight,
   MessageSquare
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 interface StrategyOption {
   id: 'diplomatic' | 'direct' | 'boundary';
@@ -42,7 +43,9 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
   const [selectedStrategy, setSelectedStrategy] = useState<'diplomatic' | 'direct' | 'boundary'>('diplomatic');
   const [copied, setCopied] = useState(false);
   const [toneAdjustment, setToneAdjustment] = useState<'default' | 'firmer' | 'shorter' | 'data'>('default');
@@ -110,7 +113,7 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
           onPress={() => navigation.goBack()}
@@ -133,9 +136,9 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
         {/* Context / Counterpart statement bubble */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>THEIR POSITION / MESSAGE</Text>
-          <View style={[styles.theirCard, { backgroundColor: isDark ? '#14201A' : '#F4F7F5', borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.theirCard, elevation.sm, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}>
             <View style={styles.theirCardHeader}>
-              <View style={[styles.counterpartDot, { backgroundColor: '#C8AA6A' }]} />
+              <View style={[styles.counterpartDot, { backgroundColor: themeColors.primary }]} />
               <Text style={[styles.counterpartName, { color: themeColors.textSecondary }]}>
                 Alex Chen (VP of Product)
               </Text>
@@ -159,12 +162,13 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
                   key={stratKey}
                   style={[
                     styles.strategyCard,
+                    elevation.sm,
                     {
                       backgroundColor: isSelected
-                        ? (isDark ? '#173D2C' : '#EAF2EC')
+                        ? themeColors.primarySubtle
                         : themeColors.surfaceCard,
                       borderColor: isSelected
-                        ? (isDark ? '#C8AA6A' : '#173D2C')
+                        ? themeColors.primary
                         : themeColors.surfaceBorder
                     }
                   ]}
@@ -174,18 +178,18 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
                   <View style={styles.stratCardTop}>
                     <IconComp
                       size={16}
-                      color={isSelected ? (isDark ? '#C8AA6A' : '#173D2C') : themeColors.textSecondary}
+                      color={isSelected ? themeColors.primary : themeColors.textSecondary}
                     />
                     {isSelected && (
-                      <View style={[styles.activePill, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}>
-                        <Check size={10} color={isDark ? '#0B1712' : '#FFFFFF'} />
+                      <View style={[styles.activePill, { backgroundColor: themeColors.primary }]}>
+                        <Check size={10} color={themeColors.textInverse} />
                       </View>
                     )}
                   </View>
                   <Text
                     style={[
                       styles.stratCardTitle,
-                      { color: isSelected ? (isDark ? '#C8AA6A' : '#173D2C') : themeColors.textPrimary }
+                      { color: isSelected ? themeColors.primary : themeColors.textPrimary }
                     ]}
                   >
                     {strat.title}
@@ -216,7 +220,7 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
               style={[
                 styles.copyBtn,
                 {
-                  backgroundColor: copied ? '#2ECC71' : themeColors.surfaceElevated,
+                  backgroundColor: copied ? themeColors.success : themeColors.surfaceElevated,
                   borderColor: themeColors.surfaceBorder
                 }
               ]}
@@ -225,8 +229,8 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
             >
               {copied ? (
                 <>
-                  <Check size={14} color="#FFFFFF" />
-                  <Text style={[styles.copyBtnText, { color: '#FFFFFF' }]}>Copied</Text>
+                  <Check size={14} color={themeColors.textInverse} />
+                  <Text style={[styles.copyBtnText, { color: themeColors.textInverse }]}>Copied</Text>
                 </>
               ) : (
                 <>
@@ -237,7 +241,7 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.replyCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.replyCard, elevation.md, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <Text style={[styles.replyScriptText, { color: themeColors.textPrimary }]}>
               {currentStrategy.replyText}
             </Text>
@@ -247,7 +251,7 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
         {/* Why this works (Tactical Breakdown) */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>WHY THIS WORKS</Text>
-          <View style={[styles.rationaleCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.rationaleCard, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {currentStrategy.rationale.map((point, idx) => (
               <View
                 key={idx}
@@ -261,7 +265,7 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
               >
                 <CheckCircle2
                   size={16}
-                  color={isDark ? '#C8AA6A' : '#173D2C'}
+                  color={themeColors.primary}
                   style={{ marginTop: 2, marginRight: 10, flexShrink: 0 }}
                 />
                 <Text style={[styles.rationaleText, { color: themeColors.textPrimary }]}>
@@ -275,7 +279,7 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
         {/* Action Buttons */}
         <View style={styles.actionGroup}>
           <TouchableOpacity
-            style={[styles.primaryActionBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+            style={[styles.primaryActionBtn, { backgroundColor: themeColors.primary }]}
             onPress={() => navigation.navigate('RehearsalSettings', {
               title: contextTitle,
               strategy: selectedStrategy,
@@ -283,11 +287,11 @@ export const StrategicReplyScreen: React.FC<{ navigation: any; route?: any }> = 
             })}
             activeOpacity={0.85}
           >
-            <Play size={16} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginRight: 8 }} />
-            <Text style={[styles.primaryActionText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+            <Play size={16} color={themeColors.textInverse} style={{ marginRight: 8 }} />
+            <Text style={[styles.primaryActionText, { color: themeColors.textInverse }]}>
               Practice Live in Rehearsal
             </Text>
-            <ArrowRight size={16} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 6 }} />
+            <ArrowRight size={16} color={themeColors.textInverse} style={{ marginLeft: 6 }} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -350,7 +354,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   theirCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 14
   },
@@ -380,7 +384,7 @@ const styles = StyleSheet.create({
   },
   strategyCard: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: RADII.sm,
     borderWidth: 1.5,
     padding: 12,
     minHeight: 90
@@ -439,7 +443,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   replyCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 16
   },
@@ -449,7 +453,7 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   rationaleCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },

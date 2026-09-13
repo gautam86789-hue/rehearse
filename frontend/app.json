@@ -2,24 +2,46 @@
   "expo": {
     "name": "Rehearse",
     "slug": "rehearse",
+    "scheme": "rehearse",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "entryPoint": "./index.ts",
-    "backgroundColor": "#07100D",
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#F7F7FC",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rehearse.app",
-      "backgroundColor": "#07100D"
+      "backgroundColor": "#F7F7FC"
     },
     "android": {
       "package": "com.rehearse.app",
-      "backgroundColor": "#07100D"
+      "backgroundColor": "#F7F7FC",
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F7F7FC"
+      }
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "backgroundColor": "#07100D"
-    }
+      "backgroundColor": "#F7F7FC",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "./plugins/withAndroidDarkBackground.js",
+      "./plugins/withGradleNativeAccessFix.js",
+      "./plugins/withReleaseDebuggable.js",
+      "./plugins/withApkSizeOptimizations.js",
+      "expo-web-browser",
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#5B5FEF"
+        }
+      ]
+    ]
   }
 }

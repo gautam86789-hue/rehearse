@@ -2,18 +2,101 @@ import { Request, Response, NextFunction } from 'express';
 import { memoryDb } from '../db/client.js';
 import { z } from 'zod';
 
+export const registerSchema = z.object({
+  email: z.string().email('Invalid email address format'),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  fullName: z.string().optional(),
+  role: z.string().optional(),
+  experienceLevel: z.string().optional(),
+  audience: z.enum(['founders_investors', 'new_managers', 'mba_students', 'professionals', 'new_hires']).optional(),
+  primaryDreadCategory: z.string().optional()
+});
+
+export const loginSchema = z.object({
+  email: z.string().email('Invalid email address format'),
+  password: z.string().min(1, 'Password is required')
+});
+
 export const onboardingSchema = z.object({
-  userId: z.string().optional().default('demo-user-1'),
+  userId: z.string().optional(),
   role: z.string().min(1),
   experienceLevel: z.string().min(1),
-  primaryDreadCategory: z.string().min(1)
+  primaryDreadCategory: z.string().min(1),
+  audience: z.enum(['founders_investors', 'new_managers', 'mba_students', 'professionals', 'new_hires']).optional()
 });
 
 export class AuthController {
+  async register(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email, password, fullName, role, experienceLevel, audience, primaryDreadCategory } = req.body;
+      const { user, token } = await memoryDb.createUser({
+        email,
+        password,
+        fullName,
+        role,
+        experienceLevel,
+        audience,
+        primaryDreadCategory
+      });
+      res.status(201).json({
+        user,
+        token,
+        message: 'Account created successfully'
+      });
+    } catch (err: any) {
+      if (err.message?.includes('already exists')) {
+        res.status(409).json({ error: err.message });
+        return;
+      }
+      next(err);
+    }
+  }
+
+  async login(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email, password } = req.body;
+      const { user, token } = await memoryDb.authenticateUser(email, password);
+      res.json({
+        user,
+        token,
+        message: 'Logged in successfully'
+      });
+    } catch (err: any) {
+      if (err.message?.includes('Invalid email or password')) {
+        res.status(401).json({ error: err.message });
+        return;
+      }
+      next(err);
+    }
+  }
+
+  async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice('Bearer '.length).trim();
+        await memoryDb.deleteSession(token);
+      }
+      res.json({ success: true, message: 'Logged out successfully' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.userId || (req.query.userId as string) || 'demo-user-1';
+      const user = await memoryDb.getUser(userId);
+      res.json({ user });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = (req.query.userId as string) || 'demo-user-1';
-      const user = memoryDb.getUser(userId);
+      const userId = (req.query.userId as string) || req.userId || 'demo-user-1';
+      const user = await memoryDb.getUser(userId);
       res.json({ user });
     } catch (err) {
       next(err);
@@ -22,11 +105,13 @@ export class AuthController {
 
   async completeOnboarding(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { userId, role, experienceLevel, primaryDreadCategory } = req.body;
-      const updated = memoryDb.updateUser(userId || 'demo-user-1', {
+      const { userId, role, experienceLevel, primaryDreadCategory, audience } = req.body;
+      const resolvedUserId = userId || req.userId || 'demo-user-1';
+      const updated = await memoryDb.updateUser(resolvedUserId, {
         role,
         experienceLevel,
-        primaryDreadCategory
+        primaryDreadCategory,
+        ...(audience ? { audience } : {})
       });
       res.json({ user: updated, message: 'Onboarding completed successfully' });
     } catch (err) {
@@ -36,9 +121,9 @@ export class AuthController {
 
   async getProgress(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = (req.query.userId as string) || 'demo-user-1';
-      const user = memoryDb.getUser(userId);
-      const sessions = memoryDb.getUserSessions(userId);
+      const userId = (req.query.userId as string) || req.userId || 'demo-user-1';
+      const user = await memoryDb.getUser(userId);
+      const sessions = await memoryDb.getUserSessions(userId);
 
       const completedSessions = sessions.filter((s) => s.status === 'completed' && s.scorecard);
       const averageScore = completedSessions.length > 0

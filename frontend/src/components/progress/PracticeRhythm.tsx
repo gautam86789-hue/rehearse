@@ -16,6 +16,11 @@ interface PracticeRhythmProps {
   days: PracticeDay[];
   currentStreak: number;
   longestStreak: number;
+  /** Exact trailing day-count for the window (e.g. 30). Takes precedence
+   * over `weeks` when set; the grid still renders in 7-day columns, so the
+   * leading column may be partial rather than rounding the window up to a
+   * full week. */
+  windowDays?: number;
   weeks?: number;
 }
 
@@ -33,6 +38,7 @@ export const PracticeRhythm: React.FC<PracticeRhythmProps> = ({
   days,
   currentStreak,
   longestStreak,
+  windowDays,
   weeks = 12
 }) => {
   const { colors: themeColors, isDark } = useTheme();
@@ -60,7 +66,7 @@ export const PracticeRhythm: React.FC<PracticeRhythmProps> = ({
     const end = new Date(today);
     const trailing = 6 - end.getDay();
     const gridEnd = new Date(end.getTime() + trailing * DAY_MS);
-    const total = weeks * 7;
+    const total = windowDays ?? weeks * 7;
 
     const cells: Array<{ date: Date; key: string; count: number; future: boolean }> = [];
     for (let i = total - 1; i >= 0; i--) {
@@ -77,7 +83,7 @@ export const PracticeRhythm: React.FC<PracticeRhythmProps> = ({
     const cols: (typeof cells)[] = [];
     for (let i = 0; i < cells.length; i += 7) cols.push(cells.slice(i, i + 7));
     return cols;
-  }, [byDate, weeks]);
+  }, [byDate, weeks, windowDays]);
 
   const totalInWindow = useMemo(
     () => columns.flat().reduce((sum, c) => sum + c.count, 0),
@@ -88,13 +94,18 @@ export const PracticeRhythm: React.FC<PracticeRhythmProps> = ({
     [columns]
   );
 
+  // Keyed by column index so the month row can render one label slot per
+  // column, matching the grid's own flex-column widths exactly — a fixed
+  // pixel offset (the previous approach) only lined up for whatever column
+  // count it was tuned against, and drifted out of alignment the moment the
+  // window size (and therefore each column's actual rendered width) changed.
   const monthMarks = useMemo(() => {
-    const marks: Array<{ index: number; label: string }> = [];
+    const marks = new Map<number, string>();
     let last = -1;
     columns.forEach((col, i) => {
       const m = col[0].date.getMonth();
       if (m !== last) {
-        marks.push({ index: i, label: col[0].date.toLocaleString(undefined, { month: 'short' }) });
+        marks.set(i, col[0].date.toLocaleString(undefined, { month: 'short' }));
         last = m;
       }
     });
@@ -136,16 +147,14 @@ export const PracticeRhythm: React.FC<PracticeRhythmProps> = ({
       {/* The grid */}
       <View style={[styles.gridCard, { backgroundColor: p.canvas, borderColor: p.hairline }]}>
         <View style={styles.monthRow}>
-          {monthMarks.map((m) => (
-            <Text
-              key={`${m.label}-${m.index}`}
-              style={[
-                styles.monthLabel,
-                { color: p.inkFaint, left: m.index * 15 }
-              ]}
-            >
-              {m.label}
-            </Text>
+          {columns.map((_, ci) => (
+            <View key={ci} style={styles.col}>
+              {monthMarks.has(ci) && (
+                <Text style={[styles.monthLabel, { color: p.inkFaint }]}>
+                  {monthMarks.get(ci)}
+                </Text>
+              )}
+            </View>
           ))}
         </View>
 
@@ -179,7 +188,7 @@ export const PracticeRhythm: React.FC<PracticeRhythmProps> = ({
                     ? 'No practice'
                     : `${pickedCell.count} rehearsal${pickedCell.count > 1 ? 's' : ''}`
                 }`
-              : `${totalInWindow} rehearsals in ${weeks} weeks`}
+              : `${totalInWindow} rehearsals in the last ${windowDays ?? weeks * 7} days`}
           </Text>
 
           <View style={styles.scale}>
@@ -230,12 +239,12 @@ const styles = StyleSheet.create({
     marginBottom: 14
   },
   monthRow: {
+    flexDirection: 'row',
+    gap: 3,
     height: 14,
-    marginBottom: 4,
-    position: 'relative'
+    marginBottom: 4
   },
   monthLabel: {
-    position: 'absolute',
     ...T.micro,
     fontSize: 9.5
   },
@@ -245,13 +254,19 @@ const styles = StyleSheet.create({
   },
   col: {
     gap: 3,
-    flex: 1
+    flex: 1,
+    // Centers cells within their column instead of stretching them — with
+    // fewer/wider columns (e.g. the 60-day window's 9 columns vs. the
+    // default 12), an un-capped width would otherwise stretch each cell
+    // into a non-square rectangle once maxHeight below clips its height.
+    alignItems: 'center'
   },
   cell: {
     width: '100%',
     aspectRatio: 1,
     borderRadius: 3,
     borderWidth: 1,
+    maxWidth: 14,
     maxHeight: 14
   },
   gridFooter: {

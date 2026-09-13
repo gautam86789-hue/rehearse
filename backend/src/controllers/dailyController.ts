@@ -3,16 +3,17 @@ import { memoryDb } from '../db/client.js';
 import { z } from 'zod';
 
 export const submitPuzzleSchema = z.object({
-  userId: z.string().optional().default('demo-user-1'),
+  userId: z.string().optional(),
   puzzleId: z.string().min(1),
   selectedOptionId: z.string().min(1)
 });
 
 export class DailyController {
-  async getFrameworkOfTheDay(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getFrameworkOfTheDay(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const framework = memoryDb.getTodaysFramework();
-      const allFrameworks = memoryDb.getAllFrameworks();
+      const audience = typeof req.query.audience === 'string' ? req.query.audience : undefined;
+      const framework = await memoryDb.getTodaysFramework(audience);
+      const allFrameworks = await memoryDb.getAllFrameworks();
       res.json({
         framework,
         allCount: allFrameworks.length
@@ -24,8 +25,18 @@ export class DailyController {
 
   async getDailyPuzzle(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const puzzle = memoryDb.getTodaysPuzzle();
+      const puzzle = await memoryDb.getTodaysPuzzle();
       res.json({ puzzle });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getWordOfTheDay(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const audience = typeof req.query.audience === 'string' ? req.query.audience : undefined;
+      const word = await memoryDb.getTodaysWord(audience);
+      res.json({ word });
     } catch (err) {
       next(err);
     }
@@ -34,7 +45,8 @@ export class DailyController {
   async submitDailyPuzzle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId, puzzleId, selectedOptionId } = req.body;
-      const puzzle = memoryDb.getTodaysPuzzle();
+      const resolvedUserId = userId || req.userId || 'demo-user-1';
+      const puzzle = await memoryDb.getTodaysPuzzle();
 
       const chosenOption = puzzle.options.find((o) => o.id === selectedOptionId);
       if (!chosenOption) {
@@ -42,8 +54,8 @@ export class DailyController {
         return;
       }
 
-      memoryDb.savePuzzleSubmission(
-        userId || 'demo-user-1',
+      await memoryDb.savePuzzleSubmission(
+        resolvedUserId,
         puzzleId,
         selectedOptionId,
         chosenOption.isOptimal,
@@ -51,9 +63,9 @@ export class DailyController {
       );
 
       // Award XP for solving daily puzzle
-      const user = memoryDb.getUser(userId || 'demo-user-1');
+      const user = await memoryDb.getUser(resolvedUserId);
       const xpBonus = chosenOption.isOptimal ? 25 : 10;
-      const updated = memoryDb.updateUser(user.id, {
+      const updated = await memoryDb.updateUser(user.id, {
         totalXP: user.totalXP + xpBonus
       });
 

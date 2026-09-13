@@ -1,0 +1,45 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy: push this repo to GitHub, then on Render click New > Blueprint and
+# point it at the repo (root directory: backend/). Render reads this file
+# automatically and provisions the service below.
+#
+# Persistence: the Supabase project is already connected and its schema is
+# applied (see backend/src/db/client.ts's `if (supabase)` paths and
+# backend/src/db/schema.sql) — every mutable data domain (accounts, sessions,
+# scorecards, custom scenarios, puzzle submissions) already writes there, not
+# to the ephemeral local JSON fallback. The env vars below just need to carry
+# the same real values already sitting in backend/.env over to Render's
+# dashboard (paste them there directly — this file only declares the slots,
+# `sync: false` means Render will prompt for each value rather than storing
+# it in git).
+services:
+  - type: web
+    name: rehearse-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: REVENUECAT_WEBHOOK_SECRET
+        sync: false
+      - key: ONESIGNAL_APP_ID
+        sync: false

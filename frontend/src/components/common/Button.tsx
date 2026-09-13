@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { typography } from '../../theme/typography';
 import { useTheme } from '../../context/ThemeContext';
+import { hapticTap } from '../../services/haptics';
 
 interface ButtonProps {
   title: string;
@@ -35,9 +36,9 @@ export const Button: React.FC<ButtonProps> = ({
       case 'flame':
         return { backgroundColor: colors.flame, borderColor: 'transparent' };
       case 'secondary':
-        return { backgroundColor: colors.surfaceElevated, borderColor: colors.surfaceBorder };
+        return { backgroundColor: colors.surfaceElevated, borderColor: colors.surfaceBorder, borderWidth: 1.5 };
       case 'outline':
-        return { backgroundColor: 'transparent', borderColor: colors.primary };
+        return { backgroundColor: 'transparent', borderColor: colors.primary, borderWidth: 2 };
       case 'ghost':
         return { backgroundColor: 'transparent', borderColor: 'transparent' };
       case 'primary':
@@ -49,12 +50,12 @@ export const Button: React.FC<ButtonProps> = ({
   const getSizeStyles = (): ViewStyle => {
     switch (size) {
       case 'sm':
-        return { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 };
+        return { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 14 };
       case 'lg':
-        return { paddingVertical: 15, paddingHorizontal: 24, borderRadius: 14 };
+        return { paddingVertical: 17, paddingHorizontal: 26, borderRadius: 18 };
       case 'md':
       default:
-        return { paddingVertical: 12, paddingHorizontal: 18, borderRadius: 10 };
+        return { paddingVertical: 13, paddingHorizontal: 20, borderRadius: 16 };
     }
   };
 
@@ -62,16 +63,20 @@ export const Button: React.FC<ButtonProps> = ({
     if (variant === 'outline') return colors.primary;
     if (variant === 'ghost') return colors.textSecondary;
     if (variant === 'secondary') return colors.textPrimary;
-    if (variant === 'primary') return colors.textInverse;
     return '#FFFFFF';
   };
 
   const typographyStyle = size === 'lg' ? typography.buttonLarge : size === 'sm' ? typography.buttonSmall : typography.button;
 
+  const handlePress = () => {
+    hapticTap();
+    onPress();
+  };
+
   return (
     <TouchableOpacity
       activeOpacity={0.85}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       style={[
         styles.baseButton,
@@ -106,7 +111,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
     gap: 8
   },
   disabledButton: {

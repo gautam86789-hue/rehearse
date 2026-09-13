@@ -1,22 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Platform,
-  Animated
-} from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Home,
-  Compass,
-  Sparkles,
-  Settings,
-  MessageSquare,
-  TrendingUp
-} from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { Home, MessageSquare, TrendingUp, User } from 'lucide-react-native';
+import { useTheme, RADII } from '../../context/ThemeContext';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface CustomTabBarProps {
   state: any;
@@ -26,89 +16,81 @@ interface CustomTabBarProps {
 
 const TAB_CONFIG: { [key: string]: { label: string; icon: any } } = {
   HomeTab: { label: 'Home', icon: Home },
-  DescribeTab: { label: 'Describe', icon: Sparkles },
-  ScenariosTab: { label: 'Scenarios', icon: Compass },
+  PracticeTab: { label: 'Practice', icon: MessageSquare },
   ProgressTab: { label: 'Progress', icon: TrendingUp },
-  SettingsTab: { label: 'Settings', icon: Settings }
-  // [PHASE 1: Preserved in code, main tab connections commented out]
-  // ReplyCoachTab: { label: 'Coach', icon: MessageSquare },
+  ProfileTab: { label: 'Profile', icon: User }
 };
 
+// Sized to the floating pill's real footprint (bottom margin + pill height +
+// a little breathing room) — screens hosted under the tab bar should pad
+// their scroll content by this much instead of a repeated magic number.
+export const TAB_BAR_CLEARANCE = 110;
+
 /**
- * Rehearse Solid Floating Executive Command Dock
- *
- * - Floating capsule dock with 360-degree curved pill geometry (solid, non-transparent).
- * - Solid Warm Ivory (Light) / Solid Deep Obsidian (Dark) surface with crisp micro-border.
- * - UNIFORM hover and active treatment across all 5 destinations.
- * - Restrained editorial executive aesthetic.
+ * Rehearse bottom tab bar — a floating solid pill (iOS-style), icon-only for
+ * inactive tabs, icon+label pill for the active tab.
  */
 export const CustomTabBar: React.FC<CustomTabBarProps> = ({
   state,
   descriptors,
   navigation
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors, isDark, elevation } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const bottomMargin = Math.max(insets.bottom > 0 ? insets.bottom : 12, 10);
-
-  // Solid Dock Tokens (Non-transparent)
-  const dockBg = isDark ? '#0C1712' : '#FAF7F2';
-  const dockBorder = isDark ? 'rgba(200, 170, 106, 0.22)' : '#E6E0D4';
-
-  const activePillBg = isDark ? '#173D2C' : '#173D2C';
-  const activeIconColor = '#C8AA6A';
-  const activeLabelColor = isDark ? '#C8AA6A' : '#173D2C';
-  const inactiveColor = isDark ? '#7E9588' : '#6A7F73';
-  const hoverBg = isDark ? 'rgba(200, 170, 106, 0.12)' : 'rgba(23, 61, 44, 0.08)';
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(180, 'easeInEaseOut', 'opacity'));
+  }, [state.index]);
 
   return (
-    <View style={[styles.outerWrapper, { paddingBottom: bottomMargin }]} pointerEvents="box-none">
+    <View
+      style={[
+        styles.shadowWrapper,
+        elevation.lg,
+        { bottom: Math.max(insets.bottom, 12), borderRadius: RADII.xxl }
+      ]}
+    >
       <View
         style={[
-          styles.floatingDock,
+          styles.wrapper,
           {
-            backgroundColor: dockBg,
-            borderColor: dockBorder,
-            shadowOpacity: isDark ? 0.45 : 0.10
+            borderRadius: RADII.xxl,
+            borderColor: colors.tabBarBorder,
+            backgroundColor: colors.tabBarBackground
           }
         ]}
       >
         {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
-          const config = TAB_CONFIG[route.name] || { label: route.name, icon: Home };
-          const IconComponent = config.icon;
-          const label = config.label;
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+        const config = TAB_CONFIG[route.name] || { label: route.name, icon: Home };
+        const IconComponent = config.icon;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true
-            });
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true
+          });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
 
-          return (
-            <DockItem
-              key={route.key}
-              icon={IconComponent}
-              label={label}
-              isFocused={isFocused}
-              onPress={onPress}
-              activePillBg={activePillBg}
-              activeIconColor={activeIconColor}
-              activeLabelColor={activeLabelColor}
-              inactiveColor={inactiveColor}
-              hoverBg={hoverBg}
-              isDark={isDark}
-              accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-              testID={options.tabBarTestID}
-            />
+        return (
+          <TabItem
+            key={route.key}
+            icon={IconComponent}
+            label={config.label}
+            isFocused={isFocused}
+            onPress={onPress}
+            activeColor={colors.primary}
+            inactiveColor={colors.tabBarInactive}
+            activePillColor={colors.primarySubtle}
+            accessibilityLabel={options.tabBarAccessibilityLabel ?? config.label}
+            testID={options.tabBarTestID}
+          />
           );
         })}
       </View>
@@ -116,65 +98,39 @@ export const CustomTabBar: React.FC<CustomTabBarProps> = ({
   );
 };
 
-interface DockItemProps {
+interface TabItemProps {
   icon: any;
   label: string;
   isFocused: boolean;
   onPress: () => void;
-  activePillBg: string;
-  activeIconColor: string;
-  activeLabelColor: string;
+  activeColor: string;
   inactiveColor: string;
-  hoverBg: string;
-  isDark: boolean;
+  activePillColor: string;
   accessibilityLabel?: string;
   testID?: string;
 }
 
-const DockItem: React.FC<DockItemProps> = ({
+const TabItem: React.FC<TabItemProps> = ({
   icon: Icon,
   label,
   isFocused,
   onPress,
-  activePillBg,
-  activeIconColor,
-  activeLabelColor,
+  activeColor,
   inactiveColor,
-  hoverBg,
-  isDark,
+  activePillColor,
   accessibilityLabel,
   testID
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const pressScale = useRef(new Animated.Value(1)).current;
-  const focusAnim = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
 
   useEffect(() => {
-    Animated.spring(focusAnim, {
-      toValue: isFocused ? 1 : 0,
-      speed: 24,
-      bounciness: 4,
+    Animated.spring(pressScale, {
+      toValue: isFocused ? 1.06 : 1,
+      speed: 22,
+      bounciness: 6,
       useNativeDriver: true
     }).start();
   }, [isFocused]);
-
-  const handlePressIn = () => {
-    Animated.spring(pressScale, {
-      toValue: 0.92,
-      speed: 40,
-      bounciness: 0,
-      useNativeDriver: true
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(pressScale, {
-      toValue: 1,
-      speed: 30,
-      bounciness: 8,
-      useNativeDriver: true
-    }).start();
-  };
 
   return (
     <Pressable
@@ -183,69 +139,24 @@ const DockItem: React.FC<DockItemProps> = ({
       accessibilityLabel={accessibilityLabel}
       testID={testID}
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onHoverIn={() => setIsHovered(true)}
-      onHoverOut={() => setIsHovered(false)}
       style={styles.itemCell}
     >
       <Animated.View
         style={[
           styles.cellInner,
+          isFocused && [styles.cellInnerActive, { backgroundColor: activePillColor }],
           { transform: [{ scale: pressScale }] }
         ]}
       >
-        {/* Uniform Squircle Icon Container for Every Item */}
-        <View
-          style={[
-            styles.iconSquircle,
-            isFocused
-              ? [
-                  styles.activeSquircle,
-                  {
-                    backgroundColor: activePillBg,
-                    borderColor: isDark ? 'rgba(200, 170, 106, 0.5)' : '#173D2C',
-                    shadowColor: isDark ? '#C8AA6A' : '#173D2C'
-                  }
-                ]
-              : [
-                  styles.inactiveSquircle,
-                  isHovered && {
-                    backgroundColor: hoverBg,
-                    borderColor: isDark ? 'rgba(200, 170, 106, 0.2)' : 'rgba(23, 61, 44, 0.12)'
-                  }
-                ]
-          ]}
-        >
-          <Icon
-            size={21}
-            color={isFocused ? activeIconColor : inactiveColor}
-            strokeWidth={isFocused ? 2.3 : 1.8}
-          />
-        </View>
-
-        {/* Label */}
-        <Text
-          style={[
-            styles.label,
-            {
-              color: isFocused ? activeLabelColor : inactiveColor,
-              fontWeight: isFocused ? '700' : '500'
-            }
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-
-        {/* Subtle Indicator Dot for Active Tab */}
+        <Icon
+          size={22}
+          color={isFocused ? activeColor : inactiveColor}
+          strokeWidth={isFocused ? 2.4 : 2}
+        />
         {isFocused && (
-          <View
-            style={[
-              styles.indicatorDot,
-              { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }
-            ]}
-          />
+          <Text style={[styles.label, { color: activeColor }]} numberOfLines={1}>
+            {label}
+          </Text>
         )}
       </Animated.View>
     </Pressable>
@@ -253,67 +164,41 @@ const DockItem: React.FC<DockItemProps> = ({
 };
 
 const styles = StyleSheet.create({
-  outerWrapper: {
+  // Carries position + shadow. Not clipped (overflow:'hidden' would clip the
+  // shadow along with the content), unlike the inner `wrapper` below.
+  shadowWrapper: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 16
+    left: 16,
+    right: 16
   },
-  floatingDock: {
+  // Carries the actual pill shape + blur/content clipping.
+  wrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    maxWidth: 440,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 1.2,
-    paddingHorizontal: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 14
+    justifyContent: 'space-around',
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingVertical: 8,
+    paddingHorizontal: 6
   },
   itemCell: {
-    flex: 1,
-    height: '100%',
     alignItems: 'center',
     justifyContent: 'center'
   },
   cellInner: {
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  iconSquircle: {
-    width: 44,
-    height: 36,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: RADII.pill
   },
-  activeSquircle: {
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4
-  },
-  inactiveSquircle: {
-    borderWidth: 1,
-    borderColor: 'transparent'
+  cellInnerActive: {
+    paddingHorizontal: 14
   },
   label: {
-    fontSize: 10.5,
-    letterSpacing: -0.1,
-    marginTop: 1
-  },
-  indicatorDot: {
-    width: 3.5,
-    height: 3.5,
-    borderRadius: 2,
-    marginTop: 2
+    fontSize: 12.5,
+    fontWeight: '700'
   }
 });

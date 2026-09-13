@@ -6,6 +6,7 @@ describe('Scoring & Gamification Service', () => {
   const dummyScenario: Scenario = {
     id: 'test-scenario',
     title: 'Salary Negotiation',
+    audiences: ['professionals'],
     category: 'negotiation',
     counterpartRole: 'VP',
     counterpartName: 'David Sterling',
@@ -50,14 +51,14 @@ describe('Scoring & Gamification Service', () => {
     const rubric = await scoringEngine.evaluateSession(dummyScenario, turns);
 
     expect(rubric).toBeDefined();
-    expect(rubric.statedTheAsk).toBeGreaterThan(0);
-    expect(rubric.heldTheBoundary).toBeGreaterThan(0);
-    expect(rubric.stayedSpecific).toBeGreaterThan(0);
-    expect(rubric.emotionalComposure).toBeGreaterThan(0);
+    expect(rubric.clarity).toBeGreaterThan(0);
+    expect(rubric.empathy).toBeGreaterThan(0);
+    expect(rubric.assertiveness).toBeGreaterThan(0);
+    expect(rubric.listening).toBeGreaterThan(0);
     expect(rubric.overallScore).toBeGreaterThan(0);
     expect(rubric.weakestLineRewrite).toBeDefined();
     expect(rubric.strengths.length).toBeGreaterThan(0);
-  });
+  }, 25000);
 
   test('should correctly compute streak and XP increments', () => {
     const user: UserProfile = {
@@ -85,5 +86,82 @@ describe('Scoring & Gamification Service', () => {
     expect(result.updatedProfile.totalRehearsals).toBe(1);
     expect(result.updatedProfile.subscription.rehearsalsRemaining).toBe(1);
     expect(result.badgeUnlocked?.id).toBe('badge_first_rehearsal');
+  });
+
+  test('should extend the streak when practicing on consecutive days', () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const user: UserProfile = {
+      id: 'test-user-streak',
+      role: 'Manager',
+      experienceLevel: 'Mid',
+      primaryDreadCategory: 'negotiation',
+      totalRehearsals: 4,
+      totalXP: 200,
+      currentStreak: 3,
+      longestStreak: 3,
+      lastPracticeDate: yesterday,
+      subscription: {
+        status: 'free_trial',
+        rehearsalsRemaining: 1
+      },
+      createdAt: new Date().toISOString()
+    };
+
+    const result = gamificationService.processSessionCompletion(user, 70);
+
+    expect(result.newStreak).toBe(4);
+    expect(result.streakExtended).toBe(true);
+    expect(result.updatedProfile.longestStreak).toBe(4);
+  });
+
+  test('should not double-count a streak when practicing again the same day', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const user: UserProfile = {
+      id: 'test-user-sameday',
+      role: 'Manager',
+      experienceLevel: 'Mid',
+      primaryDreadCategory: 'negotiation',
+      totalRehearsals: 1,
+      totalXP: 50,
+      currentStreak: 1,
+      longestStreak: 1,
+      lastPracticeDate: today,
+      subscription: {
+        status: 'free_trial',
+        rehearsalsRemaining: 1
+      },
+      createdAt: new Date().toISOString()
+    };
+
+    const result = gamificationService.processSessionCompletion(user, 70);
+
+    expect(result.newStreak).toBe(1);
+    expect(result.streakExtended).toBe(false);
+  });
+
+  test('should reset the streak to 1 after missing a day', () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const user: UserProfile = {
+      id: 'test-user-broken',
+      role: 'Manager',
+      experienceLevel: 'Mid',
+      primaryDreadCategory: 'negotiation',
+      totalRehearsals: 10,
+      totalXP: 500,
+      currentStreak: 7,
+      longestStreak: 7,
+      lastPracticeDate: threeDaysAgo,
+      subscription: {
+        status: 'free_trial',
+        rehearsalsRemaining: 1
+      },
+      createdAt: new Date().toISOString()
+    };
+
+    const result = gamificationService.processSessionCompletion(user, 70);
+
+    expect(result.newStreak).toBe(1);
+    expect(result.streakExtended).toBe(true);
+    expect(result.updatedProfile.longestStreak).toBe(7); // longest streak record preserved
   });
 });

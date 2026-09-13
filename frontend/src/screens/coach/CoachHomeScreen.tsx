@@ -32,9 +32,10 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/common/Header';
+import { ThemedFeatureCard } from '../../components/common/ThemedFeatureCard';
 
 export const CoachHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors } = useTheme();
   const { user } = useApp();
 
   const recentConversations = [
@@ -82,24 +83,24 @@ export const CoachHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =
         </View>
 
         {/* Mountain Landscape Card with Quote */}
-        <View style={[styles.landscapeCard, { backgroundColor: isDark ? '#0D1E16' : '#FAF6EB', borderColor: themeColors.surfaceBorder }]}>
+        <View style={[styles.landscapeCard, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}>
           <Svg width="100%" height={150} viewBox="0 0 340 150">
             <Defs>
               <LinearGradient id="coachSky" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={isDark ? '#08140E' : '#F7F3E6'} />
-                <Stop offset="100%" stopColor={isDark ? '#193A2A' : '#D2CBB1'} />
+                <Stop offset="0%" stopColor={themeColors.surfaceHighlight} />
+                <Stop offset="100%" stopColor={themeColors.surface} />
               </LinearGradient>
               <LinearGradient id="coachRidgeFar" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={isDark ? '#1C402E' : '#8CA08A'} />
-                <Stop offset="100%" stopColor={isDark ? '#0F251A' : '#576C55'} />
+                <Stop offset="0%" stopColor={themeColors.primaryLight} />
+                <Stop offset="100%" stopColor={themeColors.primaryDark} />
               </LinearGradient>
               <LinearGradient id="coachRidgeNear" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={isDark ? '#26543E' : '#6A8268'} />
-                <Stop offset="100%" stopColor={isDark ? '#11291D' : '#3E533D'} />
+                <Stop offset="0%" stopColor={themeColors.primary} />
+                <Stop offset="100%" stopColor={themeColors.primaryDark} />
               </LinearGradient>
               <RadialGradient id="coachSun" cx="80%" cy="20%" r="60%">
-                <Stop offset="0%" stopColor="#C8AA6A" stopOpacity="0.5" />
-                <Stop offset="100%" stopColor="#C8AA6A" stopOpacity="0" />
+                <Stop offset="0%" stopColor={themeColors.primary} stopOpacity="0.5" />
+                <Stop offset="100%" stopColor={themeColors.primary} stopOpacity="0" />
               </RadialGradient>
             </Defs>
 
@@ -118,16 +119,16 @@ export const CoachHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =
               { x: 280, y: 105, s: 0.9 }
             ].map((t, idx) => (
               <G key={idx} transform={`translate(${t.x}, ${t.y}) scale(${t.s})`}>
-                <Polygon points="0,0 -7,14 7,14" fill={isDark ? '#09150E' : '#2A3C28'} />
-                <Polygon points="0,8 -9,23 9,23" fill={isDark ? '#09150E' : '#2A3C28'} />
-                <Polygon points="0,16 -11,33 11,33" fill={isDark ? '#060E09' : '#1F2E1E'} />
+                <Polygon points="0,0 -7,14 7,14" fill={themeColors.primaryDark} />
+                <Polygon points="0,8 -9,23 9,23" fill={themeColors.primaryDark} />
+                <Polygon points="0,16 -11,33 11,33" fill={themeColors.primaryDark} />
               </G>
             ))}
 
             {/* Winding Trail */}
             <Path
               d="M 50 150 Q 120 125 170 120 Q 230 110 270 85"
-              stroke="#C8AA6A"
+              stroke={themeColors.primary}
               strokeWidth="6"
               fill="none"
               strokeLinecap="round"
@@ -135,7 +136,7 @@ export const CoachHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           </Svg>
 
           <View style={styles.quoteOverlay}>
-            <Text style={[styles.quoteQuoteText, { color: isDark ? '#F5F2E9' : '#17241E' }]}>
+            <Text style={[styles.quoteQuoteText, { color: themeColors.textPrimary }]}>
               "Better conversations build brighter careers."
             </Text>
           </View>
@@ -143,59 +144,27 @@ export const CoachHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
         {/* 3 Primary Coaching Entrypoint Cards */}
         <View style={styles.modesSection}>
-          {/* Card 1: Understand My Situation */}
-          <TouchableOpacity
-            style={[styles.modeCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}
+          <ThemedFeatureCard
+            title="Understand My Situation"
+            subtitle="Get a tactical brief for your real-world challenge."
+            icon={FileText}
+            categoryColor="indigo"
             onPress={() => navigation.navigate('SituationCoach')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.modeIconBox, { backgroundColor: themeColors.primarySubtle }]}>
-              <FileText size={22} color={themeColors.primary} />
-            </View>
-            <View style={styles.modeTextStack}>
-              <Text style={[styles.modeTitle, { color: themeColors.textPrimary }]}>Understand My Situation</Text>
-              <Text style={[styles.modeSub, { color: themeColors.textSecondary }]}>
-                Get a tactical brief for your real-world challenge.
-              </Text>
-            </View>
-            <ChevronRight size={18} color={themeColors.textMuted} />
-          </TouchableOpacity>
-
-          {/* Card 2: Strategic Reply */}
-          <TouchableOpacity
-            style={[styles.modeCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}
+          />
+          <ThemedFeatureCard
+            title="Strategic Reply"
+            subtitle="Craft clear, confident responses for Slack, email or text."
+            icon={Send}
+            categoryColor="teal"
             onPress={() => navigation.navigate('StrategicReply')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.modeIconBox, { backgroundColor: themeColors.primarySubtle }]}>
-              <Send size={20} color={themeColors.primary} />
-            </View>
-            <View style={styles.modeTextStack}>
-              <Text style={[styles.modeTitle, { color: themeColors.textPrimary }]}>Strategic Reply</Text>
-              <Text style={[styles.modeSub, { color: themeColors.textSecondary }]}>
-                Craft clear, confident responses for Slack, email or text.
-              </Text>
-            </View>
-            <ChevronRight size={18} color={themeColors.textMuted} />
-          </TouchableOpacity>
-
-          {/* Card 3: Live Rehearsal */}
-          <TouchableOpacity
-            style={[styles.modeCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}
+          />
+          <ThemedFeatureCard
+            title="Live Rehearsal"
+            subtitle="Practice the conversation with an adaptive AI counterpart."
+            icon={Mic}
+            categoryColor="flame"
             onPress={() => navigation.navigate('RehearsalSettings')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.modeIconBox, { backgroundColor: themeColors.primarySubtle }]}>
-              <Mic size={22} color={themeColors.primary} />
-            </View>
-            <View style={styles.modeTextStack}>
-              <Text style={[styles.modeTitle, { color: themeColors.textPrimary }]}>Live Rehearsal</Text>
-              <Text style={[styles.modeSub, { color: themeColors.textSecondary }]}>
-                Practice the conversation with an adaptive AI counterpart.
-              </Text>
-            </View>
-            <ChevronRight size={18} color={themeColors.textMuted} />
-          </TouchableOpacity>
+          />
         </View>
 
         {/* Section: Recent Conversations */}
@@ -281,34 +250,6 @@ const styles = StyleSheet.create({
   modesSection: {
     gap: 12,
     marginBottom: 22
-  },
-  modeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1
-  },
-  modeIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14
-  },
-  modeTextStack: {
-    flex: 1,
-    marginRight: 8
-  },
-  modeTitle: {
-    fontSize: 15.5,
-    fontWeight: '700',
-    marginBottom: 2
-  },
-  modeSub: {
-    fontSize: 12.5,
-    lineHeight: 16
   },
   recentSection: {
     marginBottom: 20

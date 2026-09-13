@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import {
   Sparkles,
-  ChevronLeft,
+  ArrowLeft,
   Check,
   RefreshCw,
   Play,
@@ -24,14 +24,16 @@ import {
   Flame,
   HelpCircle
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PersonaAvatar } from '../components/common/PersonaAvatar';
-import { Header } from '../components/common/Header';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, RADII } from '../context/ThemeContext';
 import { apiService } from '../services/api';
 import { Scenario, ArchetypeId } from '../types';
 
 export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, isDark, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
   const [step, setStep] = useState<'input' | 'confirmation'>('input');
   const [situationText, setSituationText] = useState('');
   const [counterpartRole, setCounterpartRole] = useState('Direct Manager');
@@ -181,19 +183,24 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
     }
   };
 
+  const handleHeaderBack = () => {
+    if (step === 'confirmation') setStep('input');
+    else if (navigation?.canGoBack && navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('HomeTab');
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {/* Standard Executive Header */}
-      <Header
-        title={step === 'input' ? 'Coach' : 'Scenario Brief'}
-        rightAction="more"
-        navigation={navigation}
-        onBack={() => {
-          if (step === 'confirmation') setStep('input');
-          else if (navigation?.canGoBack && navigation.canGoBack()) navigation.goBack();
-          else navigation.navigate('HomeTab');
-        }}
-      />
+      {/* Header — same pattern as Feedback / Detailed Feedback / Scenario Detail */}
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        <TouchableOpacity onPress={handleHeaderBack} style={styles.headerBtn}>
+          <ArrowLeft size={20} color={themeColors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>
+          {step === 'input' ? 'Custom Scenario' : 'Scenario Brief'}
+        </Text>
+        <View style={{ width: 32 }} />
+      </View>
 
       {step === 'input' ? (
         <ScrollView
@@ -289,10 +296,10 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                       styles.roleChip,
                       {
                         backgroundColor: isSelected
-                          ? (isDark ? '#173D2C' : '#EAF2EC')
+                          ? themeColors.primarySubtle
                           : themeColors.surfaceCard,
                         borderColor: isSelected
-                          ? (isDark ? '#C8AA6A' : '#173D2C')
+                          ? themeColors.primary
                           : themeColors.surfaceBorder
                       }
                     ]}
@@ -304,7 +311,7 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                         styles.roleChipText,
                         {
                           color: isSelected
-                            ? (isDark ? '#C8AA6A' : '#173D2C')
+                            ? themeColors.primary
                             : themeColors.textPrimary,
                           fontWeight: isSelected ? '700' : '500'
                         }
@@ -332,12 +339,13 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                     key={arch.id}
                     style={[
                       styles.archCard,
+                      elevation.sm,
                       {
                         backgroundColor: isSelected
-                          ? (isDark ? '#173D2C' : '#EAF2EC')
+                          ? themeColors.primarySubtle
                           : themeColors.surfaceCard,
                         borderColor: isSelected
-                          ? (isDark ? '#C8AA6A' : '#173D2C')
+                          ? themeColors.primary
                           : themeColors.surfaceBorder
                       }
                     ]}
@@ -349,14 +357,14 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                         styles.archIconWrap,
                         {
                           backgroundColor: isSelected
-                            ? (isDark ? '#C8AA6A' : '#173D2C')
+                            ? themeColors.primary
                             : themeColors.surfaceElevated
                         }
                       ]}
                     >
                       <IconComp
-                        size={16}
-                        color={isSelected ? (isDark ? '#0B1712' : '#FFFFFF') : themeColors.textSecondary}
+                        size={18}
+                        color={isSelected ? '#FFFFFF' : themeColors.textSecondary}
                       />
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
@@ -365,7 +373,7 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                           styles.archTitle,
                           {
                             color: isSelected
-                              ? (isDark ? '#C8AA6A' : '#173D2C')
+                              ? themeColors.primary
                               : themeColors.textPrimary
                           }
                         ]}
@@ -410,9 +418,7 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
               {
                 backgroundColor: !situationText.trim() || isGenerating
                   ? themeColors.surfaceElevated
-                  : isDark
-                  ? '#C8AA6A'
-                  : '#173D2C'
+                  : themeColors.primary
               }
             ]}
             onPress={handleGenerateBrief}
@@ -420,43 +426,25 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
             activeOpacity={0.85}
           >
             {isGenerating ? (
-              <ActivityIndicator color={isDark ? '#0B1712' : '#FFFFFF'} />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <>
                 <Sparkles
                   size={16}
-                  color={
-                    !situationText.trim()
-                      ? themeColors.textSecondary
-                      : isDark
-                      ? '#0B1712'
-                      : '#FFFFFF'
-                  }
+                  color={!situationText.trim() ? themeColors.textSecondary : '#FFFFFF'}
                   style={{ marginRight: 6 }}
                 />
                 <Text
                   style={[
                     styles.generateBtnText,
-                    {
-                      color: !situationText.trim()
-                        ? themeColors.textSecondary
-                        : isDark
-                        ? '#0B1712'
-                        : '#FFFFFF'
-                    }
+                    { color: !situationText.trim() ? themeColors.textSecondary : '#FFFFFF' }
                   ]}
                 >
                   Generate AI Scenario Brief
                 </Text>
                 <ArrowRight
                   size={16}
-                  color={
-                    !situationText.trim()
-                      ? themeColors.textSecondary
-                      : isDark
-                      ? '#0B1712'
-                      : '#FFFFFF'
-                  }
+                  color={!situationText.trim() ? themeColors.textSecondary : '#FFFFFF'}
                   style={{ marginLeft: 6 }}
                 />
               </>
@@ -489,6 +477,7 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
               <View
                 style={[
                   styles.briefCounterpartCard,
+                  elevation.md,
                   {
                     backgroundColor: themeColors.surfaceCard,
                     borderColor: themeColors.surfaceBorder
@@ -518,15 +507,16 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                 <View
                   style={[
                     styles.goalBox,
+                    elevation.sm,
                     {
-                      backgroundColor: themeColors.surfaceCard,
-                      borderColor: isDark ? '#C8AA6A' : '#173D2C'
+                      backgroundColor: themeColors.primarySubtle,
+                      borderColor: themeColors.primary
                     }
                   ]}
                 >
                   <Target
                     size={16}
-                    color={isDark ? '#C8AA6A' : '#173D2C'}
+                    color={themeColors.primary}
                     style={{ marginTop: 2, marginRight: 8, flexShrink: 0 }}
                   />
                   <Text style={[styles.goalBoxText, { color: themeColors.textPrimary }]}>
@@ -535,40 +525,23 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                 </View>
               </View>
 
-              {/* Probable Pushbacks */}
+              {/* Probable Pushbacks — visual chips, not a bordered sentence list */}
               {generatedScenario.brief?.probablePushbackPatterns && (
                 <View style={styles.section}>
                   <Text style={[styles.sectionLabel, { color: themeColors.textSecondary }]}>
                     WHAT TO EXPECT FROM COUNTERPART
                   </Text>
-                  <View
-                    style={[
-                      styles.pushbackGroup,
-                      {
-                        backgroundColor: themeColors.surfaceCard,
-                        borderColor: themeColors.surfaceBorder
-                      }
-                    ]}
-                  >
+                  <View style={styles.pushbackChipWrap}>
                     {generatedScenario.brief.probablePushbackPatterns.map((p, idx) => (
                       <View
                         key={idx}
                         style={[
-                          styles.pushbackRow,
-                          idx < generatedScenario.brief.probablePushbackPatterns.length - 1 && {
-                            borderBottomColor: themeColors.surfaceBorder,
-                            borderBottomWidth: 1
-                          }
+                          styles.pushbackChip,
+                          { backgroundColor: themeColors.warning + '14', borderColor: themeColors.warning + '40' }
                         ]}
                       >
-                        <AlertTriangle
-                          size={14}
-                          color="#E67E22"
-                          style={{ marginTop: 2, marginRight: 8, flexShrink: 0 }}
-                        />
-                        <Text style={[styles.pushbackText, { color: themeColors.textPrimary }]}>
-                          {p}
-                        </Text>
+                        <AlertTriangle size={12} color={themeColors.warning} />
+                        <Text style={[styles.pushbackChipText, { color: themeColors.textPrimary }]}>{p}</Text>
                       </View>
                     ))}
                   </View>
@@ -584,9 +557,10 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
                   <View
                     style={[
                       styles.scriptCard,
+                      elevation.sm,
                       {
-                        backgroundColor: isDark ? '#1C2B22' : '#EAF4EE',
-                        borderColor: isDark ? '#2B5740' : '#C2E0CC'
+                        backgroundColor: themeColors.sageSubtle,
+                        borderColor: themeColors.sageLight
                       }
                     ]}
                   >
@@ -600,31 +574,15 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
               {/* Action Buttons */}
               <View style={styles.actionGroup}>
                 <TouchableOpacity
-                  style={[
-                    styles.primaryLaunchBtn,
-                    { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }
-                  ]}
+                  style={[styles.primaryLaunchBtn, { backgroundColor: themeColors.primary }]}
                   onPress={handleStartRoleplay}
                   activeOpacity={0.85}
                 >
-                  <Play
-                    size={16}
-                    color={isDark ? '#0B1712' : '#FFFFFF'}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text
-                    style={[
-                      styles.primaryLaunchText,
-                      { color: isDark ? '#0B1712' : '#FFFFFF' }
-                    ]}
-                  >
+                  <Play size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={[styles.primaryLaunchText, { color: '#FFFFFF' }]}>
                     Start Roleplay Simulation
                   </Text>
-                  <ArrowRight
-                    size={16}
-                    color={isDark ? '#0B1712' : '#FFFFFF'}
-                    style={{ marginLeft: 6 }}
-                  />
+                  <ArrowRight size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -663,26 +621,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1
+    paddingTop: 20,
+    paddingBottom: 12
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
+  headerBtn: {
+    padding: 6
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.3
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    marginTop: 2
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -729,10 +679,10 @@ const styles = StyleSheet.create({
     gap: 8
   },
   presetChip: {
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     maxWidth: 260
   },
   presetChipText: {
@@ -748,9 +698,9 @@ const styles = StyleSheet.create({
     fontSize: 11
   },
   textArea: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 14,
+    padding: 16,
     fontSize: 14,
     lineHeight: 20,
     minHeight: 100,
@@ -776,14 +726,14 @@ const styles = StyleSheet.create({
   archCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     borderWidth: 1.5,
-    padding: 12
+    padding: 14
   },
   archIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -797,15 +747,15 @@ const styles = StyleSheet.create({
     lineHeight: 15
   },
   goalInput: {
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 13
   },
   generateBtn: {
-    height: 52,
-    borderRadius: 14,
+    height: 54,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -818,9 +768,9 @@ const styles = StyleSheet.create({
   briefCounterpartCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: RADII.lg,
     borderWidth: 1,
-    padding: 12,
+    padding: 14,
     marginBottom: 16
   },
   briefCounterpartName: {
@@ -834,9 +784,9 @@ const styles = StyleSheet.create({
   goalBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     borderWidth: 1.5,
-    padding: 12
+    padding: 14
   },
   goalBoxText: {
     flex: 1,
@@ -844,25 +794,30 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '600'
   },
-  pushbackGroup: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden'
-  },
-  pushbackRow: {
+  pushbackChipWrap: {
     flexDirection: 'row',
-    padding: 12,
-    alignItems: 'flex-start'
+    flexWrap: 'wrap',
+    gap: 8
   },
-  pushbackText: {
-    flex: 1,
-    fontSize: 12.5,
-    lineHeight: 17
+  pushbackChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    maxWidth: '100%'
+  },
+  pushbackChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    flexShrink: 1
   },
   scriptCard: {
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     borderWidth: 1,
-    padding: 14
+    padding: 16
   },
   scriptText: {
     fontSize: 13.5,
@@ -874,8 +829,8 @@ const styles = StyleSheet.create({
     gap: 10
   },
   primaryLaunchBtn: {
-    height: 50,
-    borderRadius: 12,
+    height: 54,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center'
@@ -885,8 +840,8 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   secondaryEditBtn: {
-    height: 44,
-    borderRadius: 12,
+    height: 46,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',

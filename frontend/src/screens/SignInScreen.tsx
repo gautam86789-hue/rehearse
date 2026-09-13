@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck, X } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, RADII } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { AtmosphereGlow } from '../components/brand/AtmosphereGlow';
 import { RehearseEmblem } from '../components/brand/RehearseEmblem';
@@ -27,11 +27,10 @@ interface SignInScreenProps {
 
 export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { colors, accentColor, isDark } = useTheme();
+  const { colors, accentColor, isDark, elevation } = useTheme();
   const {
     signInWithEmail,
     signInWithOAuth,
-    signInAsGuest,
     authError,
     clearError
   } = useAuth();
@@ -87,15 +86,12 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
 
   const handleOAuth = async (provider: 'google' | 'azure' | 'facebook') => {
     setLoadingProvider(provider);
-    const { error } = await signInWithOAuth(provider);
+    // Don't also toast here: signInWithOAuth already sets `authError` on
+    // failure (see AuthContext.tsx), which renders as the inline banner
+    // above — toasting the same message too was showing the identical error
+    // twice on screen at once.
+    await signInWithOAuth(provider);
     setLoadingProvider(null);
-    if (error) {
-      setToast({
-        visible: true,
-        message: error.message || `Unable to initiate ${provider} authentication.`,
-        type: 'error'
-      });
-    }
   };
 
   return (
@@ -130,9 +126,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
           </View>
 
           {/* 2. Segmented Pill Tab Switcher */}
-          <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.tabActive, { backgroundColor: colors.surfaceElevated, borderColor: accentColor + '40' }]}>
-              <Text style={[styles.tabActiveText, { color: colors.textPrimary }]}>Sign In</Text>
+          <View style={[styles.tabContainer, elevation.sm, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
+            <View style={[styles.tabActive, { backgroundColor: colors.primarySubtle, borderColor: accentColor + '40' }]}>
+              <Text style={[styles.tabActiveText, { color: colors.primary }]}>Sign In</Text>
             </View>
             <TouchableOpacity
               style={styles.tabInactive}
@@ -161,7 +157,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Work or Personal Email</Text>
               <View style={[
                 styles.inputWrapper,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                elevation.sm,
+                { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder },
                 emailError ? { borderColor: colors.danger } : null
               ]}>
                 <Mail size={16} color={emailError ? colors.danger : colors.textMuted} style={styles.inputIcon} />
@@ -189,7 +186,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             {/* Password Field */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.inputWrapper, elevation.sm, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
                 <Lock size={16} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.textInput, { paddingRight: 40, color: colors.textPrimary }]}
@@ -228,6 +225,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.primaryButton,
+                elevation.md,
                 { backgroundColor: accentColor, shadowColor: accentColor },
                 isSubmitting && styles.buttonDisabled
               ]}
@@ -236,11 +234,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
               activeOpacity={0.85}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#07100D" />
+                <ActivityIndicator size="small" color={colors.textInverse} />
               ) : (
                 <View style={styles.buttonContent}>
-                  <Text style={styles.primaryButtonText}>Sign In</Text>
-                  <ArrowRight size={16} color="#07100D" />
+                  <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>Sign In</Text>
+                  <ArrowRight size={16} color={colors.textInverse} />
                 </View>
               )}
             </TouchableOpacity>
@@ -260,16 +258,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             loadingProvider={loadingProvider}
           />
 
-          {/* 6. Guest Mode Option */}
-          <TouchableOpacity
-            style={styles.guestButton}
-            onPress={signInAsGuest}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.guestButtonText, { color: accentColor }]}>Explore in Guest Demo Mode</Text>
-          </TouchableOpacity>
-
-          {/* 7. Bottom Trust Badge */}
+          {/* 6. Bottom Trust Badge */}
           <View style={styles.trustBadge}>
             <ShieldCheck size={13} color={colors.textMuted} style={{ marginRight: 6 }} />
             <Text style={[styles.trustBadgeText, { color: colors.textMuted }]}>Your data is private and secure.</Text>
@@ -325,15 +314,15 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     width: '100%',
-    height: 42,
-    borderRadius: 12,
+    height: 46,
+    borderRadius: RADII.lg,
     padding: 3,
     borderWidth: 1,
     marginBottom: 20
   },
   tabActive: {
     flex: 1,
-    borderRadius: 9,
+    borderRadius: RADII.md,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1
@@ -355,7 +344,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: RADII.md,
     paddingHorizontal: 12,
     paddingVertical: 8,
     width: '100%',
@@ -380,9 +369,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     paddingHorizontal: 12,
-    height: 48
+    height: 50
   },
   inputIcon: {
     marginRight: 10
@@ -403,15 +392,11 @@ const styles = StyleSheet.create({
     ...typography.footnote
   },
   primaryButton: {
-    borderRadius: 14,
-    height: 48,
+    borderRadius: RADII.lg,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4
+    marginTop: 8
   },
   buttonDisabled: {
     opacity: 0.6
@@ -422,7 +407,6 @@ const styles = StyleSheet.create({
     gap: 6
   },
   primaryButtonText: {
-    color: '#07100D',
     ...typography.buttonLarge,
     fontWeight: '700'
   },
@@ -439,14 +423,6 @@ const styles = StyleSheet.create({
   dividerText: {
     ...typography.overline,
     marginHorizontal: 12
-  },
-  guestButton: {
-    marginTop: 14,
-    paddingVertical: 8
-  },
-  guestButtonText: {
-    ...typography.buttonSmall,
-    fontWeight: '500'
   },
   trustBadge: {
     flexDirection: 'row',

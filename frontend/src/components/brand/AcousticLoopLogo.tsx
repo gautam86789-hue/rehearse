@@ -13,9 +13,9 @@ export interface AcousticLoopLogoProps {
 
 export const AcousticLoopLogo: React.FC<AcousticLoopLogoProps> = ({
   size = 40,
-  backgroundColor = '#162A24',
+  backgroundColor = '#5B5FEF',
   loopColor = '#F9FAF8',
-  waveColor = '#D97736',
+  waveColor = '#F59E0B',
   style,
   rounded = true
 }) => {

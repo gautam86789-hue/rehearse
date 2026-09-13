@@ -1,240 +1,200 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Share } from 'react-native';
-import {
-  Sparkles,
-  Flame,
-  RotateCcw,
-  CheckCircle2,
-  TrendingUp,
-  ShieldCheck,
-  Share2
-} from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, DimensionValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft, Share2 } from 'lucide-react-native';
 import { Button } from '../components/common/Button';
-import { Card } from '../components/common/Card';
-import { ScoreMeter } from '../components/common/ScoreMeter';
-import { RewriteCard } from '../components/common/RewriteCard';
+import { ScoreMeter, CircularScoreRing } from '../components/common/ScoreMeter';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { Scorecard, Scenario } from '../types';
+import { useShareCard } from '../components/share/useShareCard';
+import { ScorecardShareCard } from '../components/share/ScorecardShareCard';
+
+const DOT_ACCENTS: { top: DimensionValue; left: DimensionValue; size: number; color: 'primary' | 'teal' | 'gold' }[] = [
+  { top: '4%', left: '8%', size: 6, color: 'primary' },
+  { top: '2%', left: '78%', size: 5, color: 'teal' },
+  { top: '18%', left: '92%', size: 4, color: 'gold' },
+  { top: '22%', left: '2%', size: 5, color: 'teal' },
+  { top: '38%', left: '85%', size: 6, color: 'primary' },
+  { top: '40%', left: '6%', size: 4, color: 'gold' }
+];
 
 export const ScoreScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
   const { scorecard, scenario } = route.params as { scorecard: Scorecard; scenario: Scenario };
   const { colors } = useTheme();
-
-  const handleShareWin = async () => {
-    try {
-      await Share.share({
-        message: `Just rehearsed "${scenario.title}" on Rehearse and scored ${scorecard.overallScore}/100 on executive composure & boundaries!`
-      });
-    } catch (e) {
-      console.warn('Share error', e);
-    }
-  };
+  const { viewShotRef, isSharing, share } = useShareCard();
+  // topHeader had a flat paddingTop:20 with no safe-area handling — on
+  // edge-to-edge Android that put the back button under the status bar.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const getScoreVerdict = (score: number) => {
-    if (score >= 90) return 'Executive Masterclass';
-    if (score >= 80) return 'Strong & Confident';
-    if (score >= 65) return 'Solid Foundation';
-    return 'Room for Calibration';
+    if (score >= 90) return 'Outstanding!';
+    if (score >= 75) return 'Good job!';
+    if (score >= 60) return 'Solid effort!';
+    return 'Keep practicing!';
+  };
+
+  // Was hardcoded to "You handled this conversation well" regardless of
+  // score — meaning a 30/100 got the same praise as a 95/100, which cheapens
+  // the one line every user reads right after their score lands.
+  const getScoreSubtitle = (score: number) => {
+    if (score >= 90) return 'That was a masterclass in handling this conversation.';
+    if (score >= 75) return 'You handled this conversation well.';
+    if (score >= 60) return 'A solid attempt — a few sharp edges to smooth out.';
+    return "This one was rough, but that's exactly what practice is for.";
+  };
+
+  const getDotColor = (variant: 'primary' | 'teal' | 'gold') => {
+    if (variant === 'primary') return colors.primaryLight;
+    if (variant === 'teal') return colors.scoreTeal;
+    return colors.champagne;
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Celebration Header */}
-        <View style={styles.celebrationHeader}>
-          <View style={[styles.overallScoreCircle, { backgroundColor: colors.sageSubtle, borderColor: colors.sage }]}>
-            <Text style={[typography.hero, { color: colors.sage, fontWeight: '800' }]}>{scorecard.overallScore}</Text>
-            <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 8 }]}>/100</Text>
-          </View>
-          <Text style={[typography.h1, { color: colors.textPrimary, marginBottom: 4 }]}>{getScoreVerdict(scorecard.overallScore)}</Text>
-          <Text style={[typography.subtitle, { color: colors.textSecondary, textAlign: 'center', marginBottom: 14 }]}>{scenario.title}</Text>
+      <View style={[styles.topHeader, { paddingTop: topPadding }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+          <ArrowLeft size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
 
-          {/* Gamification Reward Banner */}
-          <View style={[styles.rewardBanner, { backgroundColor: colors.surfaceElevated, borderColor: colors.surfaceBorder }]}>
-            <View style={styles.rewardItem}>
-              <Sparkles size={16} color={colors.gold} />
-              <Text style={[typography.tag, { color: colors.gold }]}>+{scorecard.xpEarned} XP</Text>
-            </View>
-            <View style={[styles.rewardDivider, { backgroundColor: colors.surfaceBorder }]} />
-            <View style={styles.rewardItem}>
-              <Flame size={16} color={colors.flame} />
-              <Text style={[typography.tag, { color: colors.flame }]}>{scorecard.newStreak}-Day Streak</Text>
-            </View>
-          </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Celebration Header with decorative dot accents */}
+        <View style={styles.celebrationHeader}>
+          {DOT_ACCENTS.map((dot, idx) => (
+            <View
+              key={idx}
+              style={[
+                styles.accentDot,
+                {
+                  top: dot.top,
+                  left: dot.left,
+                  width: dot.size,
+                  height: dot.size,
+                  borderRadius: dot.size / 2,
+                  backgroundColor: getDotColor(dot.color)
+                }
+              ]}
+            />
+          ))}
+
+          <CircularScoreRing
+            score={scorecard.overallScore}
+            color={colors.scoreTeal}
+            label={getScoreVerdict(scorecard.overallScore)}
+          />
+          <Text style={[typography.subtitle, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
+            {getScoreSubtitle(scorecard.overallScore)}
+          </Text>
         </View>
 
-        {/* SUBSTANCE RUBRIC BREAKDOWN */}
-        <Card variant="elevated" style={styles.rubricCard}>
-          <Text style={[typography.overline, { color: colors.textMuted, marginBottom: 12 }]}>SUBSTANCE-BASED SCORING RUBRIC</Text>
-
-          <ScoreMeter
-            label="1. Stated the Ask / Thesis"
-            score={scorecard.statedTheAsk}
-            description="Clear, unhedged goal stated upfront."
-          />
-
-          <ScoreMeter
-            label="2. Held the Boundary"
-            score={scorecard.heldTheBoundary}
-            description="Resisted guilt, deflection, or backing down."
-          />
-
-          <ScoreMeter
-            label="3. Specificity vs Rambling"
-            score={scorecard.stayedSpecific}
-            description="Used concrete facts, numbers, and deadlines."
-          />
-
-          <ScoreMeter
-            label="4. Emotional Composure"
-            score={scorecard.emotionalComposure}
-            description="Calm, firm, and non-apologetic tone."
-          />
-        </Card>
-
-        {/* WEAKEST LINE REWRITE COACH */}
-        {scorecard.weakestLineRewrite && (
-          <RewriteCard rewrite={scorecard.weakestLineRewrite} />
-        )}
-
-        {/* STRENGTHS & GROWTH AREAS */}
-        <Card variant="elevated" style={styles.feedbackCard}>
-          <Text style={[typography.overline, { color: colors.textMuted, marginBottom: 10 }]}>COACHING BREAKDOWN</Text>
-
-          {/* Strengths */}
-          <Text style={[typography.tag, { color: colors.sage, marginBottom: 8 }]}>WHAT YOU DID WELL</Text>
-          {scorecard.strengths.map((str, i) => (
-            <View key={i} style={styles.pointRow}>
-              <CheckCircle2 size={16} color={colors.sage} style={{ marginTop: 2 }} />
-              <Text style={[typography.body, { color: colors.textPrimary, flex: 1 }]}>{str}</Text>
-            </View>
-          ))}
-
-          {/* Growth Areas */}
-          <Text style={[typography.tag, { color: colors.gold, marginTop: 14, marginBottom: 8 }]}>AREAS TO TIGHTEN</Text>
-          {scorecard.growthAreas.map((gr, i) => (
-            <View key={i} style={styles.pointRow}>
-              <TrendingUp size={16} color={colors.gold} style={{ marginTop: 2 }} />
-              <Text style={[typography.body, { color: colors.textPrimary, flex: 1 }]}>{gr}</Text>
-            </View>
-          ))}
-        </Card>
-
-        {/* KEY TAKEAWAYS FOR REAL CONVERSATION */}
-        {scorecard.keyTakeaways && scorecard.keyTakeaways.length > 0 && (
-          <Card variant="forest" style={styles.takeawaysCard}>
-            <View style={styles.takeawaysHeader}>
-              <ShieldCheck size={18} color={colors.sage} />
-              <Text style={[typography.tag, { color: colors.sage }]}>TAKEAWAYS FOR YOUR REAL CONVERSATION</Text>
-            </View>
-            {scorecard.keyTakeaways.map((tip, i) => (
-              <Text key={i} style={[typography.body, { color: colors.textPrimary, marginBottom: 6 }]}>
-                {i + 1}. {tip}
-              </Text>
-            ))}
-          </Card>
-        )}
+        {/* METRIC BARS — staggered so they fill in sequence right after the
+            ring, reading as one continuous reveal rather than a data dump */}
+        <View style={styles.rubricSection}>
+          <ScoreMeter label="Clarity" score={scorecard.clarity} barColor={colors.scoreTeal} showBadge={false} delay={1100} />
+          <ScoreMeter label="Empathy" score={scorecard.empathy} barColor={colors.scoreTeal} showBadge={false} delay={1180} />
+          <ScoreMeter label="Assertiveness" score={scorecard.assertiveness} barColor={colors.scoreTeal} showBadge={false} delay={1260} />
+          <ScoreMeter label="Listening" score={scorecard.listening} barColor={colors.scoreTeal} showBadge={false} delay={1340} />
+        </View>
 
         {/* Actions */}
         <View style={styles.actionsContainer}>
           <Button
-            title="Rehearse Again"
+            title="View Feedback"
             variant="primary"
             size="lg"
-            onPress={() => navigation.replace('Roleplay', { scenario })}
-            icon={<RotateCcw size={18} color={colors.textInverse} />}
+            onPress={() => navigation.navigate('Feedback', { scorecard, scenario })}
             style={styles.actionBtn}
           />
 
           <Button
-            title="Share Win Snapshot"
+            title="Try Again"
             variant="outline"
-            onPress={handleShareWin}
-            icon={<Share2 size={18} color={colors.primary} />}
+            size="lg"
+            onPress={() => navigation.replace('Roleplay', { scenario })}
             style={styles.actionBtn}
           />
 
-          <Button
-            title="Return to Home Hub"
-            variant="ghost"
-            onPress={() => navigation.navigate('HomeTabs')}
-          />
+          <TouchableOpacity
+            style={styles.shareRow}
+            onPress={() => share('Share your scorecard')}
+            disabled={isSharing}
+            activeOpacity={0.7}
+          >
+            <Share2 size={14} color={colors.textSecondary} />
+            <Text style={[styles.shareText, { color: colors.textSecondary }]}>
+              {isSharing ? 'Preparing…' : 'Share Win Snapshot'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <View style={styles.offscreenCard} pointerEvents="none">
+        <ScorecardShareCard
+          ref={viewShotRef}
+          category={scenario.category}
+          overallScore={scorecard.overallScore}
+          clarity={scorecard.clarity}
+          empathy={scorecard.empathy}
+          assertiveness={scorecard.assertiveness}
+          listening={scorecard.listening}
+        />
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  offscreenCard: {
+    position: 'absolute',
+    top: -9999,
+    left: -9999
+  },
   container: {
     flex: 1
   },
+  topHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 20
+  },
+  headerBtn: {
+    padding: 6,
+    alignSelf: 'flex-start'
+  },
   content: {
-    paddingHorizontal: 18,
-    paddingTop: 30,
+    paddingHorizontal: 24,
+    paddingTop: 10,
     paddingBottom: 40
   },
   celebrationHeader: {
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 30,
+    position: 'relative',
+    paddingVertical: 10
   },
-  overallScoreCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    marginBottom: 12
+  accentDot: {
+    position: 'absolute'
   },
-  rewardBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    gap: 14
-  },
-  rewardItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
-  },
-  rewardDivider: {
-    width: 1,
-    height: 16
-  },
-  rubricCard: {
-    padding: 16,
-    marginBottom: 14
-  },
-  feedbackCard: {
-    padding: 16,
-    marginBottom: 14
-  },
-  pointRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 8
-  },
-  takeawaysCard: {
-    padding: 16,
-    marginBottom: 20
-  },
-  takeawaysHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10
+  rubricSection: {
+    gap: 16,
+    marginBottom: 30
   },
   actionsContainer: {
-    gap: 10
+    gap: 12
   },
   actionBtn: {
     width: '100%'
+  },
+  shareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8
+  },
+  shareText: {
+    fontSize: 12.5,
+    fontWeight: '600'
   }
 });

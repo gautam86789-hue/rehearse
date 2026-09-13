@@ -300,11 +300,11 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
               activeOpacity={0.85}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#07100D" />
+                <ActivityIndicator size="small" color={colors.textInverse} />
               ) : (
                 <View style={styles.buttonContent}>
-                  <Text style={styles.primaryButtonText}>Create Account</Text>
-                  <ArrowRight size={16} color="#07100D" />
+                  <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>Create Account</Text>
+                  <ArrowRight size={16} color={colors.textInverse} />
                 </View>
               )}
             </TouchableOpacity>
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
-    elevation: 4
+    elevation: 0
   },
   buttonDisabled: {
     opacity: 0.6
@@ -480,7 +480,6 @@ const styles = StyleSheet.create({
     gap: 6
   },
   primaryButtonText: {
-    color: '#07100D',
     ...typography.buttonLarge,
     fontWeight: '700'
   },

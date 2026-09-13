@@ -8,7 +8,7 @@ import { RoleplaySession, MessageTurn, Scorecard } from '../types/index.js';
 import { z } from 'zod';
 
 export const startSessionSchema = z.object({
-  userId: z.string().optional().default('demo-user-1'),
+  userId: z.string().optional(),
   scenarioId: z.string().min(1)
 });
 
@@ -38,7 +38,8 @@ export class RoleplayController {
   startSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { userId, scenarioId } = req.body;
-      const user = memoryDb.getUser(userId);
+      const resolvedUserId = userId || req.userId || 'demo-user-1';
+      const user = await memoryDb.getUser(resolvedUserId);
 
       // Check remaining quota if on free trial
       if (
@@ -53,14 +54,14 @@ export class RoleplayController {
         return;
       }
 
-      const scenario = memoryDb.getScenarioById(scenarioId);
+      const scenario = await memoryDb.getScenarioById(scenarioId);
       if (!scenario) {
         res.status(404).json({ error: `Scenario not found with ID ${scenarioId}` });
         return;
       }
 
       const session: RoleplaySession = {
-        id: `session-${uuidv4().slice(0, 8)}`,
+        id: uuidv4(),
         userId: user.id,
         scenario,
         turns: [],
@@ -70,14 +71,14 @@ export class RoleplayController {
 
       // Add counterpart initial opening line
       const initialOpeningTurn: MessageTurn = {
-        id: `turn-${uuidv4().slice(0, 6)}`,
+        id: uuidv4(),
         speaker: 'counterpart',
         message: this.getInitialGreeting(scenario),
         timestamp: new Date().toISOString()
       };
       session.turns.push(initialOpeningTurn);
 
-      memoryDb.saveSession(session);
+      await memoryDb.saveSession(session);
 
       res.status(201).json({
         message: 'Rehearsal session started',
@@ -91,7 +92,7 @@ export class RoleplayController {
   processTurn = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sessionId, userMessage } = req.body;
-      const session = memoryDb.getSession(sessionId);
+      const session = await memoryDb.getSession(sessionId);
 
       if (!session) {
         res.status(404).json({ error: `Session not found with ID ${sessionId}` });
@@ -105,7 +106,7 @@ export class RoleplayController {
 
       // Record User Turn
       const userTurn: MessageTurn = {
-        id: `turn-${uuidv4().slice(0, 6)}`,
+        id: uuidv4(),
         speaker: 'user',
         message: userMessage,
         timestamp: new Date().toISOString()
@@ -123,14 +124,14 @@ export class RoleplayController {
       userTurn.tacticalAnalysis = counterpartResponse.tacticalAnalysis;
 
       const counterpartTurn: MessageTurn = {
-        id: `turn-${uuidv4().slice(0, 6)}`,
+        id: uuidv4(),
         speaker: 'counterpart',
         message: counterpartResponse.message,
         timestamp: new Date().toISOString()
       };
       session.turns.push(counterpartTurn);
 
-      memoryDb.saveSession(session);
+      await memoryDb.saveSession(session);
 
       res.json({
         userTurn,
@@ -145,7 +146,7 @@ export class RoleplayController {
   scoreAndEndSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { sessionId } = req.body;
-      const session = memoryDb.getSession(sessionId);
+      const session = await memoryDb.getSession(sessionId);
 
       if (!session) {
         res.status(404).json({ error: `Session not found with ID ${sessionId}` });
@@ -156,16 +157,16 @@ export class RoleplayController {
       const rubric = await scoringEngine.evaluateSession(session.scenario, session.turns);
 
       // Update user streak and XP
-      const user = memoryDb.getUser(session.userId);
+      const user = await memoryDb.getUser(session.userId);
       const gamificationResult = gamificationService.processSessionCompletion(
         user,
         rubric.overallScore
       );
-      memoryDb.updateUser(user.id, gamificationResult.updatedProfile);
+      await memoryDb.updateUser(user.id, gamificationResult.updatedProfile);
 
       const scorecard: Scorecard = {
         ...rubric,
-        id: `scorecard-${uuidv4().slice(0, 8)}`,
+        id: uuidv4(),
         sessionId: session.id,
         xpEarned: gamificationResult.xpEarned,
         newStreak: gamificationResult.newStreak,
@@ -178,8 +179,8 @@ export class RoleplayController {
       session.completedAt = new Date().toISOString();
       session.scorecard = scorecard;
 
-      memoryDb.saveSession(session);
-      memoryDb.saveScorecard(scorecard);
+      await memoryDb.saveSession(session);
+      await memoryDb.saveScorecard(scorecard);
 
       res.json({
         message: 'Rehearsal completed and scored',

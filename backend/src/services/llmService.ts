@@ -15,10 +15,14 @@ export interface LLMGenerateOptions {
 export class LLMService {
   private geminiApiKey: string | undefined;
   private openaiApiKey: string | undefined;
+  private openrouterApiKey: string | undefined;
+  private openrouterModel: string;
 
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY;
     this.openaiApiKey = process.env.OPENAI_API_KEY;
+    this.openrouterApiKey = process.env.OPENROUTER_API_KEY;
+    this.openrouterModel = process.env.OPENROUTER_MODEL || 'openrouter/free';
   }
 
   async generateCompletion(
@@ -27,7 +31,19 @@ export class LLMService {
   ): Promise<string> {
     const { temperature = 0.7, maxTokens = 800, responseFormat = 'text' } = options;
 
-    // 1. Try Gemini if configured
+    // 1. Try OpenRouter if configured — free-tier router, tried first since
+    // it costs nothing; Gemini/OpenAI below are the paid fallbacks if the
+    // free route is unavailable or rate-limited.
+    if (this.openrouterApiKey) {
+      try {
+        const response = await this.callOpenRouter(messages, temperature, maxTokens, responseFormat);
+        if (response) return response;
+      } catch (err) {
+        console.warn('OpenRouter API call failed, attempting fallback...', err);
+      }
+    }
+
+    // 2. Try Gemini if configured
     if (this.geminiApiKey) {
       try {
         const response = await this.callGemini(messages, temperature, responseFormat);
@@ -37,7 +53,7 @@ export class LLMService {
       }
     }
 
-    // 2. Try OpenAI if configured
+    // 3. Try OpenAI if configured
     if (this.openaiApiKey) {
       try {
         const response = await this.callOpenAI(messages, temperature, responseFormat);
@@ -47,8 +63,53 @@ export class LLMService {
       }
     }
 
-    // 3. Fallback: Intelligent Simulated Engine
+    // 4. Fallback: Intelligent Simulated Engine
     return this.simulateFallback(messages);
+  }
+
+  private async callOpenRouter(
+    messages: LLMMessage[],
+    temperature: number,
+    maxTokens: number,
+    responseFormat: string
+  ): Promise<string> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.openrouterApiKey}`
+        },
+        body: JSON.stringify({
+          model: this.openrouterModel,
+          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          temperature,
+          max_tokens: maxTokens,
+          // Some free OpenRouter models (Nemotron in particular) are hybrid
+          // reasoning models that spend tokens "thinking" before answering.
+          // With our tight per-reply maxTokens budget, that reasoning can
+          // consume the whole budget and get cut off before the real answer
+          // is written — sometimes leaking the raw scratch-thinking straight
+          // into `content` instead of a clean reply. Disabling reasoning
+          // keeps the full token budget on the actual response.
+          reasoning: { enabled: false },
+          response_format: responseFormat === 'json' ? { type: 'json_object' } : undefined
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`OpenRouter returned ${res.status}: ${await res.text()}`);
+      }
+
+      const data = await res.json() as any;
+      return data.choices?.[0]?.message?.content || '';
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private async callGemini(
@@ -57,26 +118,34 @@ export class LLMService {
     responseFormat: string
   ): Promise<string> {
     const prompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.geminiApiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${this.geminiApiKey}`;
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature,
-          responseMimeType: responseFormat === 'json' ? 'application/json' : 'text/plain'
-        }
-      })
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    if (!res.ok) {
-      throw new Error(`Gemini returned ${res.status}: ${await res.text()}`);
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature,
+            responseMimeType: responseFormat === 'json' ? 'application/json' : 'text/plain'
+          }
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Gemini returned ${res.status}: ${await res.text()}`);
+      }
+
+      const data = await res.json() as any;
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const data = await res.json() as any;
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   }
 
   private async callOpenAI(
@@ -110,16 +179,23 @@ export class LLMService {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
     const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
 
+    // AI Assistant chat — plain text, not JSON, so it must be checked before
+    // the JSON branch below or it falls through to the unrelated roleplay
+    // default line at the bottom of this method.
+    if (systemMsg.includes('in-app AI assistant for Rehearse')) {
+      return this.simulateAssistantReply(lastUserMsg);
+    }
+
     // Check if JSON response is expected
     if (systemMsg.includes('JSON') || lastUserMsg.includes('JSON')) {
       // 1. Scoring Rubric JSON
-      if (systemMsg.includes('SUBSTANCE RUBRIC') || systemMsg.includes('statedTheAsk')) {
+      if (systemMsg.includes('COMMUNICATION RUBRIC') || systemMsg.includes('clarity')) {
         return JSON.stringify({
-          statedTheAsk: 85,
-          heldTheBoundary: 80,
-          stayedSpecific: 90,
-          emotionalComposure: 88,
-          overallScore: 86,
+          clarity: 85,
+          empathy: 78,
+          assertiveness: 80,
+          listening: 82,
+          overallScore: 81,
           strengths: [
             "Clearly anchored the conversation on verified business metrics ($2.5M)",
             "Refused blanket deferrals and proposed the concrete executive exception process"
@@ -191,6 +267,20 @@ export class LLMService {
 
     // Default conversational response
     return "I hear your point, but given our current roadmap and bandwidth, I need to understand why this cannot wait until next quarter.";
+  }
+
+  private simulateAssistantReply(userMessage: string): string {
+    const lower = userMessage.toLowerCase();
+    if (lower.includes('pattern') || lower.includes('setback') || lower.includes('struggle') || lower.includes('weak')) {
+      return "Based on your recent sessions, you tend to lose specificity once the other person pushes back — try anchoring on one concrete number or fact before responding next time.";
+    }
+    if (lower.includes('reply') || lower.includes('respond') || lower.includes('say to') || lower.includes('what should i say')) {
+      return 'Try: "I hear that, and here\'s where I stand: [your specific ask]. What would it take to make that work?" — states your position without over-explaining.';
+    }
+    if (lower.includes('feature') || lower.includes('what should i use') || lower.includes('best') || lower.includes('practice next')) {
+      return 'If you have a specific real situation, use Custom Scenario. For a fast daily rep, use Quick Drill. To build a skill from scratch, start with Guided Practice.';
+    }
+    return "I'm here to help — ask me what to practice next, how to respond to something, or what patterns are showing up in your rehearsals.";
   }
 }
 

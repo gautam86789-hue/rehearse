@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 import { typography } from '../../theme/typography';
 
 interface SocialAuthButtonsProps {
@@ -15,7 +15,7 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
   loadingProvider,
   mode = 'signin'
 }) => {
-  const { colors, accentColor } = useTheme();
+  const { colors, accentColor, elevation } = useTheme();
   const prefix = mode === 'signin' ? 'Sign in with' : 'Sign up with';
 
   return (
@@ -24,9 +24,10 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
       <TouchableOpacity
         style={[
           styles.socialButton,
+          elevation.sm,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.border
+            backgroundColor: colors.surfaceCard,
+            borderColor: colors.surfaceBorder
           }
         ]}
         onPress={() => onSelectProvider('google')}
@@ -68,9 +69,10 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
       <TouchableOpacity
         style={[
           styles.socialButton,
+          elevation.sm,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.border
+            backgroundColor: colors.surfaceCard,
+            borderColor: colors.surfaceBorder
           }
         ]}
         onPress={() => onSelectProvider('azure')}
@@ -100,9 +102,10 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
       <TouchableOpacity
         style={[
           styles.socialButton,
+          elevation.sm,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.border
+            backgroundColor: colors.surfaceCard,
+            borderColor: colors.surfaceBorder
           }
         ]}
         onPress={() => onSelectProvider('facebook')}
@@ -141,8 +144,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 14,
-    height: 48,
+    borderRadius: RADII.lg,
+    height: 50,
     paddingHorizontal: 16
   },
   iconContainer: {

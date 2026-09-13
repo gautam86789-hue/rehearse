@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import {
   ChevronLeft,
@@ -21,7 +22,7 @@ import {
   Share2,
   Home
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 interface ActionStep {
   id: string;
@@ -36,7 +37,12 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, isDark, elevation } = useTheme();
+  // Header had paddingTop: Platform.OS === 'ios' ? 56 : 20 — the Android
+  // branch had no safe-area handling, so on edge-to-edge Android the
+  // back button and title sat under the status bar / camera cutout.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const title = route?.params?.title || 'Compensation Discussion';
   const score = route?.params?.score || 82;
@@ -77,7 +83,7 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
           onPress={() => navigation.goBack()}
@@ -108,8 +114,9 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
         <View
           style={[
             styles.growthHeroCard,
+            elevation.md,
             {
-              backgroundColor: isDark ? '#14201A' : '#F4F7F5',
+              backgroundColor: themeColors.surfaceHighlight,
               borderColor: themeColors.surfaceBorder
             }
           ]}
@@ -120,8 +127,8 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
               <Svg width={64} height={64} viewBox="0 0 64 64">
                 <Defs>
                   <LinearGradient id="botanicalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <Stop offset="0%" stopColor={isDark ? '#E5C98D' : '#173D2C'} />
-                    <Stop offset="100%" stopColor={isDark ? '#C8AA6A' : '#2A6F50'} />
+                    <Stop offset="0%" stopColor={themeColors.primaryLight} />
+                    <Stop offset="100%" stopColor={themeColors.primary} />
                   </LinearGradient>
                 </Defs>
                 {/* Stem */}
@@ -144,7 +151,7 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
                   opacity={0.95}
                 />
                 {/* Bud Top */}
-                <Circle cx="32" cy="10" r="3.5" fill={isDark ? '#C8AA6A' : '#173D2C'} />
+                <Circle cx="32" cy="10" r="3.5" fill={themeColors.primary} />
               </Svg>
             </View>
 
@@ -178,10 +185,11 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
                   key={act.id}
                   style={[
                     styles.actionCard,
+                    elevation.sm,
                     {
                       backgroundColor: themeColors.surfaceCard,
                       borderColor: act.completed
-                        ? (isDark ? '#2ECC71' : '#27AE60')
+                        ? themeColors.success
                         : themeColors.surfaceBorder
                     }
                   ]}
@@ -239,19 +247,20 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
         <View
           style={[
             styles.quoteCard,
+            elevation.sm,
             {
-              backgroundColor: isDark ? '#173D2C' : '#EAF2EC',
-              borderColor: isDark ? '#235940' : '#D0E3D6'
+              backgroundColor: themeColors.primarySubtle,
+              borderColor: themeColors.primaryLight
             }
           ]}
         >
-          <Text style={[styles.quoteSymbol, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
+          <Text style={[styles.quoteSymbol, { color: themeColors.primary }]}>
             “
           </Text>
           <Text style={[styles.quoteText, { color: themeColors.textPrimary }]}>
             The quality of your leadership is determined by the difficult conversations you are willing to execute with grace and conviction.
           </Text>
-          <Text style={[styles.quoteAuthor, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
+          <Text style={[styles.quoteAuthor, { color: themeColors.primary }]}>
             — Rehearse Executive Methodology
           </Text>
         </View>
@@ -259,15 +268,15 @@ export const CoachingNextStepsScreen: React.FC<{ navigation: any; route?: any }>
         {/* Return to Coach / Complete CTA */}
         <View style={styles.actionGroup}>
           <TouchableOpacity
-            style={[styles.finishBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+            style={[styles.finishBtn, { backgroundColor: themeColors.primary }]}
             onPress={() => navigation.navigate('CoachHome')}
             activeOpacity={0.85}
           >
-            <Home size={16} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginRight: 8 }} />
-            <Text style={[styles.finishBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+            <Home size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.finishBtnText, { color: '#FFFFFF' }]}>
               Return to Coach Suite
             </Text>
-            <ArrowRight size={16} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 6 }} />
+            <ArrowRight size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -309,7 +318,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40
   },
   growthHeroCard: {
-    borderRadius: 16,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     padding: 16,
     marginBottom: 20
@@ -364,7 +373,7 @@ const styles = StyleSheet.create({
   actionCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1.5,
     padding: 14
   },
@@ -397,7 +406,7 @@ const styles = StyleSheet.create({
     lineHeight: 16
   },
   quoteCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 16,
     marginBottom: 20,

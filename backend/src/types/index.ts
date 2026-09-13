@@ -3,7 +3,9 @@ export type ArchetypeId =
   | 'guilt_tripper'
   | 'hard_negotiator'
   | 'passive_aggressive_peer'
-  | 'micromanager';
+  | 'micromanager'
+  | 'skeptical_investor'
+  | 'startup_cofounder';
 
 export interface Archetype {
   id: ArchetypeId;
@@ -34,9 +36,12 @@ export interface ScenarioBrief {
   recommendedOpeningFormula: string;
 }
 
+export type Audience = 'founders_investors' | 'new_managers' | 'mba_students' | 'professionals' | 'new_hires';
+
 export interface Scenario {
   id: string;
   title: string;
+  audiences: Audience[];
   category: ScenarioCategory;
   counterpartRole: string;
   counterpartName: string;
@@ -70,10 +75,10 @@ export interface WeakestLineRewrite {
 }
 
 export interface SubstanceRubric {
-  statedTheAsk: number;      // 0-100: Was the ask or thesis clear, direct, and unhedged?
-  heldTheBoundary: number;   // 0-100: Did the user resist derailment, guilt, or false compromises?
-  stayedSpecific: number;    // 0-100: Were concrete facts/metrics used instead of vague generalizations?
-  emotionalComposure: number;// 0-100: Firm, calm, non-apologetic, professional tone.
+  clarity: number;        // 0-100: Was the point stated directly, without hedging?
+  empathy: number;        // 0-100: Did the user acknowledge the counterpart's perspective/feelings?
+  assertiveness: number;  // 0-100: Did the user hold their position without backing down?
+  listening: number;      // 0-100: Did the user respond to what the counterpart actually said, not talk past them?
   overallScore: number;      // 0-100 weighted average
   strengths: string[];
   growthAreas: string[];
@@ -111,6 +116,7 @@ export interface FrameworkOfTheDay {
   id: string;
   title: string;
   sourceCredit: string;
+  audiences: Audience[];
   tagline: string;
   summary: string;
   components: {
@@ -120,6 +126,15 @@ export interface FrameworkOfTheDay {
     example: string;
   }[];
   suggestedScenarioId: string;
+  releaseDate: string;
+}
+
+export interface WordOfTheDay {
+  id: string;
+  term: string;
+  audiences: Audience[];
+  meaning: string;
+  whyItMatters: string;
   releaseDate: string;
 }
 
@@ -155,6 +170,7 @@ export interface ReplyOption {
 
 export interface ReplyAssistantResult {
   id: string;
+  userId?: string;
   originalSituation: string;
   options: ReplyOption[];
   createdAt: string;
@@ -162,8 +178,13 @@ export interface ReplyAssistantResult {
 
 export interface UserProfile {
   id: string;
+  email?: string;
+  name?: string;
+  fullName?: string;
+  avatarUrl?: string;
   role: string;
   experienceLevel: string;
+  audience?: Audience;
   primaryDreadCategory: string;
   totalRehearsals: number;
   totalXP: number;
@@ -171,10 +192,25 @@ export interface UserProfile {
   longestStreak: number;
   lastPracticeDate?: string;
   subscription: {
-    status: 'free_trial' | 'active_monthly' | 'active_annual' | 'expired';
+    status: 'free_trial' | 'active_monthly' | 'active_three_month' | 'active_annual' | 'expired';
     rehearsalsRemaining: number; // 2 free rehearsals total
     trialEndsAt?: string;
     planName?: string;
   };
   createdAt: string;
 }
+
+export interface UserAccount extends UserProfile {
+  passwordHash?: string;
+  passwordSalt?: string;
+  isActive?: boolean;
+}
+
+export interface AuthSession {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+}
+

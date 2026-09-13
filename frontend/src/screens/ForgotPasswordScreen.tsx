@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Lock, Mail, ArrowRight, Info, CheckCircle2 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, RADII } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { AtmosphereGlow } from '../components/brand/AtmosphereGlow';
 import { InAppNotification, NotificationType } from '../components/common/InAppNotification';
@@ -25,7 +25,7 @@ interface ForgotPasswordScreenProps {
 
 export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { colors, accentColor, isDark } = useTheme();
+  const { colors, accentColor, isDark, elevation } = useTheme();
   const { resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -117,8 +117,8 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navi
           </View>
 
           {/* Hero Lock Emblem */}
-          <View style={[styles.lockAuraOuter, { backgroundColor: isDark ? 'rgba(16, 35, 27, 0.4)' : colors.surface, borderColor: accentColor + '30' }]}>
-            <View style={[styles.lockAuraInner, { backgroundColor: isDark ? '#0B1712' : colors.surfaceElevated, borderColor: accentColor + '60' }]}>
+          <View style={[styles.lockAuraOuter, { backgroundColor: colors.surfaceHighlight, borderColor: accentColor + '30' }]}>
+            <View style={[styles.lockAuraInner, { backgroundColor: colors.surfaceElevated, borderColor: accentColor + '60' }]}>
               <Lock size={26} color={accentColor} />
             </View>
           </View>
@@ -172,17 +172,17 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navi
                 activeOpacity={0.85}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#07100D" />
+                  <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
                   <View style={styles.buttonContent}>
-                    <Text style={styles.primaryButtonText}>Send Reset Link</Text>
-                    <ArrowRight size={16} color="#07100D" />
+                    <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>Send Reset Link</Text>
+                    <ArrowRight size={16} color={colors.textInverse} />
                   </View>
                 )}
               </TouchableOpacity>
 
               {/* Informational Callout Card */}
-              <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.infoCard, elevation.sm, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Info size={18} color={accentColor} style={styles.infoIcon} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.infoTitle, { color: colors.textPrimary }]}>Check your inbox</Text>
@@ -309,7 +309,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
-    elevation: 4
+    // elevation: 0 — Android's native elevation renders a real shadow shape
+    // that can look boxy; iOS/web rely on shadow* above, Android on
+    // border/tint depth instead (see ThemeContext.tsx buildElevation()).
+    elevation: 0
   },
   buttonDisabled: {
     opacity: 0.6
@@ -320,7 +323,6 @@ const styles = StyleSheet.create({
     gap: 6
   },
   primaryButtonText: {
-    color: '#07100D',
     ...typography.buttonLarge,
     fontWeight: '700'
   },
@@ -328,7 +330,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: RADII.md,
     padding: 16,
     marginTop: 20
   },

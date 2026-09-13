@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import routes from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { authMiddleware } from './middleware/authMiddleware.js';
 
 dotenv.config();
 
@@ -17,6 +18,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
+
+// Resolves req.userId from a Supabase auth token (or falls back to the demo user)
+app.use(authMiddleware);
 
 // API Routes
 app.use('/api/v1', routes);

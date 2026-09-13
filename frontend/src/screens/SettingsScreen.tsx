@@ -6,22 +6,16 @@ import {
   ScrollView,
   TouchableOpacity
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Palette,
-  Shield,
-  User,
-  CreditCard,
-  Lock,
-  HelpCircle,
-  Info,
+  ArrowLeft,
   LogOut,
   ChevronRight
 } from 'lucide-react-native';
 
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import { Header } from '../components/common/Header';
+import { useTheme, RADII } from '../context/ThemeContext';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import { InAppNotification, NotificationType } from '../components/common/InAppNotification';
 import { DeveloperToolsSection } from './settings/DeveloperToolsSection';
@@ -29,7 +23,11 @@ import { DeveloperToolsSection } from './settings/DeveloperToolsSection';
 export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useApp();
   const { signOut } = useAuth();
-  const { themeMode, colors: themeColors } = useTheme();
+  const { themeMode, colors: themeColors, elevation } = useTheme();
+  // Custom header had a flat paddingTop:20 with no safe-area handling — on
+  // edge-to-edge Android that put the title/back-button under the status bar.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const [confirmModal, setConfirmModal] = useState<{
     visible: boolean;
@@ -82,28 +80,22 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <Header
-        title="Settings"
-        rightAction="more"
-        navigation={navigation}
-      />
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+          <ArrowLeft size={20} color={themeColors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Settings</Text>
+        <View style={{ width: 32 }} />
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Title */}
-        <View style={styles.titleHeader}>
-          <Text style={[styles.mainTitle, { color: themeColors.textPrimary }]}>Settings</Text>
-          <Text style={[styles.mainSubtitle, { color: themeColors.textSecondary }]}>
-            Manage your Rehearse experience.
-          </Text>
-        </View>
-
         {/* 1. PREFERENCES */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>PREFERENCES</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomWidth: 0 }]}
               onPress={() => navigation.navigate('Appearance')}
@@ -123,7 +115,7 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         {/* 2. ACCOUNT */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>ACCOUNT</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
               onPress={() => navigation.navigate('AccountSecurity')}
@@ -147,7 +139,7 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         {/* 3. PLAN */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>PLAN</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomWidth: 0 }]}
               onPress={() => navigation.navigate('MembershipBilling')}
@@ -167,7 +159,7 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         {/* 4. PRIVACY */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>PRIVACY</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomWidth: 0 }]}
               onPress={() => navigation.navigate('PrivacyData')}
@@ -182,10 +174,10 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         {/* 5. SUPPORT */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>SUPPORT</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
-              onPress={() => showToast('Support is available at rehearse.ai/help', 'info')}
+              onPress={() => navigation.navigate('HelpSupport')}
               activeOpacity={0.7}
             >
               <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]}>Help & Support</Text>
@@ -205,7 +197,7 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
         {/* 6. ACCOUNT ACTIONS */}
         <View style={styles.section}>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomWidth: 0 }]}
               onPress={handleSignOut}
@@ -251,22 +243,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 12
+  },
+  headerBtn: {
+    padding: 6
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3
+  },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 8,
     paddingBottom: 110
-  },
-  titleHeader: {
-    marginBottom: 20
-  },
-  mainTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5
-  },
-  mainSubtitle: {
-    fontSize: 14,
-    marginTop: 4
   },
   section: {
     marginBottom: 20
@@ -280,7 +276,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },

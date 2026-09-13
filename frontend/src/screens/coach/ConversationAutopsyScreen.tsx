@@ -23,13 +23,13 @@ import {
   Zap,
   Play
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any }> = ({
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
 
   const title = route?.params?.title || 'Compensation Discussion';
   const duration = route?.params?.duration || '03:42';
@@ -129,8 +129,9 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
         <View
           style={[
             styles.scoreHeroCard,
+            elevation.md,
             {
-              backgroundColor: isDark ? '#14201A' : '#F4F7F5',
+              backgroundColor: themeColors.surfaceElevated,
               borderColor: themeColors.surfaceBorder
             }
           ]}
@@ -144,7 +145,7 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
                     cx="60"
                     cy="60"
                     r={radius}
-                    stroke={isDark ? '#23382D' : '#E0E8E3'}
+                    stroke={themeColors.surfaceBorder}
                     strokeWidth={strokeWidth}
                     fill="none"
                   />
@@ -152,7 +153,7 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
                     cx="60"
                     cy="60"
                     r={radius}
-                    stroke={isDark ? '#C8AA6A' : '#173D2C'}
+                    stroke={themeColors.primary}
                     strokeWidth={strokeWidth}
                     strokeDasharray={`${circumference} ${circumference}`}
                     strokeDashoffset={strokeDashoffset}
@@ -162,7 +163,7 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
                 </G>
               </Svg>
               <View style={styles.scoreNumberOverlay}>
-                <Text style={[styles.scoreNumber, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
+                <Text style={[styles.scoreNumber, { color: themeColors.primary }]}>
                   {overallScore}
                 </Text>
                 <Text style={[styles.scoreOutOf, { color: themeColors.textSecondary }]}>/ 100</Text>
@@ -198,6 +199,7 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
                 key={idx}
                 style={[
                   styles.pillarCard,
+                  elevation.sm,
                   {
                     backgroundColor: themeColors.surfaceCard,
                     borderColor: themeColors.surfaceBorder
@@ -238,6 +240,7 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
           <View
             style={[
               styles.timelineCard,
+              elevation.sm,
               {
                 backgroundColor: themeColors.surfaceCard,
                 borderColor: themeColors.surfaceBorder
@@ -295,15 +298,15 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
         {/* Actions CTA Group */}
         <View style={styles.actionGroup}>
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+            style={[styles.primaryBtn, { backgroundColor: themeColors.primary }]}
             onPress={() => navigation.navigate('ConversationReplay', { title })}
             activeOpacity={0.85}
           >
-            <Play size={16} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginRight: 8 }} />
-            <Text style={[styles.primaryBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+            <Play size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.primaryBtnText, { color: '#FFFFFF' }]}>
               Watch Turn-by-Turn Replay
             </Text>
-            <ArrowRight size={16} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 6 }} />
+            <ArrowRight size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -311,7 +314,7 @@ export const ConversationAutopsyScreen: React.FC<{ navigation: any; route?: any 
             onPress={() => navigation.navigate('CoachingNextSteps', { title, score: overallScore })}
             activeOpacity={0.7}
           >
-            <Sparkles size={16} color={isDark ? '#C8AA6A' : '#173D2C'} style={{ marginRight: 6 }} />
+            <Sparkles size={16} color={themeColors.primary} style={{ marginRight: 6 }} />
             <Text style={[styles.secondaryBtnText, { color: themeColors.textPrimary }]}>
               View Recommended Next Steps
             </Text>
@@ -368,7 +371,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40
   },
   scoreHeroCard: {
-    borderRadius: 16,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     padding: 16,
     marginBottom: 20
@@ -440,7 +443,7 @@ const styles = StyleSheet.create({
   },
   pillarCard: {
     width: '48.5%',
-    borderRadius: 12,
+    borderRadius: RADII.sm,
     borderWidth: 1,
     padding: 12
   },
@@ -469,7 +472,7 @@ const styles = StyleSheet.create({
     lineHeight: 14
   },
   timelineCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },

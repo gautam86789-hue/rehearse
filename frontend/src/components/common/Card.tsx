@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
-import { colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 interface CardProps {
   children: React.ReactNode;
@@ -15,40 +15,57 @@ export const Card: React.FC<CardProps> = ({
   style,
   variant = 'default'
 }) => {
+  const { colors, isDark } = useTheme();
+
   const getVariantStyle = () => {
     switch (variant) {
       case 'elevated':
         return { backgroundColor: colors.surfaceElevated, borderColor: colors.surfaceBorder };
       case 'highlight':
-        return { backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.3)' };
+        return { backgroundColor: colors.primarySubtle, borderColor: colors.primaryLight };
       case 'forest':
-        return { backgroundColor: 'rgba(5, 150, 105, 0.08)', borderColor: 'rgba(5, 150, 105, 0.3)' };
+        return { backgroundColor: colors.sageSubtle, borderColor: colors.sageLight };
       case 'flame':
-        return { backgroundColor: 'rgba(249, 115, 22, 0.08)', borderColor: 'rgba(249, 115, 22, 0.3)' };
+        return { backgroundColor: colors.flameGlow, borderColor: colors.flame };
       case 'default':
       default:
-        return { backgroundColor: colors.surface, borderColor: colors.surfaceBorder };
+        return { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder };
     }
   };
+
+  // elevation: 0 is deliberate — Android's native `elevation` prop renders a
+  // real Material outline shadow shape that shows up as a visible boxy halo
+  // around rounded cards on light/tinted backgrounds on real Android
+  // hardware (invisible on iOS/web, which only read shadow*). Android falls
+  // back to flat depth (border + tinted background) instead.
+  const shadowStyle = isDark
+    ? {}
+    : {
+        shadowColor: '#5B5FEF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 0
+      };
 
   if (onPress) {
     return (
       <TouchableOpacity
         activeOpacity={0.88}
         onPress={onPress}
-        style={[styles.cardBase, getVariantStyle(), style]}
+        style={[styles.cardBase, shadowStyle, getVariantStyle(), style]}
       >
         {children}
       </TouchableOpacity>
     );
   }
 
-  return <View style={[styles.cardBase, getVariantStyle(), style]}>{children}</View>;
+  return <View style={[styles.cardBase, shadowStyle, getVariantStyle(), style]}>{children}</View>;
 };
 
 const styles = StyleSheet.create({
   cardBase: {
-    borderRadius: 14,
+    borderRadius: 20,
     borderWidth: 1,
     padding: 16
   }

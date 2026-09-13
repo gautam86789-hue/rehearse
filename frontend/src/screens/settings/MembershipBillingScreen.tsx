@@ -15,53 +15,116 @@ import {
   ExternalLink,
   RefreshCw
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
-
-const PLUS_FEATURES = [
-  'Unlimited rehearsals',
-  'Advanced AI counterparts',
-  'Detailed scoring',
-  'Progress history',
-  'Scenario generation'
-];
+import { isPurchasesSupported, restorePurchases, presentCustomerCenter } from '../../services/purchases';
+import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
 
 export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user, setIsPaywallVisible } = useApp();
-  const { colors: themeColors } = useTheme();
+  const { user, isPro, setIsPaywallVisible, setPaywallPreferredPlan, upgradeSubscription, refreshProfile } = useApp();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
-  const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('annual');
+  const [isRestoring, setIsRestoring] = useState(false);
   const [toast, setToast] = useState<{
     visible: boolean;
     message: string;
     type: NotificationType;
   }>({ visible: false, message: '', type: 'info' });
+  const [isSimulating, setIsSimulating] = useState(false);
 
-  const isFreeTrial = user.subscription?.status === 'free_trial';
-  const isPlus = user.subscription?.status === 'active_annual' || user.subscription?.status === 'active_monthly';
-  const planName = isPlus ? 'Rehearse Plus' : isFreeTrial ? 'Free Trial' : 'Free Plan';
-
-  const handleRestorePurchases = () => {
-    setToast({
-      visible: true,
-      message: 'Purchases restored. Your active plan is up to date.',
-      type: 'success'
-    });
+  // Real Play Console / App Store Connect billing isn't configured yet
+  // (deliberately deferred), so the actual RevenueCat paywall has nothing
+  // real to sell — this calls the same local subscription-state update
+  // upgradeSubscription always falls back to when a real charge can't go
+  // through, but does it directly and instantly, so Pro features can be
+  // tested end-to-end before real billing exists. Clearly labeled as a test
+  // action, not hidden as if it were the real purchase button.
+  const handleSimulatePurchase = async () => {
+    setIsSimulating(true);
+    try {
+      await upgradeSubscription(selectedPlan);
+      setToast({ visible: true, message: 'Test purchase simulated — Pro features unlocked.', type: 'success' });
+    } finally {
+      setIsSimulating(false);
+    }
   };
 
-  const handleManageSubscription = () => {
-    setToast({
-      visible: true,
-      message: 'Subscription is managed via your app store account.',
-      type: 'info'
-    });
+  const isFreeTrial = user.subscription?.status === 'free_trial';
+  const isPlus =
+    isPro ||
+    user.subscription?.status === 'active_annual' ||
+    user.subscription?.status === 'active_three_month' ||
+    user.subscription?.status === 'active_monthly';
+  const planName = isPlus ? user.subscription?.planName || 'Rehearse Plus' : isFreeTrial ? 'Free Trial' : 'Free Plan';
+
+  // Was hardcoded to "Annual renewal ($90/year)" regardless of which plan
+  // the user actually holds — someone on Monthly or the Three Month pass
+  // would see the wrong renewal price/cadence here.
+  const currentPlanId: SubscriptionPlanId | undefined =
+    user.subscription?.status === 'active_annual'
+      ? 'annual'
+      : user.subscription?.status === 'active_three_month'
+      ? 'three_month'
+      : user.subscription?.status === 'active_monthly'
+      ? 'monthly'
+      : undefined;
+  const currentPlanDetails = currentPlanId ? SUBSCRIPTION_PLANS.find((p) => p.id === currentPlanId) : undefined;
+  const renewalText = currentPlanDetails
+    ? `${currentPlanDetails.name} renewal (${currentPlanDetails.price}${currentPlanDetails.period})`
+    : 'Plan details unavailable';
+
+  const handleRestorePurchases = async () => {
+    if (!isPurchasesSupported()) {
+      setToast({
+        visible: true,
+        message: 'Purchases restored. Your active plan is up to date.',
+        type: 'success'
+      });
+      return;
+    }
+    setIsRestoring(true);
+    try {
+      const outcome = await restorePurchases();
+      if (outcome.success) {
+        await refreshProfile();
+        setToast({ visible: true, message: 'Purchases restored — your Pro access is active.', type: 'success' });
+      } else if (outcome.error) {
+        setToast({ visible: true, message: `Could not restore purchases: ${outcome.error}`, type: 'error' });
+      } else {
+        setToast({ visible: true, message: 'No previous purchases found for this account.', type: 'info' });
+      }
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!isPurchasesSupported()) {
+      setToast({
+        visible: true,
+        message: 'Subscription is managed via your app store account.',
+        type: 'info'
+      });
+      return;
+    }
+    const opened = await presentCustomerCenter();
+    if (opened) {
+      // The Customer Center can change or cancel the plan; resync afterward.
+      await refreshProfile();
+    } else {
+      setToast({ visible: true, message: 'Could not open the Customer Center. Try again shortly.', type: 'error' });
+    }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
@@ -83,7 +146,7 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>CURRENT PLAN</Text>
 
-          <View style={[styles.currentPlanCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.currentPlanCard, elevation.md, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <View style={styles.planHeaderRow}>
               <View style={[styles.crownIconCircle, { backgroundColor: themeColors.primarySubtle }]}>
                 <Crown size={18} color={themeColors.primary} />
@@ -107,7 +170,7 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
                 {isFreeTrial ? 'Trial ends:' : 'Next billing:'}
               </Text>
               <Text style={[styles.metaValue, { color: themeColors.textPrimary }]}>
-                {isFreeTrial ? 'In 5 days' : 'Annual renewal ($90/year)'}
+                {isFreeTrial ? 'In 5 days' : renewalText}
               </Text>
             </View>
           </View>
@@ -117,73 +180,50 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>AVAILABLE PLANS</Text>
 
-          {/* Annual Plan Card */}
-          <TouchableOpacity
-            style={[
-              styles.tierOptionCard,
-              { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder },
-              selectedPlan === 'annual' && { borderColor: themeColors.primary, borderWidth: 2 }
-            ]}
-            onPress={() => setSelectedPlan('annual')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.tierTop}>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={[styles.tierTitle, { color: themeColors.textPrimary }]}>Annual</Text>
-                  <View style={[styles.savePill, { backgroundColor: '#2E8B57' }]}>
-                    <Text style={styles.savePillText}>SAVE 50%</Text>
+          {SUBSCRIPTION_PLANS.map((plan, index) => (
+            <TouchableOpacity
+              key={plan.id}
+              style={[
+                styles.tierOptionCard,
+                elevation.sm,
+                { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder, marginTop: index === 0 ? 0 : 10 },
+                selectedPlan === plan.id && { borderColor: themeColors.primary, borderWidth: 2 }
+              ]}
+              onPress={() => setSelectedPlan(plan.id)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.tierTop}>
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[styles.tierTitle, { color: themeColors.textPrimary }]}>{plan.name}</Text>
+                    {plan.badge && (
+                      <View style={[styles.savePill, { backgroundColor: themeColors.success }]}>
+                        <Text style={styles.savePillText}>{plan.badge}</Text>
+                      </View>
+                    )}
                   </View>
+                  <Text style={[styles.tierPrice, { color: themeColors.textPrimary }]}>
+                    {plan.price} <Text style={[styles.tierUnit, { color: themeColors.textSecondary }]}>{plan.period}</Text>
+                  </Text>
                 </View>
-                <Text style={[styles.tierPrice, { color: themeColors.textPrimary }]}>
-                  $90 <Text style={[styles.tierUnit, { color: themeColors.textSecondary }]}>/ year</Text>
-                </Text>
-              </View>
 
-              <View style={[
-                styles.radioCircle,
-                { borderColor: themeColors.surfaceBorder },
-                selectedPlan === 'annual' && { borderColor: themeColors.primary, backgroundColor: themeColors.primary }
-              ]}>
-                {selectedPlan === 'annual' && <Check size={11} color={themeColors.textInverse} strokeWidth={3} />}
+                <View style={[
+                  styles.radioCircle,
+                  { borderColor: themeColors.surfaceBorder },
+                  selectedPlan === plan.id && { borderColor: themeColors.primary, backgroundColor: themeColors.primary }
+                ]}>
+                  {selectedPlan === plan.id && <Check size={11} color={themeColors.textInverse} strokeWidth={3} />}
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* Monthly Plan Card */}
-          <TouchableOpacity
-            style={[
-              styles.tierOptionCard,
-              { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder, marginTop: 10 },
-              selectedPlan === 'monthly' && { borderColor: themeColors.primary, borderWidth: 2 }
-            ]}
-            onPress={() => setSelectedPlan('monthly')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.tierTop}>
-              <View>
-                <Text style={[styles.tierTitle, { color: themeColors.textPrimary }]}>Monthly</Text>
-                <Text style={[styles.tierPrice, { color: themeColors.textPrimary }]}>
-                  $15 <Text style={[styles.tierUnit, { color: themeColors.textSecondary }]}>/ month</Text>
-                </Text>
-              </View>
-
-              <View style={[
-                styles.radioCircle,
-                { borderColor: themeColors.surfaceBorder },
-                selectedPlan === 'monthly' && { borderColor: themeColors.primary, backgroundColor: themeColors.primary }
-              ]}>
-                {selectedPlan === 'monthly' && <Check size={11} color={themeColors.textInverse} strokeWidth={3} />}
-              </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Section 3: Feature Summary */}
         <View style={styles.section}>
           <Text style={[styles.featureListHeader, { color: themeColors.textPrimary }]}>Rehearse Plus includes:</Text>
           <View style={styles.featureList}>
-            {PLUS_FEATURES.map((feature, index) => (
+            {SUBSCRIPTION_FEATURES.map((feature, index) => (
               <View key={index} style={styles.featureItem}>
                 <Check size={14} color={themeColors.primary} strokeWidth={2.5} style={{ marginRight: 8 }} />
                 <Text style={[styles.featureItemText, { color: themeColors.textSecondary }]}>{feature}</Text>
@@ -194,24 +234,43 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
           {/* Primary CTA */}
           <TouchableOpacity
             style={[styles.upgradeButton, { backgroundColor: themeColors.primary }]}
-            onPress={() => setIsPaywallVisible(true)}
+            onPress={() => {
+              setPaywallPreferredPlan(selectedPlan);
+              setIsPaywallVisible(true);
+            }}
             activeOpacity={0.85}
           >
             <Text style={[styles.upgradeButtonText, { color: themeColors.textInverse }]}>Upgrade to Plus</Text>
           </TouchableOpacity>
+
+          {!isPlus && (
+            <TouchableOpacity
+              style={[styles.testPurchaseButton, { borderColor: themeColors.surfaceBorder }]}
+              onPress={handleSimulatePurchase}
+              disabled={isSimulating}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.testPurchaseText, { color: themeColors.textSecondary }]}>
+                {isSimulating ? 'Simulating…' : 'Simulate Purchase (Test Mode — no real billing yet)'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Section 4: Secondary Actions */}
         <View style={styles.section}>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
               onPress={handleRestorePurchases}
               activeOpacity={0.7}
+              disabled={isRestoring}
             >
               <View style={styles.rowLeft}>
                 <RefreshCw size={16} color={themeColors.textSecondary} />
-                <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]}>Restore Purchases</Text>
+                <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]}>
+                  {isRestoring ? 'Restoring...' : 'Restore Purchases'}
+                </Text>
               </View>
               <ChevronRight size={16} color={themeColors.textMuted} />
             </TouchableOpacity>
@@ -287,7 +346,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   currentPlanCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 16
   },
@@ -328,7 +387,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   tierOptionCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 16
   },
@@ -394,8 +453,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700'
   },
+  testPurchaseButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  testPurchaseText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { ShieldAlert, HeartCrack, Scale, SmilePlus, Eye, User } from 'lucide-react-native';
+import { ShieldAlert, HeartCrack, Scale, SmilePlus, Eye, User, TrendingDown, Users } from 'lucide-react-native';
 import { ArchetypeId } from '../../types';
 import { archetypeColors } from '../../theme/colors';
 
@@ -29,6 +29,10 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
         return <SmilePlus size={iconSize} color="#FFFFFF" />;
       case 'micromanager':
         return <Eye size={iconSize} color="#FFFFFF" />;
+      case 'skeptical_investor':
+        return <TrendingDown size={iconSize} color="#FFFFFF" />;
+      case 'startup_cofounder':
+        return <Users size={iconSize} color="#FFFFFF" />;
       default:
         return <User size={iconSize} color="#FFFFFF" />;
     }
@@ -46,6 +50,10 @@ export const PersonaAvatar: React.FC<PersonaAvatarProps> = ({
         return 'Passive-Aggressive';
       case 'micromanager':
         return 'Micromanager';
+      case 'skeptical_investor':
+        return 'Skeptical Investor';
+      case 'startup_cofounder':
+        return 'Co-Founder';
       default:
         return 'Counterpart';
     }
@@ -89,7 +97,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4
+    elevation: 0
   },
   badgeTag: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',

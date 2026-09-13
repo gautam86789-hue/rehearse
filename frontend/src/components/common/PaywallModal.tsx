@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,28 @@ import {
 import { Check, ShieldCheck, Sparkles, X, Crown } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
+import { isPurchasesSupported, presentPaywallIfNeeded, PAYWALL_RESULT } from '../../services/purchases';
+import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
 
+// On native (iOS/Android), `isPaywallVisible` triggers RevenueCat's hosted,
+// dashboard-designed Paywall — real purchases, real products (yearly /
+// three_month / monthly), no hand-built plan UI to keep in sync with the
+// dashboard. The JSX below (the original hand-built modal) only renders as a
+// **web fallback**: react-native-purchases-ui has no web implementation, and
+// this project's Expo-web browser preview is relied on all session for fast
+// UI iteration, so it needs something to demo behind the same CTA.
 export const PaywallModal: React.FC = () => {
-  const { isPaywallVisible, setIsPaywallVisible, upgradeSubscription } = useApp();
+  const { isPaywallVisible, setIsPaywallVisible, paywallPreferredPlan, upgradeSubscription, refreshProfile } = useApp();
   const { colors: themeColors, isDark } = useTheme();
-  const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('annual');
+
+  // Opens on whatever plan the user already had selected on
+  // MembershipBillingScreen, rather than always resetting to Annual.
+  useEffect(() => {
+    if (isPaywallVisible && paywallPreferredPlan) {
+      setSelectedPlan(paywallPreferredPlan);
+    }
+  }, [isPaywallVisible, paywallPreferredPlan]);
   const [isUpgrading, setIsUpgrading] = useState(false);
 
   const handleUpgrade = async () => {
@@ -26,6 +43,31 @@ export const PaywallModal: React.FC = () => {
       setIsUpgrading(false);
     }
   };
+
+  // Guards against double-presenting if this effect re-fires while a paywall
+  // is already on screen (e.g. a parent re-render while the async present
+  // call is still pending).
+  const isPresenting = useRef(false);
+
+  useEffect(() => {
+    if (!isPurchasesSupported() || !isPaywallVisible || isPresenting.current) return;
+    isPresenting.current = true;
+    presentPaywallIfNeeded()
+      .then(async (result) => {
+        if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+          // AppContext's CustomerInfo listener already reflects the new
+          // entitlement locally; refreshProfile reconciles with the backend
+          // once RevenueCat's webhook lands, for cross-device consistency.
+          await refreshProfile();
+        }
+      })
+      .finally(() => {
+        isPresenting.current = false;
+        setIsPaywallVisible(false);
+      });
+  }, [isPaywallVisible]);
+
+  if (isPurchasesSupported()) return null;
 
   if (!isPaywallVisible) return null;
 
@@ -43,6 +85,7 @@ export const PaywallModal: React.FC = () => {
             style={[styles.closeButton, { backgroundColor: themeColors.surfaceElevated }]}
             onPress={() => setIsPaywallVisible(false)}
             activeOpacity={0.7}
+            hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
           >
             <X size={18} color={themeColors.textSecondary} />
           </TouchableOpacity>
@@ -63,14 +106,7 @@ export const PaywallModal: React.FC = () => {
 
             {/* Value checklist */}
             <View style={[styles.featuresList, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}>
-              {[
-                'Unlimited "Describe Your Situation" Scenarios',
-                '5 AI Counterpart Archetype Personalities',
-                'Turn-by-Turn Substance Rubric Scoring',
-                'Weakest-Line Executive Rewrites',
-                'Daily Framework of the Day & 1-Turn Puzzles',
-                'Strategic Reply Assistant / Message Coach'
-              ].map((feat, idx) => (
+              {SUBSCRIPTION_FEATURES.map((feat, idx) => (
                 <View key={idx} style={styles.featureItem}>
                   <View style={[styles.checkIcon, { backgroundColor: themeColors.primarySubtle }]}>
                     <Check size={13} color={themeColors.primary} strokeWidth={2.5} />
@@ -82,50 +118,33 @@ export const PaywallModal: React.FC = () => {
 
             {/* Plan Selector */}
             <View style={styles.plansContainer}>
-              {/* Annual Plan (Highlighted) */}
-              <TouchableOpacity
-                style={[
-                  styles.planCard,
-                  { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder },
-                  selectedPlan === 'annual' && { borderColor: themeColors.primary, backgroundColor: themeColors.surfaceHighlight, borderWidth: 2 }
-                ]}
-                activeOpacity={0.88}
-                onPress={() => setSelectedPlan('annual')}
-              >
-                <View style={[styles.popularBadge, { backgroundColor: '#2E8B57' }]}>
-                  <Text style={styles.popularBadgeText}>BEST VALUE • SAVE 50%</Text>
-                </View>
-                <View style={styles.planHeader}>
-                  <Text style={[styles.planName, { color: themeColors.textPrimary }]}>Annual Masterclass</Text>
-                  <Text style={[styles.planPrice, { color: themeColors.textPrimary }]}>
-                    $90<Text style={[styles.planPeriod, { color: themeColors.textSecondary }]}>/year</Text>
+              {SUBSCRIPTION_PLANS.map((plan) => (
+                <TouchableOpacity
+                  key={plan.id}
+                  style={[
+                    styles.planCard,
+                    { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder },
+                    selectedPlan === plan.id && { borderColor: themeColors.primary, backgroundColor: themeColors.surfaceHighlight, borderWidth: 2 }
+                  ]}
+                  activeOpacity={0.88}
+                  onPress={() => setSelectedPlan(plan.id)}
+                >
+                  {plan.badge && (
+                    <View style={[styles.popularBadge, { backgroundColor: themeColors.success }]}>
+                      <Text style={styles.popularBadgeText}>{plan.badge}</Text>
+                    </View>
+                  )}
+                  <View style={styles.planHeader}>
+                    <Text style={[styles.planName, { color: themeColors.textPrimary }]}>{plan.name}</Text>
+                    <Text style={[styles.planPrice, { color: themeColors.textPrimary }]}>
+                      {plan.price}<Text style={[styles.planPeriod, { color: themeColors.textSecondary }]}>{plan.period}</Text>
+                    </Text>
+                  </View>
+                  <Text style={[styles.planSubtext, { color: themeColors.textSecondary }]}>
+                    {plan.effectiveMonthly}
                   </Text>
-                </View>
-                <Text style={[styles.planSubtext, { color: themeColors.textSecondary }]}>
-                  $7.50/month • 5-day free trial included
-                </Text>
-              </TouchableOpacity>
-
-              {/* Monthly Plan */}
-              <TouchableOpacity
-                style={[
-                  styles.planCard,
-                  { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder },
-                  selectedPlan === 'monthly' && { borderColor: themeColors.primary, backgroundColor: themeColors.surfaceHighlight, borderWidth: 2 }
-                ]}
-                activeOpacity={0.88}
-                onPress={() => setSelectedPlan('monthly')}
-              >
-                <View style={styles.planHeader}>
-                  <Text style={[styles.planName, { color: themeColors.textPrimary }]}>Monthly Professional</Text>
-                  <Text style={[styles.planPrice, { color: themeColors.textPrimary }]}>
-                    $15<Text style={[styles.planPeriod, { color: themeColors.textSecondary }]}>/month</Text>
-                  </Text>
-                </View>
-                <Text style={[styles.planSubtext, { color: themeColors.textSecondary }]}>
-                  Billed monthly • Cancel anytime
-                </Text>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
             </View>
 
             {/* CTA Button */}
@@ -146,6 +165,12 @@ export const PaywallModal: React.FC = () => {
                 No charge today. Cancel anytime within 5 days in Settings.
               </Text>
             </View>
+            {/* Loss aversion: framed around what stays vs. what's lost, not a
+                generic feature pitch — people protect what they already have
+                more readily than they chase something new. */}
+            <Text style={[styles.lossAversionNote, { color: themeColors.textMuted }]}>
+              Your streak and progress stay put either way — Pro just keeps new rehearsals unlocked once your free ones run out.
+            </Text>
           </ScrollView>
         </View>
       </View>
@@ -302,5 +327,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 11.5
+  },
+  lossAversionNote: {
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 15,
+    marginTop: 8,
+    paddingHorizontal: 12
   }
 });

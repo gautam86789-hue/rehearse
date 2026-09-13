@@ -90,7 +90,7 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
                 <Defs>
                   <LinearGradient id="heroGold" x1="0" y1="0" x2="1" y2="1">
                     <Stop offset="0%" stopColor="#E5CD82" />
-                    <Stop offset="100%" stopColor="#C8AA6A" />
+                    <Stop offset="100%" stopColor="#F59E0B" />
                   </LinearGradient>
                 </Defs>
                 <Circle cx={55} cy={55} r={46} stroke={isDark ? '#14291F' : '#E2DEC9'} strokeWidth={8} fill="none" />
@@ -169,11 +169,11 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
               <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Your Journey</Text>
 
               {/* Journey Path Canvas */}
-              <View style={[styles.journeyCard, { backgroundColor: isDark ? '#0F2119' : '#EAE6D8', borderColor: themeColors.surfaceBorder }]}>
+              <View style={[styles.journeyCard, { backgroundColor: isDark ? '#242438' : '#EAE6D8', borderColor: themeColors.surfaceBorder }]}>
                 <Svg width="100%" height={150} viewBox="0 0 340 150">
                   <Defs>
                     <LinearGradient id="journeyTrail" x1="0" y1="0" x2="1" y2="0">
-                      <Stop offset="0%" stopColor="#C8AA6A" />
+                      <Stop offset="0%" stopColor="#F59E0B" />
                       <Stop offset="100%" stopColor="#E2CA90" />
                     </LinearGradient>
                   </Defs>
@@ -192,16 +192,16 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
 
                   {/* Flag at the end */}
                   <G transform="translate(305, 12)">
-                    <Path d="M 0 0 L 0 20" stroke="#C8AA6A" strokeWidth="2" />
-                    <Path d="M 0 0 L 12 5 L 0 10 Z" fill="#C8AA6A" />
+                    <Path d="M 0 0 L 0 20" stroke="#F59E0B" strokeWidth="2" />
+                    <Path d="M 0 0 L 12 5 L 0 10 Z" fill="#F59E0B" />
                   </G>
 
                   {/* Checkpoint nodes */}
                   {milestones.map((m, idx) => (
                     <G key={idx}>
-                      <Circle cx={m.x} cy={m.y} r={7} fill="#C8AA6A" stroke="#FFFFFF" strokeWidth={1.5} />
+                      <Circle cx={m.x} cy={m.y} r={7} fill="#F59E0B" stroke="#FFFFFF" strokeWidth={1.5} />
                       <G transform={`translate(${m.x - 3.5}, ${m.y - 3.5})`}>
-                        <Path d="M 1 3.5 L 3 5.5 L 6 1" stroke="#0B1712" strokeWidth="1.2" strokeLinecap="round" />
+                        <Path d="M 1 3.5 L 3 5.5 L 6 1" stroke="#12121F" strokeWidth="1.2" strokeLinecap="round" />
                       </G>
                     </G>
                   ))}
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
-    elevation: 2
+    elevation: 0
   },
   milestoneTagText: {
     ...T.micro,

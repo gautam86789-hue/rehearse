@@ -1,10 +1,18 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { enableFreeze } from 'react-native-screens';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, Compass, MessageSquare, TrendingUp, Settings } from 'lucide-react-native';
 import { colors } from '../theme/colors';
+import { navigationRef } from './navigationRef';
+
+// Freezes off-screen screens (pauses their React updates/effects) instead of
+// leaving every tab and stack screen doing work in the background — the
+// single biggest lever for tab-switch and navigation smoothness on a screen
+// count this size. Must be called before any navigator renders.
+enableFreeze(true);
 
 // Screens
 import { WelcomeScreen } from '../screens/WelcomeScreen';
@@ -13,11 +21,25 @@ import { SignUpScreen } from '../screens/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { PracticeHomeScreen } from '../screens/PracticeHomeScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
+import { ConversationHistoryScreen } from '../screens/ConversationHistoryScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { MilestonesScreen } from '../screens/MilestonesScreen';
+import { HelpSupportScreen } from '../screens/HelpSupportScreen';
+import { GuidedPracticeScreen } from '../screens/GuidedPracticeScreen';
 import { DescribeSituationScreen } from '../screens/DescribeSituationScreen';
 import { ScenariosScreen } from '../screens/ScenariosScreen';
+import { ScenarioDetailScreen } from '../screens/ScenarioDetailScreen';
 import { RoleplayScreen } from '../screens/RoleplayScreen';
 import { ScoreScreen } from '../screens/ScoreScreen';
+import { FeedbackScreen } from '../screens/FeedbackScreen';
+import { DetailedFeedbackScreen } from '../screens/DetailedFeedbackScreen';
+import { WhatToSayScreen } from '../screens/WhatToSayScreen';
 import { FrameworkDetailScreen } from '../screens/FrameworkDetailScreen';
+import { JourneyScreen } from '../screens/JourneyScreen';
+import { JourneyStoryScreen } from '../screens/JourneyStoryScreen';
+import { KnowledgeArticleScreen } from '../screens/KnowledgeArticleScreen';
 import { DailyPuzzleScreen } from '../screens/DailyPuzzleScreen';
 import { ReplyAssistantScreen } from '../screens/ReplyAssistantScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
@@ -48,6 +70,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { PaywallModal } from '../components/common/PaywallModal';
 import { BadgeUnlockedModal } from '../components/common/BadgeUnlockedModal';
+import { AIAssistantWidget } from '../components/common/AIAssistantWidget';
 
 import { CustomTabBar } from '../components/common/CustomTabBar';
 
@@ -60,15 +83,27 @@ const TabNavigator = () => {
       id="MainTabs"
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        headerShown: false
+        headerShown: false,
+        // Bottom-tabs default to an instant, unanimated swap ('none') — this
+        // is what read as a "rigid" cut when switching Home/Practice/Profile.
+        // 'shift' cross-fades with a slight horizontal shift, matching the
+        // slide feel already used for stack push/pop below. Confirmed
+        // native-driver-backed (opacity + translateX only), so the animation
+        // itself already runs off the JS thread.
+        animation: 'shift',
+        // Pairs with enableFreeze() above — the tab you're not looking at
+        // stops re-rendering/running effects entirely instead of quietly
+        // doing work in the background every time state changes anywhere in
+        // the app, which is what was competing with the switch animation for
+        // JS-thread time and reading as janky despite the animation itself
+        // being native-driven.
+        freezeOnBlur: true
       }}
     >
-      {/* MVP Core Destinations */}
       <Tab.Screen name="HomeTab" component={HomeScreen} />
-      <Tab.Screen name="DescribeTab" component={DescribeSituationScreen} />
-      <Tab.Screen name="ScenariosTab" component={ScenariosScreen} />
+      <Tab.Screen name="PracticeTab" component={PracticeHomeScreen} />
       <Tab.Screen name="ProgressTab" component={ProgressScreen} />
-      <Tab.Screen name="SettingsTab" component={SettingsScreen} />
+      <Tab.Screen name="ProfileTab" component={ProfileScreen} />
 
       {/* =========================================================================
           PHASE 1 FEATURES (Preserved in code - Main Tab Connections Commented Out)
@@ -81,19 +116,48 @@ const TabNavigator = () => {
 export const AppNavigator: React.FC = () => {
   const { isOnboarded, isLoading: isAppLoading } = useApp();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, isDark } = useTheme();
 
   if (isAppLoading || isAuthLoading) {
     return <View style={[styles.loadingContainer, { backgroundColor: themeColors.background }]} />;
   }
 
+  // react-native-screens uses NavigationContainer's `theme.colors.background`
+  // as the backdrop directly behind the animating screen during a push/pop
+  // transition — not just the final rendered card. Leaving this at React
+  // Navigation's default (always white/light) is what caused the white
+  // flash on every back navigation, regardless of the app's own dark mode;
+  // `contentStyle` alone only colors the settled screen, not the transition.
+  const navigationTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      background: themeColors.background,
+      card: themeColors.surfaceCard,
+      text: themeColors.textPrimary,
+      border: themeColors.surfaceBorder,
+      primary: themeColors.primary
+    }
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme} ref={navigationRef}>
       <Stack.Navigator
         id="RootStack"
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: themeColors.background }
+          contentStyle: { backgroundColor: themeColors.background },
+          // 'slide_from_right' is a flatter, faster Android-only slide with no
+          // easing curve — it's what read as "rigid" pushing into a feature
+          // or going back. 'ios_from_right' gives Android the same eased,
+          // spring-backed slide iOS already gets natively (and matches this
+          // app's broader "feel like an iOS app" direction); on iOS itself it
+          // resolves to the platform default, so this is a pure improvement.
+          // (`animationDuration` was dropped: per native-stack's docs it's
+          // only honored for slide_from_bottom/fade_from_bottom/fade/
+          // simple_push, so it was silently doing nothing here.)
+          animation: 'ios_from_right',
+          fullScreenGestureEnabled: true
         }}
       >
         {!isAuthenticated ? (
@@ -105,21 +169,35 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           </>
+        ) : !isOnboarded ? (
+          // Authenticated but hasn't finished onboarding yet — this is the ONLY
+          // screen registered in this branch, so completing onboarding (which flips
+          // isOnboarded) causes React Navigation to swap the whole screen set below,
+          // rather than relying on an explicit navigate() call that may target a
+          // route not yet mounted in the current branch.
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         ) : (
-          // Authenticated App Flow
+          // Authenticated + Onboarded — Main App Flow
           <>
-            {!isOnboarded && (
-              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-            )}
             <Stack.Screen name="HomeTabs" component={TabNavigator} />
-            {isOnboarded && (
-              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-            )}
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="ConversationHistory" component={ConversationHistoryScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Milestones" component={MilestonesScreen} />
+            <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen name="DescribeSituation" component={DescribeSituationScreen} />
             <Stack.Screen name="Scenarios" component={ScenariosScreen} />
+            <Stack.Screen name="ScenarioDetail" component={ScenarioDetailScreen} />
+            <Stack.Screen name="GuidedPractice" component={GuidedPracticeScreen} />
             <Stack.Screen name="Roleplay" component={RoleplayScreen} />
             <Stack.Screen name="Score" component={ScoreScreen} />
+            <Stack.Screen name="Feedback" component={FeedbackScreen} />
+            <Stack.Screen name="DetailedFeedback" component={DetailedFeedbackScreen} />
+            <Stack.Screen name="WhatToSay" component={WhatToSayScreen} />
             <Stack.Screen name="FrameworkDetail" component={FrameworkDetailScreen} />
+            <Stack.Screen name="Learn" component={JourneyScreen} />
+            <Stack.Screen name="JourneyStory" component={JourneyStoryScreen} />
+            <Stack.Screen name="KnowledgeArticle" component={KnowledgeArticleScreen} />
             <Stack.Screen name="DailyPuzzle" component={DailyPuzzleScreen} />
             <Stack.Screen name="ReplyCoach" component={ReplyAssistantScreen} />
             <Stack.Screen name="Appearance" component={AppearanceScreen} />
@@ -147,6 +225,9 @@ export const AppNavigator: React.FC = () => {
       {/* Global Modals */}
       <PaywallModal />
       <BadgeUnlockedModal />
+
+      {/* Floating AI Assistant — only once there's a real app to assist with */}
+      {isAuthenticated && isOnboarded && <AIAssistantWidget />}
     </NavigationContainer>
   );
 };

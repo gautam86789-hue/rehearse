@@ -34,5 +34,5 @@ describe('Scenario Generation & Curated Library', () => {
     expect(custom.brief.counterpartPosition).toBeDefined();
     expect(custom.brief.probablePushbackPatterns.length).toBeGreaterThan(0);
     expect(custom.counterpartArchetype).toBe('guilt_tripper');
-  });
+  }, 20000);
 });

@@ -8,56 +8,65 @@ import {
   TextInput,
   Platform
 } from 'react-native';
-import Svg, {
-  Defs,
-  LinearGradient,
-  RadialGradient,
-  Stop,
-  Path,
-  Circle,
-  Polygon,
-  G
-} from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Search,
   Sparkles,
   Play,
-  Flame,
-  Shield,
+  ArrowLeft,
   Clock,
   Target,
-  ArrowRight,
-  BookOpen,
-  Filter,
-  SlidersHorizontal,
   ChevronRight,
-  Info
+  Info,
+  Bookmark
 } from 'lucide-react-native';
 import { PersonaAvatar } from '../components/common/PersonaAvatar';
-import { ScenarioBriefModal } from '../components/scenarios/ScenarioBriefModal';
-import { Header } from '../components/common/Header';
 import { useTheme } from '../context/ThemeContext';
+import { useApp } from '../context/AppContext';
 import { CURATED_SCENARIOS } from '../data/scenariosData';
+import { categoryColorFor } from '../data/categoryColors';
 import { apiService } from '../services/api';
 import { Scenario } from '../types';
 
-export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { colors: themeColors, isDark } = useTheme();
+export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ navigation, route }) => {
+  const { colors: themeColors, elevation } = useTheme();
+  const { user } = useApp();
+  // Custom header had a flat paddingTop:20 with no safe-area handling — on
+  // edge-to-edge Android that put the title/back-button under the status bar.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
+  const audience = user.audience;
   const [scenarios, setScenarios] = useState<Scenario[]>(CURATED_SCENARIOS);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // Full library for this user's persona — decoupled from the category-filtered
+  // browsing list above, so the page-level count and the featured card stay
+  // stable (and sourced from the live backend list) regardless of which
+  // category filter the user currently has selected.
+  const [allScenarios, setAllScenarios] = useState<Scenario[]>(CURATED_SCENARIOS);
+  const [selectedCategory, setSelectedCategory] = useState<string>(route?.params?.category || 'all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedScenarioForBrief, setSelectedScenarioForBrief] = useState<Scenario | null>(null);
-  const [briefModalVisible, setBriefModalVisible] = useState(false);
 
   useEffect(() => {
     loadScenarios();
-  }, [selectedCategory]);
+  }, [selectedCategory, audience]);
+
+  useEffect(() => {
+    apiService
+      .getScenarios(undefined, undefined, audience)
+      .then((res) => {
+        if (res?.scenarios && res.scenarios.length > 0) setAllScenarios(res.scenarios);
+      })
+      .catch(() => {});
+  }, [audience]);
 
   const loadScenarios = async () => {
     try {
+      // 'saved' is a client-only pseudo-category (bookmarks), not a real
+      // scenario category, so fetch the unfiltered list and filter locally.
       const res = await apiService.getScenarios(
-        selectedCategory === 'all' ? undefined : selectedCategory
+        selectedCategory === 'all' || selectedCategory === 'saved' ? undefined : selectedCategory,
+        undefined,
+        audience
       );
       if (res?.scenarios && res.scenarios.length > 0) {
         setScenarios(res.scenarios);
@@ -71,6 +80,7 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
   const categories = [
     { id: 'all', label: 'All Scenarios' },
+    { id: 'saved', label: 'Saved' },
     { id: 'negotiation', label: 'Negotiation' },
     { id: 'managing_up', label: 'Managing Up' },
     { id: 'feedback', label: 'Critical Feedback' },
@@ -81,6 +91,10 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
   const filteredScenarios = useMemo(() => {
     return scenarios.filter((s) => {
+      // "Saved" pseudo-category: bookmarked scenarios, regardless of category
+      if (selectedCategory === 'saved') {
+        return !!user.savedScenarioIds?.includes(s.id);
+      }
       // Category filter
       if (selectedCategory !== 'all' && s.category !== selectedCategory) {
         return false;
@@ -100,13 +114,12 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
         s.userGoal.toLowerCase().includes(q)
       );
     });
-  }, [scenarios, selectedCategory, selectedDifficulty, searchQuery]);
+  }, [scenarios, selectedCategory, selectedDifficulty, searchQuery, user.savedScenarioIds]);
 
-  const featuredScenario = CURATED_SCENARIOS[0]; // Zero-sum budget freeze
+  const featuredScenario = allScenarios[0];
 
   const handleOpenBrief = (scenario: Scenario) => {
-    setSelectedScenarioForBrief(scenario);
-    setBriefModalVisible(true);
+    navigation.navigate('ScenarioDetail', { scenario });
   };
 
   const handleStartRehearsal = (scenario: Scenario) => {
@@ -115,157 +128,22 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {/* Standard Executive Header */}
-      <Header
-        title="Scenarios"
-        rightAction="search"
-        navigation={navigation}
-      />
+      {/* Header — same pattern as Feedback / Detailed Feedback / Scenario Detail */}
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        <TouchableOpacity
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeTabs'))}
+          style={styles.headerBtn}
+        >
+          <ArrowLeft size={20} color={themeColors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Scenarios</Text>
+        <View style={{ width: 32 }} />
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Mountain Vector Banner */}
-        <View
-          style={[
-            styles.bannerCard,
-            {
-              backgroundColor: isDark ? '#0B1712' : '#F0F5F2',
-              borderColor: themeColors.surfaceBorder
-            }
-          ]}
-        >
-          <Svg style={StyleSheet.absoluteFill} viewBox="0 0 400 130">
-            <Defs>
-              <LinearGradient id="scenSky" x1="0%" y1="0%" x2="0%" y2="100%">
-                <Stop offset="0%" stopColor={isDark ? '#07100C' : '#DDECE3'} />
-                <Stop offset="100%" stopColor={isDark ? '#12231B' : '#F4F9F6'} />
-              </LinearGradient>
-              <RadialGradient id="scenSun" cx="50%" cy="40%" r="50%">
-                <Stop offset="0%" stopColor={isDark ? '#C8AA6A' : '#C8AA6A'} stopOpacity={isDark ? 0.35 : 0.45} />
-                <Stop offset="100%" stopColor={isDark ? '#C8AA6A' : '#C8AA6A'} stopOpacity="0" />
-              </RadialGradient>
-            </Defs>
-
-            <Path d="M0 0 H400 V130 H0 Z" fill="url(#scenSky)" />
-            <Circle cx="200" cy="45" r="70" fill="url(#scenSun)" />
-
-            {/* Mountains */}
-            <Polygon
-              points="-20,130 80,45 190,130"
-              fill={isDark ? '#152C22' : '#BDD7C8'}
-              opacity={0.7}
-            />
-            <Polygon
-              points="130,130 250,30 370,130"
-              fill={isDark ? '#1A392C' : '#9DC2AE'}
-              opacity={0.85}
-            />
-            <Polygon
-              points="280,130 350,60 420,130"
-              fill={isDark ? '#10241B' : '#CBE0D5'}
-              opacity={0.6}
-            />
-          </Svg>
-
-          <View style={styles.bannerContent}>
-            <View style={[styles.bannerTag, { backgroundColor: isDark ? '#1C3328' : '#D5E6DC' }]}>
-              <Flame size={11} color={isDark ? '#C8AA6A' : '#173D2C'} />
-              <Text style={[styles.bannerTagText, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
-                EXECUTIVE MASTERY
-              </Text>
-            </View>
-
-            <Text style={[styles.bannerQuote, { color: isDark ? '#F5F2E9' : '#173D2C' }]}>
-              “The standard you walk past is the standard you accept.”
-            </Text>
-            <Text style={[styles.bannerMeta, { color: isDark ? '#C8AA6A' : '#2A6F50' }]}>
-              {scenarios.length} High-Stakes Simulations Available
-            </Text>
-          </View>
-        </View>
-
-        {/* Featured Scenario of the Day */}
-        {featuredScenario && (
-          <View style={styles.featuredSection}>
-            <View style={styles.sectionHeaderRow}>
-              <View style={styles.sectionHeaderLeft}>
-                <Sparkles size={14} color={isDark ? '#C8AA6A' : '#173D2C'} />
-                <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>
-                  FEATURED HIGH-STAKES DRILL
-                </Text>
-              </View>
-              <View style={[styles.featuredTag, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}>
-                <Text style={[styles.featuredTagText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
-                  SPOTLIGHT
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.featuredCard,
-                {
-                  backgroundColor: themeColors.surfaceCard,
-                  borderColor: isDark ? '#C8AA6A' : '#173D2C'
-                }
-              ]}
-              onPress={() => handleOpenBrief(featuredScenario)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.featuredTopRow}>
-                <PersonaAvatar
-                  archetypeId={featuredScenario.counterpartArchetype}
-                  size={46}
-                  showBadge={false}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <View style={styles.featuredMetaRow}>
-                    <Text style={[styles.featuredCategory, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
-                      {featuredScenario.category.toUpperCase()}
-                    </Text>
-                    <Text style={[styles.metaDot, { color: themeColors.textSecondary }]}>•</Text>
-                    <View style={styles.timeInline}>
-                      <Clock size={11} color={themeColors.textSecondary} style={{ marginRight: 3 }} />
-                      <Text style={[styles.timeInlineText, { color: themeColors.textSecondary }]}>
-                        {featuredScenario.estimatedMinutes} min
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.featuredTitle, { color: themeColors.textPrimary }]}>
-                    {featuredScenario.title}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={[styles.featuredDesc, { color: themeColors.textSecondary }]} numberOfLines={2}>
-                {featuredScenario.situation}
-              </Text>
-
-              <View style={[styles.featuredFooter, { borderTopColor: themeColors.surfaceBorder }]}>
-                <View style={styles.featuredGoalBox}>
-                  <Text style={[styles.goalLabel, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>Goal: </Text>
-                  <Text style={[styles.goalSnippet, { color: themeColors.textPrimary }]} numberOfLines={1}>
-                    {featuredScenario.userGoal}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.featuredActionBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
-                  onPress={() => handleStartRehearsal(featuredScenario)}
-                  activeOpacity={0.8}
-                >
-                  <Play size={12} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginRight: 4 }} />
-                  <Text style={[styles.featuredActionText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
-                    Rehearse
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Search Bar */}
         <View style={styles.searchSection}>
           <View
@@ -304,10 +182,10 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                     styles.categoryPill,
                     {
                       backgroundColor: isSelected
-                        ? (isDark ? '#173D2C' : '#EAF2EC')
+                        ? themeColors.primarySubtle
                         : themeColors.surfaceCard,
                       borderColor: isSelected
-                        ? (isDark ? '#C8AA6A' : '#173D2C')
+                        ? themeColors.primary
                         : themeColors.surfaceBorder
                     }
                   ]}
@@ -319,7 +197,7 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                       styles.categoryPillText,
                       {
                         color: isSelected
-                          ? (isDark ? '#C8AA6A' : '#173D2C')
+                          ? themeColors.primary
                           : themeColors.textSecondary,
                         fontWeight: isSelected ? '700' : '500'
                       }
@@ -351,7 +229,7 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                       ? themeColors.surfaceElevated
                       : 'transparent',
                     borderColor: isSelected
-                      ? (isDark ? '#C8AA6A' : '#173D2C')
+                      ? themeColors.primary
                       : 'transparent'
                   }
                 ]}
@@ -376,18 +254,30 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           })}
         </View>
 
+        {/* List header — reflects whatever category/search is active right now */}
+        <View style={styles.listHeaderRow}>
+          <Text style={[styles.listHeaderTitle, { color: themeColors.textPrimary }]}>
+            {categories.find((c) => c.id === selectedCategory)?.label || 'All Scenarios'}
+          </Text>
+          <Text style={[styles.listHeaderCount, { color: themeColors.textSecondary }]}>
+            {filteredScenarios.length} {filteredScenarios.length === 1 ? 'result' : 'results'}
+          </Text>
+        </View>
+
         {/* Scenarios List */}
         <View style={styles.scenariosList}>
           {filteredScenarios.map((item) => {
             const isHigh = item.difficulty === 'High Stakes';
+            const palette = themeColors.cardCategories[categoryColorFor(item.category)];
             return (
               <TouchableOpacity
                 key={item.id}
                 style={[
                   styles.scenarioCard,
+                  elevation.sm,
                   {
-                    backgroundColor: themeColors.surfaceCard,
-                    borderColor: themeColors.surfaceBorder
+                    backgroundColor: palette.subtle,
+                    borderColor: palette.border
                   }
                 ]}
                 onPress={() => handleOpenBrief(item)}
@@ -402,7 +292,7 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <View style={styles.scenarioMetaRow}>
-                      <Text style={[styles.scenarioCategoryTag, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
+                      <Text style={[styles.scenarioCategoryTag, { color: palette.solid }]}>
                         {item.category.toUpperCase()}
                       </Text>
                       <Text style={[styles.metaDot, { color: themeColors.textSecondary }]}>•</Text>
@@ -411,7 +301,7 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                           styles.difficultyMiniBadge,
                           {
                             backgroundColor: isHigh
-                              ? 'rgba(231,76,60,0.1)'
+                              ? themeColors.rubySubtle
                               : themeColors.surfaceElevated
                           }
                         ]}
@@ -419,7 +309,7 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                         <Text
                           style={[
                             styles.difficultyMiniText,
-                            { color: isHigh ? '#E74C3C' : themeColors.textSecondary }
+                            { color: isHigh ? themeColors.ruby : themeColors.textSecondary }
                           ]}
                         >
                           {item.difficulty}
@@ -441,9 +331,9 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                 </Text>
 
                 {/* Card Footer Actions */}
-                <View style={[styles.scenarioCardFooter, { borderTopColor: themeColors.surfaceBorder }]}>
+                <View style={[styles.scenarioCardFooter, { borderTopColor: palette.border }]}>
                   <View style={styles.goalLine}>
-                    <Target size={13} color={isDark ? '#C8AA6A' : '#173D2C'} style={{ marginRight: 5 }} />
+                    <Target size={13} color={palette.solid} style={{ marginRight: 5 }} />
                     <Text style={[styles.goalLineText, { color: themeColors.textPrimary }]} numberOfLines={1}>
                       {item.userGoal}
                     </Text>
@@ -462,12 +352,12 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.rehearseActionBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+                      style={[styles.rehearseActionBtn, { backgroundColor: palette.solid }]}
                       onPress={() => handleStartRehearsal(item)}
                       activeOpacity={0.8}
                     >
-                      <Play size={12} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginRight: 4 }} />
-                      <Text style={[styles.rehearseActionText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+                      <Play size={12} color={themeColors.textInverse} style={{ marginRight: 4 }} />
+                      <Text style={[styles.rehearseActionText, { color: themeColors.textInverse }]}>
                         Rehearse
                       </Text>
                     </TouchableOpacity>
@@ -476,16 +366,116 @@ export const ScenariosScreen: React.FC<{ navigation: any }> = ({ navigation }) =
               </TouchableOpacity>
             );
           })}
-        </View>
-      </ScrollView>
 
-      {/* Scenario Brief Modal */}
-      <ScenarioBriefModal
-        visible={briefModalVisible}
-        scenario={selectedScenarioForBrief}
-        onClose={() => setBriefModalVisible(false)}
-        onStartRehearsal={handleStartRehearsal}
-      />
+          {filteredScenarios.length === 0 && (
+            <View style={styles.emptyState}>
+              {selectedCategory === 'saved' ? (
+                <Bookmark size={28} color={themeColors.textSecondary} />
+              ) : (
+                <Search size={28} color={themeColors.textSecondary} />
+              )}
+              <Text style={[styles.emptyStateTitle, { color: themeColors.textPrimary }]}>
+                {selectedCategory === 'saved' ? 'No saved scenarios yet' : 'No scenarios found'}
+              </Text>
+              <Text style={[styles.emptyStateBody, { color: themeColors.textSecondary }]}>
+                {selectedCategory === 'saved'
+                  ? 'Tap the bookmark icon on any scenario to save it here for later.'
+                  : 'Try a different category or search term.'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Explore the full library — a discovery highlight, below whatever the user came here to find */}
+        {featuredScenario && (
+          <View style={[styles.pageHeaderBlock, { borderTopColor: themeColors.surfaceBorder }]}>
+            <Text style={[styles.pageHeading, { color: themeColors.textPrimary }]}>Picked For You</Text>
+            <Text style={[styles.pageSub, { color: themeColors.textSecondary }]}>
+              {allScenarios.length} scenarios matched to your goals.
+            </Text>
+          </View>
+        )}
+
+        {featuredScenario && (
+          <View style={styles.featuredSection}>
+            <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionHeaderLeft}>
+                <Sparkles size={14} color={themeColors.primary} />
+                <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>
+                  FEATURED HIGH-STAKES DRILL
+                </Text>
+              </View>
+              <View style={[styles.featuredTag, { backgroundColor: themeColors.primary }]}>
+                <Text style={[styles.featuredTagText, { color: themeColors.textInverse }]}>
+                  SPOTLIGHT
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.featuredCard,
+                elevation.md,
+                {
+                  backgroundColor: themeColors.surfaceCard,
+                  borderColor: themeColors.primary
+                }
+              ]}
+              onPress={() => handleOpenBrief(featuredScenario)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.featuredTopRow}>
+                <PersonaAvatar
+                  archetypeId={featuredScenario.counterpartArchetype}
+                  size={46}
+                  showBadge={false}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <View style={styles.featuredMetaRow}>
+                    <Text style={[styles.featuredCategory, { color: themeColors.primary }]}>
+                      {featuredScenario.category.toUpperCase()}
+                    </Text>
+                    <Text style={[styles.metaDot, { color: themeColors.textSecondary }]}>•</Text>
+                    <View style={styles.timeInline}>
+                      <Clock size={11} color={themeColors.textSecondary} style={{ marginRight: 3 }} />
+                      <Text style={[styles.timeInlineText, { color: themeColors.textSecondary }]}>
+                        {featuredScenario.estimatedMinutes} min
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.featuredTitle, { color: themeColors.textPrimary }]}>
+                    {featuredScenario.title}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={[styles.featuredDesc, { color: themeColors.textSecondary }]} numberOfLines={2}>
+                {featuredScenario.situation}
+              </Text>
+
+              <View style={[styles.featuredFooter, { borderTopColor: themeColors.surfaceBorder }]}>
+                <View style={styles.featuredGoalBox}>
+                  <Text style={[styles.goalLabel, { color: themeColors.primary }]}>Goal: </Text>
+                  <Text style={[styles.goalSnippet, { color: themeColors.textPrimary }]} numberOfLines={1}>
+                    {featuredScenario.userGoal}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.featuredActionBtn, { backgroundColor: themeColors.primary }]}
+                  onPress={() => handleStartRehearsal(featuredScenario)}
+                  activeOpacity={0.8}
+                >
+                  <Play size={12} color={themeColors.textInverse} style={{ marginRight: 4 }} />
+                  <Text style={[styles.featuredActionText, { color: themeColors.textInverse }]}>
+                    Rehearse
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 };
@@ -499,73 +489,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1
+    paddingTop: 20,
+    paddingBottom: 12
+  },
+  headerBtn: {
+    padding: 6
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.3
   },
-  headerSubtitle: {
-    fontSize: 12,
-    marginTop: 2
-  },
-  customStudioBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 4
-  },
-  customStudioBtnText: {
-    fontSize: 11,
-    fontWeight: '700'
-  },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 4,
     paddingBottom: 110
   },
-  bannerCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    height: 120,
-    overflow: 'hidden',
-    marginBottom: 18,
-    justifyContent: 'flex-end',
-    padding: 14
-  },
-  bannerContent: {
-    zIndex: 2
-  },
-  bannerTag: {
+  listHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 10
+  },
+  listHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3
+  },
+  listHeaderCount: {
+    fontSize: 12.5
+  },
+  emptyState: {
     alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    gap: 4,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    gap: 8
+  },
+  emptyStateTitle: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  emptyStateBody: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18
+  },
+  pageHeaderBlock: {
+    marginTop: 28,
+    marginBottom: 18,
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  pageHeading: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.4,
     marginBottom: 4
   },
-  bannerTagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6
-  },
-  bannerQuote: {
+  pageSub: {
     fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
-    marginBottom: 2
-  },
-  bannerMeta: {
-    fontSize: 11,
-    fontWeight: '600'
+    lineHeight: 18
   },
   featuredSection: {
     marginBottom: 18
@@ -598,9 +581,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
   featuredCard: {
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1.5,
-    padding: 14
+    padding: 16
   },
   featuredTopRow: {
     flexDirection: 'row',
@@ -676,10 +659,10 @@ const styles = StyleSheet.create({
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 8
   },
   searchInput: {
@@ -719,9 +702,9 @@ const styles = StyleSheet.create({
     gap: 12
   },
   scenarioCard: {
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    padding: 14
+    padding: 16
   },
   scenarioCardHeader: {
     flexDirection: 'row',

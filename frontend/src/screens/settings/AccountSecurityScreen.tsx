@@ -23,14 +23,17 @@ import {
   CheckCircle2,
   X
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
 
 export const AccountSecurityScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user: authUser, signOut } = useAuth();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -124,7 +127,7 @@ export const AccountSecurityScreen: React.FC<{ navigation: any }> = ({ navigatio
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
@@ -146,7 +149,7 @@ export const AccountSecurityScreen: React.FC<{ navigation: any }> = ({ navigatio
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>ACCOUNT</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {/* Primary Email */}
             <View style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}>
               <View style={styles.rowLeft}>
@@ -196,7 +199,7 @@ export const AccountSecurityScreen: React.FC<{ navigation: any }> = ({ navigatio
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>SECURITY</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {/* 2FA */}
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
@@ -230,7 +233,7 @@ export const AccountSecurityScreen: React.FC<{ navigation: any }> = ({ navigatio
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>PRIVACY & DATA</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {/* Privacy & Data Link */}
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
@@ -263,7 +266,7 @@ export const AccountSecurityScreen: React.FC<{ navigation: any }> = ({ navigatio
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.error }]}>DANGER ZONE</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: 'rgba(224, 109, 83, 0.25)' }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: 'rgba(224, 109, 83, 0.25)' }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomWidth: 0 }]}
               onPress={handleDeleteAccount}
@@ -287,7 +290,7 @@ export const AccountSecurityScreen: React.FC<{ navigation: any }> = ({ navigatio
         onRequestClose={() => setPasswordModalVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.modalCard, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: themeColors.textPrimary }]}>Change Password</Text>
               <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
@@ -409,7 +412,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -466,7 +469,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 380,
-    borderRadius: 16,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     padding: 20
   },

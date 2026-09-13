@@ -21,12 +21,15 @@ import {
   ChevronRight,
   X
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme, RADII } from '../../context/ThemeContext';
 import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
 
 export const PrivacyDataScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const [infoModal, setInfoModal] = useState<{
     title: string;
@@ -81,7 +84,7 @@ export const PrivacyDataScreen: React.FC<{ navigation: any }> = ({ navigation })
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
@@ -103,7 +106,7 @@ export const PrivacyDataScreen: React.FC<{ navigation: any }> = ({ navigation })
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>YOUR DATA</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {/* Rehearsal History */}
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
@@ -174,7 +177,7 @@ export const PrivacyDataScreen: React.FC<{ navigation: any }> = ({ navigation })
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>AI PRIVACY</Text>
 
-          <View style={[styles.trainingCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.trainingCard, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <View style={styles.trainingHeader}>
               <View style={[styles.shieldCircle, { backgroundColor: themeColors.primarySubtle }]}>
                 <ShieldCheck size={18} color={themeColors.primary} />
@@ -191,7 +194,7 @@ export const PrivacyDataScreen: React.FC<{ navigation: any }> = ({ navigation })
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>DATA CONTROLS</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {/* Export Data */}
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
@@ -245,7 +248,7 @@ export const PrivacyDataScreen: React.FC<{ navigation: any }> = ({ navigation })
         onRequestClose={() => setInfoModal(null)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.modalCard, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: themeColors.textPrimary }]}>{infoModal?.title}</Text>
               <TouchableOpacity onPress={() => setInfoModal(null)}>
@@ -338,7 +341,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -361,7 +364,7 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   trainingCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 16
   },
@@ -396,7 +399,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 380,
-    borderRadius: 16,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     padding: 20
   },

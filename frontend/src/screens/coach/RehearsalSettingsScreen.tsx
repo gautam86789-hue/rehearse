@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   Sliders,
@@ -22,7 +23,7 @@ import {
   ArrowRight,
   Sparkles
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 interface PersonaStyle {
   id: string;
@@ -38,7 +39,12 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  // Header had paddingTop: Platform.OS === 'ios' ? 56 : 20 — the Android
+  // branch had no safe-area handling, so on edge-to-edge Android the
+  // back button and title sat under the status bar / camera cutout.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const title = route?.params?.title || 'Compensation Discussion';
   const strategy = route?.params?.strategy || 'diplomatic';
@@ -128,7 +134,7 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
           onPress={() => navigation.goBack()}
@@ -162,12 +168,13 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                   key={p.id}
                   style={[
                     styles.personaCard,
+                    elevation.sm,
                     {
                       backgroundColor: isSelected
-                        ? (isDark ? '#173D2C' : '#EAF2EC')
+                        ? themeColors.primarySubtle
                         : themeColors.surfaceCard,
                       borderColor: isSelected
-                        ? (isDark ? '#C8AA6A' : '#173D2C')
+                        ? themeColors.primary
                         : themeColors.surfaceBorder
                     }
                   ]}
@@ -180,19 +187,19 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                         styles.personaIconWrap,
                         {
                           backgroundColor: isSelected
-                            ? (isDark ? '#C8AA6A' : '#173D2C')
+                            ? themeColors.primary
                             : themeColors.surfaceElevated
                         }
                       ]}
                     >
                       <IconComp
                         size={16}
-                        color={isSelected ? (isDark ? '#0B1712' : '#FFFFFF') : themeColors.textSecondary}
+                        color={isSelected ? themeColors.textInverse : themeColors.textSecondary}
                       />
                     </View>
                     {p.recommended && (
-                      <View style={[styles.recBadge, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}>
-                        <Text style={[styles.recBadgeText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+                      <View style={[styles.recBadge, { backgroundColor: themeColors.primary }]}>
+                        <Text style={[styles.recBadgeText, { color: themeColors.textInverse }]}>
                           RECOMMENDED
                         </Text>
                       </View>
@@ -202,7 +209,7 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                   <Text
                     style={[
                       styles.personaName,
-                      { color: isSelected ? (isDark ? '#C8AA6A' : '#173D2C') : themeColors.textPrimary }
+                      { color: isSelected ? themeColors.primary : themeColors.textPrimary }
                     ]}
                   >
                     {p.name}
@@ -234,10 +241,10 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                     styles.focusChip,
                     {
                       backgroundColor: isSelected
-                        ? (isDark ? '#173D2C' : '#EAF2EC')
+                        ? themeColors.primarySubtle
                         : themeColors.surfaceCard,
                       borderColor: isSelected
-                        ? (isDark ? '#C8AA6A' : '#173D2C')
+                        ? themeColors.primary
                         : themeColors.surfaceBorder
                     }
                   ]}
@@ -247,7 +254,7 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                   {isSelected && (
                     <Check
                       size={13}
-                      color={isDark ? '#C8AA6A' : '#173D2C'}
+                      color={themeColors.primary}
                       style={{ marginRight: 5 }}
                     />
                   )}
@@ -256,7 +263,7 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                       styles.focusChipText,
                       {
                         color: isSelected
-                          ? (isDark ? '#C8AA6A' : '#173D2C')
+                          ? themeColors.primary
                           : themeColors.textPrimary,
                         fontWeight: isSelected ? '700' : '500'
                       }
@@ -283,12 +290,13 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                   key={d.mins}
                   style={[
                     styles.durationCard,
+                    elevation.sm,
                     {
                       backgroundColor: isSelected
-                        ? (isDark ? '#173D2C' : '#EAF2EC')
+                        ? themeColors.primarySubtle
                         : themeColors.surfaceCard,
                       borderColor: isSelected
-                        ? (isDark ? '#C8AA6A' : '#173D2C')
+                        ? themeColors.primary
                         : themeColors.surfaceBorder
                     }
                   ]}
@@ -297,12 +305,12 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                 >
                   <Clock
                     size={16}
-                    color={isSelected ? (isDark ? '#C8AA6A' : '#173D2C') : themeColors.textSecondary}
+                    color={isSelected ? themeColors.primary : themeColors.textSecondary}
                   />
                   <Text
                     style={[
                       styles.durationTime,
-                      { color: isSelected ? (isDark ? '#C8AA6A' : '#173D2C') : themeColors.textPrimary }
+                      { color: isSelected ? themeColors.primary : themeColors.textPrimary }
                     ]}
                   >
                     {d.label}
@@ -324,6 +332,7 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
           <TouchableOpacity
             style={[
               styles.audioToggleCard,
+              elevation.sm,
               {
                 backgroundColor: themeColors.surfaceCard,
                 borderColor: themeColors.surfaceBorder
@@ -348,7 +357,7 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
                 styles.toggleTrack,
                 {
                   backgroundColor: voiceEnabled
-                    ? (isDark ? '#C8AA6A' : '#173D2C')
+                    ? themeColors.primary
                     : themeColors.surfaceElevated
                 }
               ]}
@@ -368,14 +377,14 @@ export const RehearsalSettingsScreen: React.FC<{ navigation: any; route?: any }>
 
         {/* Start Button */}
         <TouchableOpacity
-          style={[styles.startBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+          style={[styles.startBtn, { backgroundColor: themeColors.primary }]}
           onPress={handleStart}
           activeOpacity={0.85}
         >
-          <Text style={[styles.startBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+          <Text style={[styles.startBtnText, { color: themeColors.textInverse }]}>
             Enter Rehearsal Simulation
           </Text>
-          <ArrowRight size={18} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 8 }} />
+          <ArrowRight size={18} color={themeColors.textInverse} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -429,7 +438,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   personaCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1.5,
     padding: 14
   },
@@ -492,7 +501,7 @@ const styles = StyleSheet.create({
   },
   durationCard: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: RADII.sm,
     borderWidth: 1.5,
     padding: 12,
     alignItems: 'center'
@@ -510,7 +519,7 @@ const styles = StyleSheet.create({
   audioToggleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 14
   },

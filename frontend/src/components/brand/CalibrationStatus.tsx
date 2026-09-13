@@ -125,7 +125,7 @@ export const CalibrationStatus: React.FC<CalibrationStatusProps> = ({
           ]}
         >
           <LinearGradient
-            colors={[colors.primarySubtle ? '#8F997F' : accentColor, accentColor, colors.textPrimary]}
+            colors={[colors.primaryLight || accentColor, accentColor, colors.textPrimary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFill}

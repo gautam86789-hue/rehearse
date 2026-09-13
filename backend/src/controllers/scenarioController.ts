@@ -20,14 +20,19 @@ export const generateScenarioSchema = z.object({
 export class ScenarioController {
   async getScenarios(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { category, difficulty } = req.query;
-      let scenarios = memoryDb.getAllScenarios();
+      const { category, difficulty, audience } = req.query;
+      let scenarios = await memoryDb.getAllScenarios();
 
       if (category) {
         scenarios = scenarios.filter((s) => s.category === category);
       }
       if (difficulty) {
         scenarios = scenarios.filter((s) => s.difficulty === difficulty);
+      }
+      if (audience) {
+        // Custom (user-generated) scenarios have no audiences tag — keep them
+        // visible to everyone rather than hiding them from their own author.
+        scenarios = scenarios.filter((s) => !s.audiences?.length || s.audiences.includes(audience as any));
       }
 
       res.json({
@@ -42,7 +47,7 @@ export class ScenarioController {
   async getScenarioById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = String(req.params.id);
-      const scenario = memoryDb.getScenarioById(id);
+      const scenario = await memoryDb.getScenarioById(id);
 
       if (!scenario) {
         res.status(404).json({ error: `Scenario not found with ID ${id}` });
@@ -75,8 +80,8 @@ export class ScenarioController {
         targetGoal
       });
 
-      // Save to in-memory store so it can be practiced immediately
-      memoryDb.saveScenario(scenario);
+      // Persist so it can be practiced immediately (and durably, if Supabase is configured)
+      await memoryDb.saveScenario(scenario);
 
       res.status(201).json({
         message: 'Custom scenario brief generated successfully',

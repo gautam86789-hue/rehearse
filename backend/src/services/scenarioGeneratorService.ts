@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { LLMService, llmService } from './llmService.js';
 import { Scenario, ScenarioBrief, ArchetypeId } from '../types/index.js';
 import { ARCHETYPES } from '../db/seedData.js';
+import { getDomainContext } from './domainContext.js';
 
 export interface GenerateScenarioInput {
   situation: string;
@@ -17,6 +18,7 @@ export class ScenarioGeneratorService {
     const archetypeId: ArchetypeId = input.counterpartArchetype || this.detectArchetypeFromSituation(input.situation);
     const archetype = ARCHETYPES[archetypeId] || ARCHETYPES.defensive_boss;
     const counterpartRole = input.counterpartRole || 'Department Manager';
+    const domainContext = getDomainContext(archetypeId);
 
     const systemPrompt = `You are an executive communication coach and scenario designer for Rehearse.
 The user is dreading a high-stakes conversation and described their real-world situation.
@@ -24,6 +26,7 @@ Generate a structured, realistic Scenario Brief for a roleplay session.
 
 Archetype of Counterpart: ${archetype.title} (${archetype.personalityDescription})
 Counterpart Resistance Pattern: ${archetype.resistancePattern}
+${domainContext ? `Domain Fluency: ${domainContext}\n` : ''}
 
 You MUST return a valid JSON object strictly matching this schema:
 {
@@ -69,6 +72,7 @@ Generate the complete Scenario Brief JSON now.`;
       const scenario: Scenario = {
         id: `custom-scenario-${uuidv4().slice(0, 8)}`,
         title: parsed.title || 'Custom Rehearsal Scenario',
+        audiences: [],
         category: parsed.category || 'negotiation',
         counterpartRole,
         counterpartName: parsed.counterpartName || archetype.name,
@@ -91,6 +95,29 @@ Generate the complete Scenario Brief JSON now.`;
 
   private detectArchetypeFromSituation(situation: string): ArchetypeId {
     const s = situation.toLowerCase();
+    if (
+      s.includes('investor') ||
+      s.includes('vc ') ||
+      s.includes('venture cap') ||
+      s.includes('valuation') ||
+      s.includes('term sheet') ||
+      s.includes('fundrais') ||
+      s.includes('pitch') ||
+      s.includes('cap table') ||
+      s.includes('runway') ||
+      s.includes('board seat')
+    ) {
+      return 'skeptical_investor';
+    }
+    if (
+      s.includes('co-founder') ||
+      s.includes('cofounder') ||
+      s.includes('co founder') ||
+      s.includes('pivot') ||
+      s.includes('equity split')
+    ) {
+      return 'startup_cofounder';
+    }
     if (
       s.includes('saturday') ||
       s.includes('sunday') ||
@@ -172,6 +199,7 @@ Generate the complete Scenario Brief JSON now.`;
     return {
       id: `custom-scenario-${uuidv4().slice(0, 8)}`,
       title: `Addressing Situation with ${counterpartRole}`,
+      audiences: [],
       category: 'difficult_decisions',
       counterpartRole,
       counterpartName: archetype.name,

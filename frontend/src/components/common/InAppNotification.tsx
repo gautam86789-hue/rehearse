@@ -8,6 +8,7 @@ import {
   Platform
 } from 'react-native';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 export type NotificationType = 'success' | 'error' | 'info';
 
@@ -26,6 +27,7 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
   duration = 4000,
   onDismiss
 }) => {
+  const { colors } = useTheme();
   const translateY = React.useRef(new Animated.Value(-100)).current;
   const opacity = React.useRef(new Animated.Value(0)).current;
 
@@ -87,19 +89,19 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
 
   const typeConfig = {
     success: {
-      borderColor: 'rgba(143, 153, 127, 0.4)',
-      bg: '#0E211A',
-      icon: <CheckCircle2 size={18} color="#C8AA6A" />
+      borderColor: colors.success,
+      bg: colors.surfaceCard,
+      icon: <CheckCircle2 size={18} color={colors.success} />
     },
     error: {
-      borderColor: 'rgba(200, 75, 49, 0.4)',
-      bg: '#1D1212',
-      icon: <AlertCircle size={18} color="#E06D53" />
+      borderColor: colors.error,
+      bg: colors.surfaceCard,
+      icon: <AlertCircle size={18} color={colors.error} />
     },
     info: {
-      borderColor: 'rgba(200, 170, 106, 0.3)',
-      bg: '#0D1C16',
-      icon: <Info size={18} color="#C8AA6A" />
+      borderColor: colors.primaryLight,
+      bg: colors.surfaceCard,
+      icon: <Info size={18} color={colors.primary} />
     }
   }[type];
 
@@ -116,7 +118,7 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
       ]}
     >
       <View style={styles.iconBox}>{typeConfig.icon}</View>
-      <Text style={styles.messageText} numberOfLines={3}>
+      <Text style={[styles.messageText, { color: colors.textPrimary }]} numberOfLines={3}>
         {message}
       </Text>
       <TouchableOpacity
@@ -124,7 +126,7 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
         onPress={handleDismiss}
         activeOpacity={0.7}
       >
-        <X size={14} color="#8F997F" />
+        <X size={14} color={colors.textMuted} />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -141,13 +143,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 16,
+    borderWidth: 1.5,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 0,
     maxWidth: 500,
     alignSelf: 'center',
     width: Platform.OS === 'web' ? '90%' : undefined
@@ -160,10 +162,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Platform.select({
       web: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
-      default: 'HankenGrotesk-Medium'
+      default: 'System'
     }),
     fontWeight: '500',
-    color: '#F3EFE5',
     lineHeight: 18
   },
   closeButton: {

@@ -179,7 +179,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
         style={[
           styles.canvasCard,
           {
-            backgroundColor: isDark ? '#0C1813' : '#FAF7F0',
+            backgroundColor: isDark ? '#181828' : '#ECEAFA',
             borderColor: isDark ? '#1C3127' : '#EAE4D8'
           }
         ]}
@@ -188,9 +188,9 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
           <Defs>
             {/* Atmospheric Background Radial Wash */}
             <RadialGradient id="fieldWash" cx="50%" cy="50%" r="55%" fx="50%" fy="50%">
-              <Stop offset="0%" stopColor="#C8AA6A" stopOpacity={isDark ? 0.2 : 0.12} />
-              <Stop offset="50%" stopColor="#C8AA6A" stopOpacity={isDark ? 0.06 : 0.03} />
-              <Stop offset="100%" stopColor="#FAF7F0" stopOpacity={0} />
+              <Stop offset="0%" stopColor="#F59E0B" stopOpacity={isDark ? 0.2 : 0.12} />
+              <Stop offset="50%" stopColor="#F59E0B" stopOpacity={isDark ? 0.06 : 0.03} />
+              <Stop offset="100%" stopColor="#ECEAFA" stopOpacity={0} />
             </RadialGradient>
 
             {/* Core Golden Amber Gradient */}
@@ -217,7 +217,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
 
             {/* Spoke Line Gradient */}
             <LinearGradient id="spokeGrad" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%" stopColor="#C8AA6A" stopOpacity={0.7} />
+              <Stop offset="0%" stopColor="#F59E0B" stopOpacity={0.7} />
               <Stop offset="100%" stopColor="#A8987E" stopOpacity={0.3} />
             </LinearGradient>
           </Defs>
@@ -232,7 +232,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
               cx={cx}
               cy={cy}
               r={ring.r}
-              stroke={isDark ? '#8F997F' : '#D5CAB8'}
+              stroke={isDark ? '#9394AD' : '#D5CAB8'}
               strokeWidth={1}
               strokeDasharray={ring.dash}
               strokeOpacity={ring.opacity}
@@ -262,7 +262,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
               cx={cx}
               cy={cy}
               r={coreHaloRadius}
-              fill="#C8AA6A"
+              fill="#F59E0B"
               opacity={coreHaloOpacity}
             />
 
@@ -321,7 +321,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
                       ? isDark
                         ? '#32483D'
                         : '#B8AE9E'
-                      : '#FAF7F0'
+                      : '#ECEAFA'
                   }
                   strokeWidth={n.locked ? 1.5 : 2}
                 />
@@ -444,7 +444,7 @@ const NodeLabelBadge: React.FC<NodeLabelBadgeProps> = ({
               ? '#13241C'
               : '#FFFFFF',
             borderColor: selected
-              ? '#C8AA6A'
+              ? '#F59E0B'
               : isDark
               ? '#263E32'
               : '#E6DFD3',
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 5,
-    elevation: 2
+    elevation: 0
   },
   badgeTitle: {
     fontSize: 11,

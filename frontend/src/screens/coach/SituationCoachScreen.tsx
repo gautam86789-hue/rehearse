@@ -15,7 +15,8 @@ import {
   ArrowRight,
   Sparkles
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 const OBJECTIVES = [
   'Get agreement',
@@ -29,7 +30,9 @@ export const SituationCoachScreen: React.FC<{ navigation: any; route?: any }> = 
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const [situationText, setSituationText] = useState(
     "My manager keeps pushing back on my request for a higher salary. They say the budget is tight, but I've taken on a lot more responsibility this year..."
@@ -53,7 +56,7 @@ export const SituationCoachScreen: React.FC<{ navigation: any; route?: any }> = 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
           onPress={() => navigation.goBack()}
@@ -84,7 +87,7 @@ export const SituationCoachScreen: React.FC<{ navigation: any; route?: any }> = 
         {/* Question 1: What's really happening? */}
         <View style={styles.questionSection}>
           <Text style={[styles.questionTitle, { color: themeColors.textPrimary }]}>What's really happening?</Text>
-          <View style={[styles.textInputWrapper, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.textInputWrapper, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TextInput
               style={[styles.textArea, { color: themeColors.textPrimary }]}
               multiline
@@ -104,7 +107,7 @@ export const SituationCoachScreen: React.FC<{ navigation: any; route?: any }> = 
         {/* Question 2: What do you want to achieve? */}
         <View style={styles.questionSection}>
           <Text style={[styles.questionTitle, { color: themeColors.textPrimary }]}>What do you want to achieve?</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {OBJECTIVES.map((obj, idx) => {
               const isSelected = selectedObjective === obj;
               return (
@@ -137,7 +140,7 @@ export const SituationCoachScreen: React.FC<{ navigation: any; route?: any }> = 
           <Text style={[styles.questionTitle, { color: themeColors.textPrimary }]}>
             Anything else we should know? <Text style={{ color: themeColors.textMuted, fontSize: 13, fontWeight: '400' }}>(Optional)</Text>
           </Text>
-          <View style={[styles.textInputWrapper, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.textInputWrapper, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TextInput
               style={[styles.singleInput, { color: themeColors.textPrimary }]}
               value={optionalContext}
@@ -150,17 +153,17 @@ export const SituationCoachScreen: React.FC<{ navigation: any; route?: any }> = 
 
         {/* Action Button */}
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+          style={[styles.actionBtn, { backgroundColor: themeColors.primary }]}
           onPress={handleAnalyze}
           disabled={isAnalyzing}
           activeOpacity={0.85}
         >
           {isAnalyzing ? (
-            <ActivityIndicator size="small" color={isDark ? '#0B1712' : '#FFFFFF'} />
+            <ActivityIndicator size="small" color={themeColors.textInverse} />
           ) : (
             <>
-              <Text style={[styles.actionBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>Analyze Situation</Text>
-              <ArrowRight size={18} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 6 }} />
+              <Text style={[styles.actionBtnText, { color: themeColors.textInverse }]}>Analyze Situation</Text>
+              <ArrowRight size={18} color={themeColors.textInverse} style={{ marginLeft: 6 }} />
             </>
           )}
         </TouchableOpacity>
@@ -232,7 +235,7 @@ const styles = StyleSheet.create({
     marginLeft: 2
   },
   textInputWrapper: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 14
   },
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
     marginTop: 6
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -286,7 +289,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
-    elevation: 4
+    elevation: 0
   },
   actionBtnText: {
     fontSize: 15,

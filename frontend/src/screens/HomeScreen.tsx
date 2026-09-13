@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,62 +6,117 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  RefreshControl,
-  Platform
+  RefreshControl
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import {
-  Sparkles,
-  ArrowRight,
   Flame,
-  Award,
   Play,
-  RotateCcw,
-  Target,
-  Clock,
-  Compass,
-  ChevronRight,
-  Shield,
   Zap,
-  MessageSquare
+  MessageCircleHeart,
+  Ban,
+  Users,
+  TrendingUp,
+  ChevronRight,
+  AlertTriangle,
+  Building2,
+  Bell,
+  Sparkles,
+  BookOpen
 } from 'lucide-react-native';
-import { PersonaAvatar } from '../components/common/PersonaAvatar';
-import { AcousticLoopLogo } from '../components/brand/AcousticLoopLogo';
-import { Header } from '../components/common/Header';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, CardCategoryKey } from '../context/ThemeContext';
 import { CURATED_SCENARIOS } from '../data/scenariosData';
 import { apiService } from '../services/api';
-import { Scenario } from '../types';
+import { getDailyQuote } from '../data/dailyQuotes';
+import { getFeatureIllustration } from '../data/generatedImages';
+import { CATEGORY_COLORS } from '../data/categoryColors';
+import { JOURNEYS } from '../data/journeys';
+import { Scenario, Audience, WordOfTheDay } from '../types';
+import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
+import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
+import { WordOfDayModal } from '../components/common/WordOfDayModal';
+
+interface PracticeTile {
+  id: string;
+  label: string;
+  icon: any;
+  categoryColor: CardCategoryKey;
+}
+
+// Practice tiles, daily-challenge framing, and Learn copy all key off the
+// audience the user picked in onboarding, so "Practice a conversation"
+// surfaces the 4 categories most relevant to them by default — the full
+// library is still one tap away via "See all".
+const AUDIENCE_TILES: Record<Audience, PracticeTile[]> = {
+  founders_investors: [
+    { id: 'negotiation', label: 'Defend Your Valuation', icon: TrendingUp, categoryColor: CATEGORY_COLORS.negotiation },
+    { id: 'difficult_decisions', label: 'Align with Co-Founder', icon: Users, categoryColor: CATEGORY_COLORS.difficult_decisions },
+    { id: 'crisis', label: 'Navigate a Layoff', icon: AlertTriangle, categoryColor: CATEGORY_COLORS.crisis },
+    { id: 'managing_up', label: 'Update Your Board', icon: Building2, categoryColor: CATEGORY_COLORS.managing_up }
+  ],
+  new_managers: [
+    { id: 'feedback', label: 'Give Feedback', icon: MessageCircleHeart, categoryColor: CATEGORY_COLORS.feedback },
+    { id: 'managing_up', label: 'Push Back on Scope', icon: Building2, categoryColor: CATEGORY_COLORS.managing_up },
+    { id: 'boundaries', label: 'Set a Boundary', icon: Ban, categoryColor: CATEGORY_COLORS.boundaries },
+    { id: 'difficult_decisions', label: 'Handle Team Conflict', icon: Users, categoryColor: CATEGORY_COLORS.difficult_decisions }
+  ],
+  mba_students: [
+    { id: 'negotiation', label: 'Negotiate With Confidence', icon: TrendingUp, categoryColor: CATEGORY_COLORS.negotiation },
+    { id: 'feedback', label: 'Give Direct Feedback', icon: MessageCircleHeart, categoryColor: CATEGORY_COLORS.feedback },
+    { id: 'boundaries', label: 'Set Boundaries Early', icon: Ban, categoryColor: CATEGORY_COLORS.boundaries },
+    { id: 'difficult_decisions', label: 'Handle Team Conflict', icon: Users, categoryColor: CATEGORY_COLORS.difficult_decisions }
+  ],
+  professionals: [
+    { id: 'feedback', label: 'Give Feedback', icon: MessageCircleHeart, categoryColor: CATEGORY_COLORS.feedback },
+    { id: 'boundaries', label: 'Say No', icon: Ban, categoryColor: CATEGORY_COLORS.boundaries },
+    { id: 'difficult_decisions', label: 'Resolve Conflict', icon: Users, categoryColor: CATEGORY_COLORS.difficult_decisions },
+    { id: 'negotiation', label: 'Ask for a Raise', icon: TrendingUp, categoryColor: CATEGORY_COLORS.negotiation }
+  ],
+  new_hires: [
+    { id: 'managing_up', label: 'Clarify Priorities', icon: Building2, categoryColor: CATEGORY_COLORS.managing_up },
+    { id: 'feedback', label: 'Ask for Early Feedback', icon: MessageCircleHeart, categoryColor: CATEGORY_COLORS.feedback },
+    { id: 'boundaries', label: 'Push Back Without Risk', icon: Ban, categoryColor: CATEGORY_COLORS.boundaries },
+    { id: 'difficult_decisions', label: 'Handle a Rough First Review', icon: Users, categoryColor: CATEGORY_COLORS.difficult_decisions }
+  ]
+};
 
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user, refreshProfile, setIsPaywallVisible } = useApp();
-  const { colors: themeColors, isDark } = useTheme();
+  const { user, refreshProfile, setIsPaywallVisible, notifications } = useApp();
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const fitScroll = useFitScreenScroll();
 
-  const [promptText, setPromptText] = useState('');
   const [scenarios, setScenarios] = useState<Scenario[]>(CURATED_SCENARIOS);
   const [refreshing, setRefreshing] = useState(false);
+  const [puzzleTitle, setPuzzleTitle] = useState<string | null>(null);
+  const [wordOfDay, setWordOfDay] = useState<WordOfTheDay | null>(null);
+  const [showWordModal, setShowWordModal] = useState(false);
 
-  // Quick suggestion chips for conversational input
-  const quickPrompts = [
-    'Asking my VP for a budget increase',
-    'Pushing back on Friday night requests',
-    'Confronting a peer who took credit',
-    'Delivering critical feedback to a senior engineer'
-  ];
-
-  // Simulated active in-progress rehearsal for returning state
-  const activeRehearsal = {
-    id: 'active-session-1',
-    title: 'Zero-Sum Budget Negotiation with VP',
-    counterpart: 'Alex Chen (VP of Product)',
-    lastPracticed: '18 min ago',
-    progressRounds: 'Round 2 of 4',
-    progressPercent: '65%'
-  };
+  const audience: Audience = user.audience || 'professionals';
+  const practiceTiles = AUDIENCE_TILES[audience];
+  const journey = JOURNEYS[audience];
+  const journeyCompletedCount = journey.nodes.filter((n) => (user.completedJourneyNodeIds || []).includes(n.id)).length;
+  const dailyQuote = getDailyQuote();
+  const unreadNotifications = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
     loadHomeData();
+    apiService.getDailyPuzzle().then((res) => {
+      if (res?.puzzle?.title) setPuzzleTitle(res.puzzle.title);
+    }).catch(() => {});
+    apiService.getWordOfTheDay(audience).then((res) => {
+      if (res?.word) setWordOfDay(res.word);
+    }).catch(() => {});
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
 
   const loadHomeData = async () => {
     try {
@@ -80,411 +135,185 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const handleBuildRehearsal = () => {
-    navigation.navigate('DescribeSituation', {
-      initialSituation: promptText.trim() || undefined
-    });
-  };
-
+  const firstName = (user.name || 'there').split(' ')[0];
   const isFreeTrial = user.subscription?.status === 'free_trial';
   const remainingRehearsals = user.subscription?.rehearsalsRemaining ?? 2;
+  const streak = user.currentStreak || 0;
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {/* 1. TOP APP HEADER (Acoustic Loop Logo on left, Quiet Streak & XP Badges on right) */}
-      <Header type="home" />
-
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        ref={scrollRef}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 12) + 8 }]}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={themeColors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         showsVerticalScrollIndicator={false}
+        scrollEnabled={fitScroll.scrollEnabled}
+        onLayout={fitScroll.onLayout}
+        onContentSizeChange={fitScroll.onContentSizeChange}
       >
-        {/* 2. PRIMARY HERO: "WHAT CONVERSATION ARE YOU PREPARING FOR?" */}
-        <View
-          style={[
-            styles.heroSection,
-            {
-              backgroundColor: themeColors.surfaceCard,
-              borderColor: isDark ? 'rgba(200, 170, 106, 0.25)' : themeColors.surfaceBorder
-            }
-          ]}
-        >
-          <View style={styles.heroHeaderRow}>
-            <View style={[styles.heroPill, { backgroundColor: themeColors.primarySubtle }]}>
-              <Sparkles size={11} color={themeColors.primary} />
-              <Text style={[styles.heroPillText, { color: themeColors.primary }]}>
-                COMMAND CENTER
-              </Text>
-            </View>
-          </View>
-
-          <Text style={[styles.heroHeading, { color: themeColors.textPrimary }]}>
-            What conversation are you preparing for?
-          </Text>
-          <Text style={[styles.heroSubtitle, { color: themeColors.textSecondary }]}>
-            Tell Rehearse what's happening. We'll build the other side of the conversation.
-          </Text>
-
-          {/* Conversational Composer Area */}
-          <View
-            style={[
-              styles.composerBox,
-              {
-                backgroundColor: isDark ? '#122019' : '#F7F5F0',
-                borderColor: themeColors.surfaceBorder
-              }
-            ]}
-          >
-            <TextInput
-              style={[styles.composerInput, { color: themeColors.textPrimary }]}
-              placeholder="e.g. I need to ask my VP for a larger budget and headcount for Q3..."
-              placeholderTextColor={themeColors.textSecondary}
-              multiline
-              numberOfLines={3}
-              value={promptText}
-              onChangeText={setPromptText}
-            />
-
-            {/* Quick Starter Chips */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsScroll}
-            >
-              {quickPrompts.map((chip, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={[
-                    styles.promptChip,
-                    {
-                      backgroundColor: themeColors.surfaceCard,
-                      borderColor: themeColors.surfaceBorder
-                    }
-                  ]}
-                  onPress={() => setPromptText(chip)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.promptChipText, { color: themeColors.textSecondary }]}>
-                    {chip}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Primary Action Button */}
-          <TouchableOpacity
-            style={[
-              styles.primaryHeroBtn,
-              { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }
-            ]}
-            onPress={handleBuildRehearsal}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                styles.primaryHeroBtnText,
-                { color: isDark ? '#0B1712' : '#FFFFFF' }
-              ]}
-            >
-              Build My Rehearsal
+        {/* 1. GREETING HEADER */}
+        <View style={styles.greetingRow}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={[styles.greetingHello, { color: colors.textSecondary }]}>{greeting},</Text>
+            <Text style={[styles.greetingName, { color: colors.textPrimary }]}>
+              {firstName} <Text>👋</Text>
             </Text>
-            <ArrowRight
-              size={16}
-              color={isDark ? '#0B1712' : '#FFFFFF'}
-              style={{ marginLeft: 6 }}
-            />
-          </TouchableOpacity>
-
-          {/* Secondary Text Link */}
+          </View>
           <TouchableOpacity
-            style={styles.secondaryHeroLink}
+            style={[styles.bellButton, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+            onPress={() => navigation.navigate('Notifications')}
+            activeOpacity={0.8}
+          >
+            <Bell size={20} color={colors.textPrimary} />
+            {unreadNotifications > 0 && (
+              <View style={[styles.bellDot, { backgroundColor: colors.ruby, borderColor: colors.background }]} />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.quoteCard, { backgroundColor: colors.primarySubtle }]}>
+          <Text style={[styles.dailyQuote, { color: colors.primary }]}>"{dailyQuote}"</Text>
+        </View>
+
+        {/* 2. STREAK CARD */}
+        <TouchableOpacity
+          style={[styles.streakCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+          onPress={() => navigation.navigate('ProgressTab')}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.streakIconCircle, { backgroundColor: colors.flameGlow }]}>
+            <Flame size={18} color={colors.flame} fill={colors.flame} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.streakTitle, { color: colors.textPrimary }]}>
+              {streak > 0 ? 'Keep going' : 'Start your streak'}
+            </Text>
+            <Text style={[styles.streakSubtitle, { color: colors.textSecondary }]}>
+              {streak > 0 ? `${streak} day streak` : 'Complete a rehearsal today'}
+            </Text>
+          </View>
+          <ChevronRight size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
+        {/* 3. PRACTICE A CONVERSATION — 2x2 grid */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Practice a conversation</Text>
+          <TouchableOpacity
+            style={styles.seeAllRow}
             onPress={() => navigation.navigate('Scenarios')}
             activeOpacity={0.7}
           >
-            <Text style={[styles.secondaryHeroLinkText, { color: themeColors.textSecondary }]}>
-              or <Text style={{ color: isDark ? '#C8AA6A' : '#173D2C', fontWeight: '700' }}>Choose from curated scenarios →</Text>
-            </Text>
+            <Text style={[styles.seeAllText, { color: colors.primary }]}>See all</Text>
+            <ChevronRight size={15} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* 3. DISTINCTIVE REHEARSE VISUAL: CONVERSATION THREAD PIPELINE */}
-        <View
-          style={[
-            styles.pipelineCard,
-            {
-              backgroundColor: isDark ? '#0F1C15' : '#F6F4EE',
-              borderColor: themeColors.surfaceBorder
-            }
-          ]}
-        >
-          <View style={styles.pipelineHeader}>
-            <Text style={[styles.pipelineTitle, { color: themeColors.textSecondary }]}>
-              THE REHEARSE METHODOLOGY
-            </Text>
-          </View>
-
-          <View style={styles.threadRow}>
-            {/* Step 1 */}
-            <View style={styles.threadStep}>
-              <View style={[styles.threadNode, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}>
-                <Text style={styles.threadNodeNumber}>1</Text>
-              </View>
-              <Text style={[styles.threadStepLabel, { color: themeColors.textPrimary }]}>Situation</Text>
-            </View>
-
-            <View style={[styles.threadLine, { backgroundColor: isDark ? '#23382D' : '#D9E2DC' }]} />
-
-            {/* Step 2 */}
-            <View style={styles.threadStep}>
-              <View style={[styles.threadNode, { backgroundColor: themeColors.surfaceElevated, borderColor: isDark ? '#C8AA6A' : '#173D2C', borderWidth: 1 }]}>
-                <Text style={[styles.threadNodeNumber, { color: themeColors.textPrimary }]}>2</Text>
-              </View>
-              <Text style={[styles.threadStepLabel, { color: themeColors.textPrimary }]}>Counterpart</Text>
-            </View>
-
-            <View style={[styles.threadLine, { backgroundColor: isDark ? '#23382D' : '#D9E2DC' }]} />
-
-            {/* Step 3 */}
-            <View style={styles.threadStep}>
-              <View style={[styles.threadNode, { backgroundColor: themeColors.surfaceElevated, borderColor: isDark ? '#C8AA6A' : '#173D2C', borderWidth: 1 }]}>
-                <Text style={[styles.threadNodeNumber, { color: themeColors.textPrimary }]}>3</Text>
-              </View>
-              <Text style={[styles.threadStepLabel, { color: themeColors.textPrimary }]}>Rehearsal</Text>
-            </View>
-
-            <View style={[styles.threadLine, { backgroundColor: isDark ? '#23382D' : '#D9E2DC' }]} />
-
-            {/* Step 4 */}
-            <View style={styles.threadStep}>
-              <View style={[styles.threadNode, { backgroundColor: themeColors.surfaceElevated, borderColor: isDark ? '#C8AA6A' : '#173D2C', borderWidth: 1 }]}>
-                <Text style={[styles.threadNodeNumber, { color: themeColors.textPrimary }]}>4</Text>
-              </View>
-              <Text style={[styles.threadStepLabel, { color: themeColors.textPrimary }]}>Feedback</Text>
-            </View>
-          </View>
+        <View style={styles.grid}>
+          {practiceTiles.map((tile) => (
+            <ThemedFeatureCard
+              key={tile.id}
+              size="tile"
+              title={tile.label}
+              icon={tile.icon}
+              categoryColor={tile.categoryColor}
+              illustration={getFeatureIllustration(tile.id)}
+              onPress={() => navigation.navigate('Scenarios', { category: tile.id })}
+            />
+          ))}
         </View>
 
-        {/* 4. CONTEXTUAL "NEXT BEST ACTION" */}
-        <View
-          style={[
-            styles.nextMoveCard,
-            {
-              backgroundColor: themeColors.surfaceCard,
-              borderColor: themeColors.surfaceBorder
-            }
-          ]}
+        {/* 4. DAILY CHALLENGE TEASER */}
+        <TouchableOpacity
+          style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+          onPress={() => navigation.navigate('DailyPuzzle')}
+          activeOpacity={0.85}
         >
-          <View style={styles.nextMoveTop}>
-            <View style={[styles.nextMoveTag, { backgroundColor: themeColors.primarySubtle }]}>
-              <Target size={11} color={themeColors.primary} />
-              <Text style={[styles.nextMoveTagText, { color: themeColors.primary }]}>
-                YOUR NEXT MOVE
-              </Text>
-            </View>
-            <Text style={[styles.nextMoveContext, { color: themeColors.textSecondary }]}>
-              Based on recent rehearsals
-            </Text>
-          </View>
-
-          <Text style={[styles.nextMoveHeadline, { color: themeColors.textPrimary }]}>
-            Practice holding your boundary under pushback.
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.nextMoveBtn, { backgroundColor: themeColors.surfaceElevated }]}
-            onPress={() => navigation.navigate('Scenarios')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.nextMoveBtnText, { color: themeColors.textPrimary }]}>
-              Practice Drill
-            </Text>
-            <ArrowRight size={13} color={themeColors.textPrimary} style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
-        </View>
-
-        {/* 5. CONTINUE IN-PROGRESS REHEARSAL (Conditional Module) */}
-        {activeRehearsal && (
-          <View
-            style={[
-              styles.continueCard,
-              {
-                backgroundColor: themeColors.surfaceCard,
-                borderColor: themeColors.surfaceBorder
-              }
-            ]}
-          >
-            <View style={styles.continueHeader}>
-              <View style={styles.continueLeft}>
-                <Clock size={13} color={isDark ? '#C8AA6A' : '#173D2C'} style={{ marginRight: 6 }} />
-                <Text style={[styles.continuePretitle, { color: themeColors.textSecondary }]}>
-                  CONTINUE REHEARSAL • {activeRehearsal.lastPracticed}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.continueBodyRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.continueTitle, { color: themeColors.textPrimary }]}>
-                  {activeRehearsal.title}
-                </Text>
-                <Text style={[styles.continueSub, { color: themeColors.textSecondary }]}>
-                  Facing {activeRehearsal.counterpart}
-                </Text>
-
-                {/* Progress Mini Bar */}
-                <View style={styles.progressRow}>
-                  <View style={[styles.progressTrack, { backgroundColor: themeColors.surfaceElevated }]}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: '65%', backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }
-                      ]}
-                    />
-                  </View>
-                  <Text style={[styles.progressLabel, { color: themeColors.textSecondary }]}>
-                    {activeRehearsal.progressRounds}
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.resumeBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
-                onPress={() => navigation.navigate('Roleplay', { scenario: scenarios[0] })}
-                activeOpacity={0.85}
-              >
-                <Play size={13} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginRight: 4 }} />
-                <Text style={[styles.resumeBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
-                  Resume
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* 6. CURATED SCENARIOS (Horizontal Discovery Tiles) */}
-        <View style={styles.scenariosSection}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>
-              Practice a High-Stakes Situation
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Scenarios')}>
-              <Text style={[styles.seeAllLink, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
-                See all →
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.scenarioTilesRow}
-          >
-            {scenarios.slice(0, 5).map((scen) => (
-              <TouchableOpacity
-                key={scen.id}
-                style={[
-                  styles.scenarioTile,
-                  {
-                    backgroundColor: themeColors.surfaceCard,
-                    borderColor: themeColors.surfaceBorder
-                  }
-                ]}
-                onPress={() => navigation.navigate('Roleplay', { scenario: scen })}
-                activeOpacity={0.8}
-              >
-                <View style={styles.tileHeader}>
-                  <View style={[styles.categoryTag, { backgroundColor: themeColors.primarySubtle }]}>
-                    <Text style={[styles.categoryTagText, { color: themeColors.primary }]}>
-                      {scen.category.toUpperCase()}
-                    </Text>
-                  </View>
-                  <Text style={[styles.difficultyTag, { color: themeColors.textSecondary }]}>
-                    {scen.difficulty}
-                  </Text>
-                </View>
-
-                <Text
-                  style={[styles.tileTitle, { color: themeColors.textPrimary }]}
-                  numberOfLines={2}
-                >
-                  {scen.title}
-                </Text>
-
-                <Text
-                  style={[styles.tileCounterpart, { color: themeColors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  Facing: {scen.counterpartName}
-                </Text>
-
-                <View style={styles.tileFooter}>
-                  <Text style={[styles.tileTime, { color: themeColors.textSecondary }]}>
-                    {scen.estimatedMinutes} min drill
-                  </Text>
-                  <View style={[styles.tileActionArrow, { backgroundColor: themeColors.surfaceElevated }]}>
-                    <ChevronRight size={13} color={themeColors.textPrimary} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* 7. DAILY PRACTICE (Micro-Habit 1-Minute Challenge) */}
-        <View
-          style={[
-            styles.dailyPracticeCard,
-            {
-              backgroundColor: themeColors.surfaceCard,
-              borderColor: themeColors.surfaceBorder
-            }
-          ]}
-        >
-          <View style={[styles.dailyIconSquare, { backgroundColor: themeColors.primarySubtle }]}>
-            <Zap size={16} color={themeColors.primary} />
+          <View style={[styles.dailyIconSquare, { backgroundColor: colors.primarySubtle }]}>
+            <Zap size={18} color={colors.primary} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.dailyPretitle, { color: themeColors.textSecondary }]}>
-              TODAY'S 1-MINUTE DRILL
-            </Text>
-            <Text style={[styles.dailyHeadline, { color: themeColors.textPrimary }]}>
-              Hold your position when challenged with budget caps.
+            <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>TODAY'S CHALLENGE</Text>
+            <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
+              {puzzleTitle || 'Loading today\'s challenge...'}
             </Text>
           </View>
-          <TouchableOpacity
-            style={[styles.dailyStartBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
-            onPress={() => navigation.navigate('Roleplay', { scenario: scenarios[0] })}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.dailyStartBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
-              Start →
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
+            <Play size={13} color={colors.primary} fill={colors.primary} />
+          </View>
+        </TouchableOpacity>
 
-        {/* 8. SUBTLE TRIAL STATUS FOOTNOTE */}
+        {/* 4b. YOUR JOURNEY — the unified animated roadmap of lessons + story scenes */}
+        <TouchableOpacity
+          style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+          onPress={() => navigation.navigate('Learn')}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.purple.subtle }]}>
+            <Sparkles size={18} color={colors.cardCategories.purple.solid} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>
+              {journey.title.toUpperCase()} · {journeyCompletedCount}/{journey.nodes.length}
+            </Text>
+            <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
+              {journeyCompletedCount === 0 ? journey.tagline : 'Continue where you left off'}
+            </Text>
+          </View>
+          <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
+            <Play size={13} color={colors.cardCategories.purple.solid} fill={colors.cardCategories.purple.solid} />
+          </View>
+        </TouchableOpacity>
+
+        {/* 4c. TERM OF THE DAY — one persona-relevant term, meaning, and why
+            it matters, kept intentionally short (Miller's Law: one bite-sized
+            idea, not a mini-article) */}
+        {wordOfDay && (
+          <TouchableOpacity
+            style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+            onPress={() => setShowWordModal(true)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.teal.subtle }]}>
+              <BookOpen size={18} color={colors.cardCategories.teal.solid} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>TERM OF THE DAY</Text>
+              <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
+                {wordOfDay.term}
+              </Text>
+            </View>
+            <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
+              <Play size={13} color={colors.cardCategories.teal.solid} fill={colors.cardCategories.teal.solid} />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* 6. TRIAL FOOTNOTE */}
         {isFreeTrial && (
           <TouchableOpacity
             style={styles.trialFootnote}
             onPress={() => setIsPaywallVisible(true)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.trialFootnoteText, { color: themeColors.textSecondary }]}>
-              {remainingRehearsals} free rehearsals remaining ·{' '}
-              <Text style={{ color: isDark ? '#C8AA6A' : '#173D2C', fontWeight: '700' }}>
-                Explore Rehearse Plus →
-              </Text>
+            <Text style={[styles.trialFootnoteText, { color: colors.textSecondary }]}>
+              {remainingRehearsals} free {remainingRehearsals === 1 ? 'rehearsal' : 'rehearsals'} remaining ·{' '}
+              <Text style={{ color: colors.primary, fontWeight: '700' }}>Go Pro →</Text>
             </Text>
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      <WordOfDayModal
+        visible={showWordModal}
+        word={wordOfDay}
+        roleLabel={user.role}
+        onClose={() => setShowWordModal(false)}
+      />
     </View>
   );
 };
@@ -493,405 +322,222 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  brandTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 1.5
-  },
-  headerRightIndicators: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8
-  },
-  streakText: {
-    fontSize: 11,
-    fontWeight: '700'
-  },
-  xpBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8
-  },
-  xpText: {
-    fontSize: 11,
-    fontWeight: '700'
-  },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 20,
     paddingBottom: 110
   },
-  heroSection: {
-    borderRadius: 18,
-    borderWidth: 1.2,
-    padding: 18,
-    marginBottom: 16
-  },
-  heroHeaderRow: {
+  greetingRow: {
     flexDirection: 'row',
-    marginBottom: 8
-  },
-  heroPill: {
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 4
+    marginBottom: 20
   },
-  heroPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.6
-  },
-  heroHeading: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    lineHeight: 28,
-    marginBottom: 6
-  },
-  heroSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 14
-  },
-  composerBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 14
-  },
-  composerInput: {
+  greetingHello: {
     fontSize: 14,
-    lineHeight: 20,
-    minHeight: 56,
-    textAlignVertical: 'top',
-    marginBottom: 10
+    fontWeight: '500',
+    marginBottom: 2
   },
-  chipsScroll: {
-    gap: 6
+  greetingName: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5
   },
-  promptChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1
-  },
-  promptChipText: {
-    fontSize: 11.5
-  },
-  primaryHeroBtn: {
-    height: 48,
-    borderRadius: 12,
-    flexDirection: 'row',
+  bellButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  primaryHeroBtnText: {
-    fontSize: 14.5,
-    fontWeight: '700'
+  bellDot: {
+    position: 'absolute',
+    top: 8,
+    right: 9,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    borderWidth: 1.5
   },
-  secondaryHeroLink: {
-    alignItems: 'center',
-    marginTop: 12
+  quoteCard: {
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginBottom: 20
   },
-  secondaryHeroLinkText: {
-    fontSize: 12
-  },
-  pipelineCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 16
-  },
-  pipelineHeader: {
-    marginBottom: 10
-  },
-  pipelineTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase'
-  },
-  threadRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  threadStep: {
-    alignItems: 'center'
-  },
-  threadNode: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4
-  },
-  threadNodeNumber: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FFFFFF'
-  },
-  threadStepLabel: {
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  threadLine: {
-    flex: 1,
-    height: 1.5,
-    marginHorizontal: 6,
-    marginTop: -16
-  },
-  nextMoveCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 16
-  },
-  nextMoveTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  nextMoveTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5,
-    gap: 4
-  },
-  nextMoveTagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5
-  },
-  nextMoveContext: {
-    fontSize: 11
-  },
-  nextMoveHeadline: {
-    fontSize: 14.5,
-    fontWeight: '700',
+  dailyQuote: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontStyle: 'italic',
     lineHeight: 19,
-    marginBottom: 10
+    textAlign: 'center'
   },
-  nextMoveBtn: {
+  streakCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8
-  },
-  nextMoveBtnText: {
-    fontSize: 11.5,
-    fontWeight: '700'
-  },
-  continueCard: {
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 18,
+    borderWidth: 1.5,
     padding: 14,
-    marginBottom: 16
+    marginBottom: 24,
+    gap: 12
   },
-  continueHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  streakIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
-    marginBottom: 6
+    justifyContent: 'center'
   },
-  continueLeft: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  continuePretitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.6
-  },
-  continueBodyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  continueTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 2
-  },
-  continueSub: {
-    fontSize: 11.5,
-    marginBottom: 6
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  progressTrack: {
-    width: 90,
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden'
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2
-  },
-  progressLabel: {
-    fontSize: 10,
-    fontWeight: '600'
-  },
-  resumeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 12
-  },
-  resumeBtnText: {
-    fontSize: 12,
+  streakTitle: {
+    fontSize: 15,
     fontWeight: '700'
   },
-  scenariosSection: {
-    marginBottom: 16
+  streakSubtitle: {
+    fontSize: 12.5,
+    marginTop: 1
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10
+    marginBottom: 12
   },
   sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3
+  },
+  seeAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24
+  },
+  avatarRow: {
+    gap: 12,
+    paddingBottom: 24
+  },
+  avatarCard: {
+    width: 132,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    alignItems: 'center'
+  },
+  avatarCardLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 10,
+    textAlign: 'center'
+  },
+  avatarCardSub: {
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: 'center'
+  },
+  composerCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 18,
+    marginBottom: 20
+  },
+  composerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4
+  },
+  composerHeading: {
     fontSize: 15,
     fontWeight: '700'
   },
-  seeAllLink: {
-    fontSize: 12,
-    fontWeight: '700'
+  composerSubtitle: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    marginBottom: 12
   },
-  scenarioTilesRow: {
-    gap: 10
-  },
-  scenarioTile: {
-    width: 220,
+  composerInputBox: {
     borderRadius: 14,
     borderWidth: 1,
-    padding: 12
-  },
-  tileHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8
-  },
-  categoryTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
-  },
-  categoryTagText: {
-    fontSize: 9,
-    fontWeight: '800'
-  },
-  difficultyTag: {
-    fontSize: 10,
-    fontWeight: '600'
-  },
-  tileTitle: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    lineHeight: 18,
-    marginBottom: 4,
-    minHeight: 36
-  },
-  tileCounterpart: {
-    fontSize: 11.5,
+    padding: 12,
     marginBottom: 10
   },
-  tileFooter: {
+  composerInput: {
+    fontSize: 14,
+    lineHeight: 20,
+    minHeight: 54,
+    textAlignVertical: 'top'
+  },
+  chipsScroll: {
+    gap: 6,
+    paddingBottom: 12
+  },
+  promptChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1
+  },
+  promptChipText: {
+    fontSize: 11.5
+  },
+  primaryBtn: {
+    height: 50,
+    borderRadius: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8
-  },
-  tileTime: {
-    fontSize: 11
-  },
-  tileActionArrow: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  dailyPracticeCard: {
+  primaryBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF'
+  },
+  dailyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     padding: 14,
     marginBottom: 16
   },
   dailyIconSquare: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center'
   },
   dailyPretitle: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.6,
     marginBottom: 2
   },
   dailyHeadline: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    lineHeight: 16
-  },
-  dailyStartBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginLeft: 8
-  },
-  dailyStartBtnText: {
-    fontSize: 11.5,
+    fontSize: 13.5,
     fontWeight: '700'
+  },
+  dailyArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   trialFootnote: {
     alignItems: 'center',
     paddingVertical: 8
   },
   trialFootnoteText: {
-    fontSize: 11
+    fontSize: 12
   }
 });

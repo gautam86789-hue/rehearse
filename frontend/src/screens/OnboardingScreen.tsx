@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,239 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Animated,
+  Easing,
   Platform
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowRight,
   ArrowLeft,
-  Check,
-  Lock,
-  Sliders,
-  Sparkles,
   Shield,
-  Clock,
-  Brain
+  Users,
+  TrendingUp,
+  TrendingDown,
+  GraduationCap,
+  Briefcase,
+  AlertCircle,
+  DollarSign,
+  CloudRain,
+  UserX,
+  Scale,
+  Handshake,
+  UserMinus,
+  MessageCircleWarning,
+  Award,
+  Frown,
+  UserPlus
 } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, RADII } from '../context/ThemeContext';
+import { Audience } from '../types';
+
+interface DreadScenario {
+  id: string;
+  title: string;
+  desc: string;
+  icon: any;
+}
+
+// Step 2's options are entirely driven by Step 1's audience selection — each
+// persona dreads a structurally different conversation, so reusing one
+// generic list (the old behavior) meant most users saw options irrelevant to
+// their actual situation.
+const DREAD_SCENARIOS_BY_AUDIENCE: Record<Audience, DreadScenario[]> = {
+  founders_investors: [
+    {
+      id: 'down-round',
+      title: 'Pitch a down round or valuation cut to investors',
+      desc: 'Deliver hard financial news while keeping investor confidence intact.',
+      icon: TrendingDown
+    },
+    {
+      id: 'cofounder-alignment',
+      title: 'Align with a co-founder on a strategy disagreement',
+      desc: 'Resolve a fundamental disagreement without fracturing the partnership.',
+      icon: Handshake
+    },
+    {
+      id: 'team-layoff',
+      title: 'Deliver a layoff or restructuring update to the team',
+      desc: 'Communicate hard changes with transparency and composure.',
+      icon: UserMinus
+    },
+    {
+      id: 'term-sheet-pushback',
+      title: "Push back on an investor's unreasonable term sheet demand",
+      desc: 'Hold your position on terms without souring the relationship.',
+      icon: Scale
+    },
+    {
+      id: 'runway',
+      title: "Have the 'we're almost out of runway' conversation",
+      desc: 'Level with your team or board about a hard financial reality.',
+      icon: AlertCircle
+    },
+    {
+      id: 'board-pushback',
+      title: 'Defend a decision the board is skeptical of',
+      desc: 'Anchor your reasoning with conviction under pointed scrutiny.',
+      icon: Shield
+    }
+  ],
+  new_managers: [
+    {
+      id: 'feedback',
+      title: 'Give difficult performance feedback',
+      desc: 'Address underperformance directly without damaging morale or trust.',
+      icon: AlertCircle
+    },
+    {
+      id: 'promotion-denial',
+      title: "Tell a report they didn't get the promotion",
+      desc: 'Deliver disappointing news while keeping them motivated and engaged.',
+      icon: Frown
+    },
+    {
+      id: 'manage-up',
+      title: "Push back on your own manager's unrealistic deadline",
+      desc: 'Set a boundary upward without seeming like you\'re not a team player.',
+      icon: Scale
+    },
+    {
+      id: 'team-conflict',
+      title: 'Mediate a conflict between two direct reports',
+      desc: 'De-escalate tension and rebuild working trust between them.',
+      icon: MessageCircleWarning
+    },
+    {
+      id: 'report-layoff',
+      title: 'Deliver a layoff or role elimination to someone on your team',
+      desc: 'Communicate the hardest news a manager has to give, with empathy.',
+      icon: UserMinus
+    },
+    {
+      id: 'boundary-report',
+      title: 'Set a boundary with a report who is overstepping',
+      desc: 'Reassert scope and expectations without damaging the relationship.',
+      icon: Shield
+    }
+  ],
+  mba_students: [
+    {
+      id: 'case-pushback',
+      title: 'Push back in a case interview when you disagree with feedback',
+      desc: 'Defend your reasoning to an interviewer without sounding defensive.',
+      icon: Scale
+    },
+    {
+      id: 'offer-negotiation',
+      title: 'Negotiate a job offer or signing bonus',
+      desc: 'Anchor your ask with market data and calm conviction.',
+      icon: DollarSign
+    },
+    {
+      id: 'networking-stall',
+      title: 'Navigate a networking chat that is going nowhere',
+      desc: 'Redirect a stalled conversation toward a concrete next step.',
+      icon: Users
+    },
+    {
+      id: 'group-project-conflict',
+      title: 'Handle a heated disagreement during a group project',
+      desc: 'Disarm tension and get the team realigned on a shared deliverable.',
+      icon: MessageCircleWarning
+    },
+    {
+      id: 'rejection-feedback',
+      title: 'Ask a recruiter for honest feedback after a rejection',
+      desc: 'Get candid, useful input without sounding bitter or defensive.',
+      icon: Frown
+    },
+    {
+      id: 'decline-offer',
+      title: 'Decline a competing offer gracefully after committing elsewhere',
+      desc: 'Preserve the relationship while closing the door firmly.',
+      icon: Handshake
+    }
+  ],
+  professionals: [
+    {
+      id: 'boundary',
+      title: 'Set a firm boundary on scope or hours',
+      desc: 'Say no clearly without sounding defensive or disengaged from outcomes.',
+      icon: Shield
+    },
+    {
+      id: 'compensation',
+      title: 'Ask for a compensation increase',
+      desc: 'Anchor your market value with calm, evidence-backed conviction.',
+      icon: DollarSign
+    },
+    {
+      id: 'peer-friction',
+      title: 'Handle an escalating disagreement with a peer',
+      desc: 'Disarm tension and establish collaborative alignment on shared deliverables.',
+      icon: Users
+    },
+    {
+      id: 'bad-news',
+      title: 'Deliver disappointing or bad news',
+      desc: 'Communicate changes with deep empathy and poised accountability.',
+      icon: CloudRain
+    },
+    {
+      id: 'client-pushback',
+      title: 'Push back against an unreasonable client or leader',
+      desc: 'De-escalate unrealistic deadlines while holding your ground gracefully.',
+      icon: UserX
+    },
+    {
+      id: 'peer-underperformance',
+      title: 'Address underperformance from a peer without authority over them',
+      desc: 'Raise the issue directly without formal leverage or overstepping.',
+      icon: Award
+    }
+  ],
+  new_hires: [
+    {
+      id: 'clarify-expectations',
+      title: "Ask your new manager what 'good' actually looks like",
+      desc: 'Get concrete expectations early instead of guessing for months.',
+      icon: Scale
+    },
+    {
+      id: 'salary-negotiation',
+      title: 'Negotiate a starting salary or signing bonus',
+      desc: 'Anchor your ask with market data without risking the offer.',
+      icon: DollarSign
+    },
+    {
+      id: 'admit-not-knowing',
+      title: "Admit you don't understand something without sounding incompetent",
+      desc: 'Ask a clarifying question in a way that builds credibility, not doubt.',
+      icon: MessageCircleWarning
+    },
+    {
+      id: 'overwhelmed-workload',
+      title: 'Tell your manager you\'re overwhelmed in your first month',
+      desc: 'Raise a capacity concern early without looking like you can\'t handle the job.',
+      icon: AlertCircle
+    },
+    {
+      id: 'rough-first-review',
+      title: 'Respond to critical feedback in your first performance review',
+      desc: 'Stay composed and turn early criticism into a concrete improvement plan.',
+      icon: Frown
+    },
+    {
+      id: 'team-clique',
+      title: "Navigate a team that hasn't quite let you in yet",
+      desc: 'Build trust with a tenured team without forcing it or going quiet.',
+      icon: Users
+    }
+  ]
+};
 
 export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
   navigation,
@@ -29,102 +246,88 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { completeOnboarding } = useApp();
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
 
   // Exactly 2 Onboarding Steps:
   // Step 1: What do you do? (Select Role)
   // Step 2: What conversation are you dreading? (Select Friction Scenario)
   const [step, setStep] = useState<1 | 2>(1);
-  const [selectedRole, setSelectedRole] = useState('Executive & Founder');
-  const [selectedDread, setSelectedDread] = useState('Give difficult performance feedback');
+  const [selectedAudience, setSelectedAudience] = useState<Audience>('founders_investors');
+  const [selectedDreadId, setSelectedDreadId] = useState(
+    DREAD_SCENARIOS_BY_AUDIENCE.founders_investors[0].id
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 5 Executive Role options directly matching Stitch Screen 'Onboarding — Select Role'
-  const roles = [
+  // Softer step transition — a brief fade+rise instead of the flat instant
+  // swap, so picking a role and moving on feels like one continuous
+  // conversation rather than two separate screens.
+  const stepAnim = useRef(new Animated.Value(1)).current;
+  const animateStepIn = () => {
+    stepAnim.setValue(0);
+    Animated.timing(stepAnim, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  };
+  const goToStep = (next: 1 | 2) => {
+    setStep(next);
+    animateStepIn();
+  };
+
+  // The 4 audience segments Rehearse targets — this selection drives which
+  // scenarios, Learn articles, and challenges get surfaced everywhere else
+  // in the app (see Audience in types/index.ts).
+  const roles: { id: Audience; title: string; desc: string; icon: any }[] = [
     {
-      id: 'exec_founder',
-      title: 'Executive & Founder',
-      desc: 'Board meetings, investor negotiations, strategic alignment'
+      id: 'founders_investors',
+      title: 'Founder / Investor',
+      desc: 'Fundraising, board updates, co-founder alignment',
+      icon: TrendingUp
     },
     {
-      id: 'manager_director',
-      title: 'People Manager / Director',
-      desc: 'Performance reviews, difficult feedback, conflict mediation'
+      id: 'new_managers',
+      title: 'New Manager',
+      desc: 'Feedback, delegation, managing up and down',
+      icon: Users
     },
     {
-      id: 'senior_ic_lead',
-      title: 'Senior Individual Contributor / Lead',
-      desc: 'Scope boundaries, peer disputes, advocating for promotion'
+      id: 'mba_students',
+      title: 'MBA Student',
+      desc: 'Case interviews, networking, negotiation fundamentals',
+      icon: GraduationCap
     },
     {
-      id: 'mba_graduate',
-      title: 'MBA Candidate / Graduate',
-      desc: 'High-stakes interviews, case pitches, salary negotiation'
+      id: 'professionals',
+      title: 'Working Professional',
+      desc: 'Workplace conflict, boundaries, career conversations',
+      icon: Briefcase
     },
     {
-      id: 'client_partner',
-      title: 'Client Partner / Consultant',
-      desc: 'Managing scope creep, fee defense, pushback on deadlines'
+      id: 'new_hires',
+      title: 'New Hire / Job Seeker',
+      desc: 'Interview prep, first 90 days, negotiating an offer',
+      icon: UserPlus
     }
   ];
 
-  // 6 Friction Scenarios directly matching Stitch Screen 'Onboarding — Conversation Dreaded'
-  const dreadScenarios = [
-    {
-      id: 'feedback',
-      title: 'Give difficult performance feedback',
-      tag: 'High Leverage',
-      tagBg: isDark ? '#1C3128' : '#EDEEEC',
-      tagColor: isDark ? '#A2C9B8' : '#424845',
-      desc: 'Address underperformance directly without damaging morale or team trust.'
-    },
-    {
-      id: 'compensation',
-      title: 'Ask for a compensation increase',
-      tag: 'Market Power',
-      tagBg: isDark ? '#3D1C08' : '#FFDBCA',
-      tagColor: isDark ? '#FFB690' : '#783200',
-      desc: 'Anchor your market value with calm, evidence-backed conviction.'
-    },
-    {
-      id: 'boundary',
-      title: 'Set a firm boundary on scope or hours',
-      tag: 'Self-Command',
-      tagBg: isDark ? '#1C3128' : '#EDEEEC',
-      tagColor: isDark ? '#A2C9B8' : '#424845',
-      desc: 'Say no clearly without sounding defensive or disengaged from outcomes.'
-    },
-    {
-      id: 'peer-friction',
-      title: 'Handle an escalating disagreement with a peer',
-      tag: 'Alignment',
-      tagBg: isDark ? '#1F2E2B' : '#D7E6DE',
-      tagColor: isDark ? '#A2C9B8' : '#3C4A44',
-      desc: 'Disarm tension and establish collaborative alignment on shared deliverables.'
-    },
-    {
-      id: 'bad-news',
-      title: 'Deliver disappointing or bad news',
-      tag: 'Leadership',
-      tagBg: isDark ? '#1C3128' : '#EDEEEC',
-      tagColor: isDark ? '#A2C9B8' : '#424845',
-      desc: 'Communicate organizational changes with deep empathy and poised accountability.'
-    },
-    {
-      id: 'client-pushback',
-      title: 'Push back against an unreasonable client or leader',
-      tag: 'Equanimity',
-      tagBg: isDark ? '#1C3128' : '#EDEEEC',
-      tagColor: isDark ? '#A2C9B8' : '#424845',
-      desc: 'De-escalate unrealistic deadlines while holding your ground gracefully.'
-    }
-  ];
+  // Step 2's options are entirely derived from Step 1's audience selection.
+  const dreadScenarios = DREAD_SCENARIOS_BY_AUDIENCE[selectedAudience];
+
+  const handleSelectAudience = (audience: Audience) => {
+    setSelectedAudience(audience);
+    // Reset to that persona's first option so Step 2 never shows a stale
+    // selection highlighted from a previously-chosen persona's list.
+    setSelectedDreadId(DREAD_SCENARIOS_BY_AUDIENCE[audience][0].id);
+  };
 
   const handleFinish = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await completeOnboarding(selectedRole, 'Executive', selectedDread);
+      const roleTitle = roles.find((r) => r.id === selectedAudience)?.title || 'Working Professional';
+      const dreadTitle =
+        dreadScenarios.find((d) => d.id === selectedDreadId)?.title || dreadScenarios[0].title;
+      await completeOnboarding(roleTitle, 'Executive', dreadTitle, selectedAudience);
+      // No explicit navigation here: completing onboarding flips isOnboarded/
+      // isAuthenticated in context, which causes AppNavigator's top-level branch
+      // to swap to the main app screen set (see AppNavigator.tsx).
     } catch (e) {
       console.warn('Onboarding error:', e);
     } finally {
@@ -134,7 +337,7 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
 
   const handleBack = () => {
     if (step === 2) {
-      setStep(1);
+      goToStep(1);
     } else {
       // Step 1: Navigates cleanly back to the Welcome Screen
       if (navigation?.goBack) {
@@ -146,7 +349,7 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#08130E' : '#FAF7F0' }]}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
@@ -161,363 +364,232 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
         {/* STEP 1: WHAT DO YOU DO? (Step 1 of 2) */}
         {/* ============================================================ */}
         {step === 1 && (
-          <View style={styles.stepBody}>
-            {/* Step Tracker Header */}
-            <View style={styles.trackerHeader}>
+          <Animated.View
+            style={[
+              styles.stepBody,
+              // opacity intentionally left alone (not driven by stepAnim) —
+              // an interrupted/misbehaving animation on a value gating
+              // opacity can leave a whole step invisible; translateY alone
+              // still reads as a soft rise-in without that failure mode.
+              { transform: [{ translateY: stepAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }
+            ]}
+          >
+            {/* Step Tracker Header — chevron left, dots center, fraction right */}
+            <View style={styles.trackerHeaderV2}>
               <TouchableOpacity
                 style={styles.backBtn}
                 onPress={handleBack}
                 activeOpacity={0.7}
+                hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
               >
-                <ArrowLeft size={18} color={themeColors.textPrimary} />
+                <ArrowLeft size={20} color={themeColors.textPrimary} />
               </TouchableOpacity>
 
-              <View style={styles.trackerCenter}>
-                <Text style={[styles.trackerLabel, { color: themeColors.textSecondary }]}>
-                  ONBOARDING
-                </Text>
-                <Text style={[styles.trackerDot, { color: themeColors.surfaceBorder }]}>
-                  •
-                </Text>
-                <Text style={[styles.trackerStep, { color: themeColors.textPrimary }]}>
-                  Step 1 of 2
-                </Text>
+              <View style={styles.dotsRow}>
+                <View style={[styles.progressDot, { backgroundColor: themeColors.primary }]} />
+                <View style={[styles.progressDot, { backgroundColor: themeColors.surfaceBorder }]} />
               </View>
 
-              {/* Segmented Step Pills */}
-              <View style={styles.stepPills}>
-                <View
-                  style={[
-                    styles.stepPill,
-                    { backgroundColor: isDark ? '#D0E8DE' : '#162A24' }
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.stepPill,
-                    { backgroundColor: isDark ? '#2A3631' : '#E1E3E1' }
-                  ]}
-                />
-              </View>
+              <Text style={[styles.fractionText, { color: themeColors.textMuted }]}>1/2</Text>
             </View>
 
             <View style={styles.narrativeHeader}>
-              <Text style={[styles.stepTitle, { color: themeColors.textPrimary }]}>
-                What do you do?
+              <Text style={[styles.stepTitleV2, { color: themeColors.textPrimary }]}>
+                What brings you here?
               </Text>
               <Text style={[styles.stepSubtitle, { color: themeColors.textSecondary }]}>
-                We tailor scenario tension, counterpart vocabulary, and stakes to your day-to-day context.
+                Choose your primary goal to get personalized scenarios.
               </Text>
             </View>
 
             {/* Role Options */}
             <View style={styles.optionsList}>
               {roles.map((item) => {
-                const isSelected = selectedRole === item.title;
+                const isSelected = selectedAudience === item.id;
+                const Icon = item.icon;
                 return (
                   <TouchableOpacity
                     key={item.id}
                     style={[
-                      styles.card,
+                      styles.rowCard,
+                      elevation.sm,
                       {
                         backgroundColor: isSelected
-                          ? isDark
-                            ? '#1A2924'
-                            : '#FFFFFF'
-                          : isDark
-                          ? '#101B17'
-                          : '#F9FAF8',
+                          ? themeColors.primarySubtle
+                          : themeColors.surfaceCard,
                         borderColor: isSelected
-                          ? isDark
-                            ? '#4E635B'
-                            : '#162A24'
+                          ? themeColors.primary
                           : themeColors.surfaceBorder
-                      },
-                      isSelected && styles.cardSelectedShadow
+                      }
                     ]}
-                    onPress={() => setSelectedRole(item.title)}
+                    onPress={() => handleSelectAudience(item.id)}
                     activeOpacity={0.85}
                   >
+                    <View style={[styles.rowIconSquare, { backgroundColor: themeColors.primarySubtle }]}>
+                      <Icon size={18} color={themeColors.primary} />
+                    </View>
                     <View style={styles.cardContent}>
-                      <Text
-                        style={[
-                          styles.roleTitle,
-                          { color: themeColors.textPrimary },
-                          isSelected && { fontWeight: '600' }
-                        ]}
-                      >
+                      <Text style={[styles.roleTitle, { color: themeColors.textPrimary }]}>
                         {item.title}
                       </Text>
                       <Text style={[styles.roleDesc, { color: themeColors.textSecondary }]}>
                         {item.desc}
                       </Text>
                     </View>
-
-                    {/* Radio Indicator */}
-                    <View
-                      style={[
-                        styles.radioIndicator,
-                        {
-                          backgroundColor: isSelected
-                            ? isDark
-                              ? '#D0E8DE'
-                              : '#162A24'
-                            : isDark
-                            ? '#24342E'
-                            : '#E1E3E1'
-                        }
-                      ]}
-                    >
-                      {isSelected && (
-                        <View
-                          style={[
-                            styles.radioInnerDot,
-                            { backgroundColor: isDark ? '#021510' : '#FFFFFF' }
-                          ]}
-                        />
-                      )}
-                    </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            {/* Ambient Micro-Feedback Prompt */}
-            <View
-              style={[
-                styles.ambientPrompt,
-                {
-                  backgroundColor: isDark ? '#14211D' : '#F3F4F2',
-                  borderColor: themeColors.surfaceBorder
-                }
-              ]}
-            >
-              <Sliders size={16} color={isDark ? '#A2C9B8' : '#5A6862'} />
-              <Text style={[styles.ambientPromptText, { color: themeColors.textSecondary }]}>
-                Counterpart resistance dials automatically adjust after selection.
-              </Text>
-            </View>
+            {/* Live acknowledgment — reflects the pick back before moving on,
+                so choosing a role reads as being heard, not just a form field. */}
+            <Text style={[styles.connectionLine, { color: themeColors.textSecondary }]}>
+              Got it — we'll build around <Text style={{ color: themeColors.primary, fontWeight: '700' }}>{roles.find((r) => r.id === selectedAudience)?.desc.toLowerCase()}</Text>.
+            </Text>
 
             {/* CTA */}
             <View style={styles.ctaWrapper}>
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  { backgroundColor: isDark ? '#D0E8DE' : '#162A24' }
+                  { backgroundColor: themeColors.primary }
                 ]}
-                onPress={() => setStep(2)}
+                onPress={() => goToStep(2)}
                 activeOpacity={0.88}
               >
                 <Text
                   style={[
                     styles.primaryButtonText,
-                    { color: isDark ? '#021510' : '#FFFFFF' }
+                    { color: themeColors.textInverse }
                   ]}
                 >
                   Continue
                 </Text>
-                <ArrowRight size={18} color={isDark ? '#021510' : '#FFFFFF'} />
+                <ArrowRight size={18} color={themeColors.textInverse} />
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {/* ============================================================ */}
         {/* STEP 2: CONVERSATION DREADED (Step 2 of 2) */}
         {/* ============================================================ */}
         {step === 2 && (
-          <View style={styles.stepBody}>
-            {/* Step Tracker Header */}
-            <View style={styles.trackerHeader}>
+          <Animated.View
+            style={[
+              styles.stepBody,
+              // opacity intentionally left alone (not driven by stepAnim) —
+              // an interrupted/misbehaving animation on a value gating
+              // opacity can leave a whole step invisible; translateY alone
+              // still reads as a soft rise-in without that failure mode.
+              { transform: [{ translateY: stepAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }
+            ]}
+          >
+            {/* Step Tracker Header — chevron left, dots center, fraction right */}
+            <View style={styles.trackerHeaderV2}>
               <TouchableOpacity
                 style={styles.backBtn}
                 onPress={handleBack}
                 activeOpacity={0.7}
+                hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
               >
-                <ArrowLeft size={18} color={themeColors.textPrimary} />
+                <ArrowLeft size={20} color={themeColors.textPrimary} />
               </TouchableOpacity>
 
-              <View style={styles.trackerCenter}>
-                <Text style={[styles.trackerLabel, { color: themeColors.textSecondary }]}>
-                  ONBOARDING
-                </Text>
-                <Text style={[styles.trackerDot, { color: themeColors.surfaceBorder }]}>
-                  •
-                </Text>
-                <Text style={[styles.trackerStep, { color: themeColors.textPrimary }]}>
-                  Step 2 of 2
-                </Text>
+              <View style={styles.dotsRow}>
+                <View style={[styles.progressDot, { backgroundColor: themeColors.primary }]} />
+                <View style={[styles.progressDot, { backgroundColor: themeColors.primary }]} />
               </View>
 
-              {/* Segmented Step Pills */}
-              <View style={styles.stepPills}>
-                <View
-                  style={[
-                    styles.stepPill,
-                    { backgroundColor: isDark ? '#D0E8DE' : '#162A24' }
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.stepPill,
-                    { backgroundColor: isDark ? '#D0E8DE' : '#162A24' }
-                  ]}
-                />
-              </View>
+              <Text style={[styles.fractionText, { color: themeColors.textMuted }]}>2/2</Text>
             </View>
 
-            {/* Executive Crucible Card Banner */}
-            <View
-              style={[
-                styles.crucibleBanner,
-                {
-                  backgroundColor: isDark ? '#14231E' : '#F3F4F2',
-                  borderColor: themeColors.surfaceBorder
-                }
-              ]}
-            >
-              <View style={styles.crucibleHeaderRow}>
-                <Brain size={16} color="#C96A32" />
-                <Text style={styles.crucibleTag}>EXECUTIVE CRUCIBLE</Text>
-              </View>
-              <Text style={[styles.crucibleTitle, { color: themeColors.textPrimary }]}>
+            <View style={styles.narrativeHeader}>
+              <Text style={[styles.stepTitleV2, { color: themeColors.textPrimary }]}>
                 What conversation are you dreading?
               </Text>
-              <Text style={[styles.crucibleDesc, { color: themeColors.textSecondary }]}>
+              <Text style={[styles.personaTag, { color: themeColors.primary }]}>
+                Tailored to {roles.find((r) => r.id === selectedAudience)?.title}
+              </Text>
+              <Text style={[styles.stepSubtitle, { color: themeColors.textSecondary }]}>
                 Choose the situation creating the most friction right now.
               </Text>
             </View>
 
-            {/* Scenario Friction Cards */}
+            {/* Scenario Friction Cards — same rowCard pattern as Step 1, but the
+                options themselves are drawn from the persona chosen in Step 1 */}
             <View style={styles.optionsList}>
               {dreadScenarios.map((item) => {
-                const isSelected = selectedDread === item.title;
+                const isSelected = selectedDreadId === item.id;
+                const Icon = item.icon;
                 return (
                   <TouchableOpacity
                     key={item.id}
                     style={[
-                      styles.card,
+                      styles.rowCard,
+                      elevation.sm,
                       {
                         backgroundColor: isSelected
-                          ? isDark
-                            ? '#1A2924'
-                            : '#FFFFFF'
-                          : isDark
-                          ? '#101B17'
-                          : '#F9FAF8',
+                          ? themeColors.primarySubtle
+                          : themeColors.surfaceCard,
                         borderColor: isSelected
-                          ? isDark
-                            ? '#4E635B'
-                            : '#162A24'
+                          ? themeColors.primary
                           : themeColors.surfaceBorder
-                      },
-                      isSelected && styles.cardSelectedShadow
+                      }
                     ]}
-                    onPress={() => setSelectedDread(item.title)}
+                    onPress={() => setSelectedDreadId(item.id)}
                     activeOpacity={0.85}
                   >
+                    <View style={[styles.rowIconSquare, { backgroundColor: themeColors.primarySubtle }]}>
+                      <Icon size={18} color={themeColors.primary} />
+                    </View>
                     <View style={styles.cardContent}>
-                      <View style={styles.cardHeaderRow}>
-                        <Text
-                          style={[
-                            styles.dreadTitle,
-                            { color: themeColors.textPrimary },
-                            isSelected && { fontWeight: '600' }
-                          ]}
-                        >
-                          {item.title}
-                        </Text>
-                        <View style={[styles.frictionTag, { backgroundColor: item.tagBg }]}>
-                          <Text style={[styles.frictionTagText, { color: item.tagColor }]}>
-                            {item.tag}
-                          </Text>
-                        </View>
-                      </View>
+                      <Text style={[styles.roleTitle, { color: themeColors.textPrimary }]}>
+                        {item.title}
+                      </Text>
                       <Text style={[styles.roleDesc, { color: themeColors.textSecondary }]}>
                         {item.desc}
                       </Text>
-                    </View>
-
-                    {/* Check Pill */}
-                    <View
-                      style={[
-                        styles.checkPill,
-                        {
-                          backgroundColor: isSelected
-                            ? isDark
-                              ? '#D0E8DE'
-                              : '#162A24'
-                            : isDark
-                            ? '#24342E'
-                            : '#E1E3E1'
-                        }
-                      ]}
-                    >
-                      {isSelected && (
-                        <Check
-                          size={13}
-                          color={isDark ? '#021510' : '#FFFFFF'}
-                          strokeWidth={2.5}
-                        />
-                      )}
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            {/* Security Note */}
-            <View
-              style={[
-                styles.ambientPrompt,
-                {
-                  backgroundColor: isDark ? '#14211D' : '#F3F4F2',
-                  borderColor: themeColors.surfaceBorder
-                }
-              ]}
-            >
-              <Lock size={15} color={isDark ? '#A2C9B8' : '#5A6862'} />
-              <Text style={[styles.ambientPromptText, { color: themeColors.textSecondary }]}>
-                Your rehearsals are end-to-end encrypted and evaluated in real-time on-device.
-              </Text>
-            </View>
+            {/* Live acknowledgment for step 2, same pattern as step 1. */}
+            <Text style={[styles.connectionLine, { color: themeColors.textSecondary }]}>
+              We'll start there — <Text style={{ color: themeColors.primary, fontWeight: '700' }}>{dreadScenarios.find((d) => d.id === selectedDreadId)?.desc.toLowerCase()}</Text>
+            </Text>
 
             {/* CTA */}
             <View style={styles.ctaWrapper}>
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  { backgroundColor: isDark ? '#D0E8DE' : '#162A24' }
+                  { backgroundColor: themeColors.primary }
                 ]}
                 onPress={handleFinish}
                 disabled={isSubmitting}
                 activeOpacity={0.88}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color={isDark ? '#021510' : '#FFFFFF'} />
+                  <ActivityIndicator color={themeColors.textInverse} />
                 ) : (
                   <>
                     <Text
                       style={[
                         styles.primaryButtonText,
-                        { color: isDark ? '#021510' : '#FFFFFF' }
+                        { color: themeColors.textInverse }
                       ]}
                     >
                       Continue to Rehearsal Setup
                     </Text>
-                    <ArrowRight size={18} color={isDark ? '#021510' : '#FFFFFF'} />
+                    <ArrowRight size={18} color={themeColors.textInverse} />
                   </>
                 )}
               </TouchableOpacity>
-
-              <View style={styles.timeEstimateRow}>
-                <Clock size={12} color={themeColors.textMuted} />
-                <Text style={[styles.timeEstimateText, { color: themeColors.textMuted }]}>
-                  Estimated setup: 90 seconds
-                </Text>
-              </View>
             </View>
-          </View>
+          </Animated.View>
         )}
       </ScrollView>
     </View>
@@ -542,6 +614,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20
+  },
+  trackerHeaderV2: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 6
+  },
+  progressDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5
+  },
+  fractionText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  stepTitleV2: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    marginBottom: 8
+  },
+  rowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: RADII.lg,
+    borderWidth: 1.5
+  },
+  rowIconSquare: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14
   },
   backBtn: {
     padding: 6,
@@ -589,6 +701,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '400'
   },
+  personaTag: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    marginBottom: 6
+  },
   crucibleBanner: {
     padding: 16,
     borderRadius: 14,
@@ -604,8 +722,7 @@ const styles = StyleSheet.create({
   crucibleTag: {
     fontSize: 10.5,
     fontWeight: '700',
-    letterSpacing: 1,
-    color: '#C96A32'
+    letterSpacing: 1
   },
   crucibleTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
@@ -622,6 +739,11 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 16
   },
+  connectionLine: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 18
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -631,11 +753,11 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   cardSelectedShadow: {
-    shadowColor: '#162A24',
+    shadowColor: '#5B5FEF',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
-    elevation: 2
+    elevation: 0
   },
   cardContent: {
     flex: 1,
@@ -717,11 +839,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#162A24',
+    shadowColor: '#5B5FEF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
-    elevation: 3
+    elevation: 0
   },
   primaryButtonText: {
     fontSize: 15,

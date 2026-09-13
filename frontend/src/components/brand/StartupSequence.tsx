@@ -14,28 +14,27 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AtmosphereGlow } from './AtmosphereGlow';
 import { ConversationSignal } from './ConversationSignal';
 import { BrandWordmark } from './BrandWordmark';
-import { CalibrationStatus } from './CalibrationStatus';
 import { useTheme } from '../../context/ThemeContext';
 
 interface StartupSequenceProps {
   onFinish: () => void;
-  minDuration?: number; // default: 4600ms
+  minDuration?: number; // default: 1100ms — a brief brand flash, not a loading narrative
 }
 
+// A quick, clean brand reveal: logo + wordmark, then a pure crossfade into
+// whatever screen sits underneath (Welcome for new users, Home for returning
+// ones). No fake multi-phase "AI calibration" progress narrative — that read
+// as a stuck loading screen on every single app open.
 export const StartupSequence: React.FC<StartupSequenceProps> = ({
   onFinish,
-  minDuration = 4800
+  minDuration = 1100
 }) => {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { colors, accentColor, isDark } = useTheme();
+  const { colors } = useTheme();
   const [reducedMotion, setReducedMotion] = useState(false);
 
   const containerOpacity = useRef(new Animated.Value(1)).current;
-  const containerScale = useRef(new Animated.Value(1)).current;
-
-  // Phase index: 0 = Acoustic Field, 1 = Cognitive Mapping, 2 = Calibrating Persona, 3 = Synthesis Complete
-  const [phaseIndex, setPhaseIndex] = useState(0);
   const isExiting = useRef(false);
 
   useEffect(() => {
@@ -43,44 +42,20 @@ export const StartupSequence: React.FC<StartupSequenceProps> = ({
       .then((enabled) => setReducedMotion(enabled))
       .catch(() => {});
 
-    if (reducedMotion) {
-      setPhaseIndex(3);
-      const t = setTimeout(() => handleFinish(), 1200);
-      return () => clearTimeout(t);
-    }
-
-    // Step-by-step synchronized phase timeline
-    const t1 = setTimeout(() => setPhaseIndex(1), 1100);
-    const t2 = setTimeout(() => setPhaseIndex(2), 2300);
-    const t3 = setTimeout(() => setPhaseIndex(3), 3500);
-    const t4 = setTimeout(() => handleFinish(), minDuration);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
+    const t = setTimeout(() => handleFinish(), reducedMotion ? 300 : minDuration);
+    return () => clearTimeout(t);
   }, [reducedMotion, minDuration]);
 
   const handleFinish = () => {
     if (isExiting.current) return;
     isExiting.current = true;
 
-    Animated.parallel([
-      Animated.timing(containerOpacity, {
-        toValue: 0,
-        duration: 450,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true
-      }),
-      Animated.timing(containerScale, {
-        toValue: 1.04,
-        duration: 450,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true
-      })
-    ]).start(() => {
+    Animated.timing(containerOpacity, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true
+    }).start(() => {
       onFinish();
     });
   };
@@ -91,8 +66,7 @@ export const StartupSequence: React.FC<StartupSequenceProps> = ({
         styles.container,
         {
           backgroundColor: colors.background,
-          opacity: containerOpacity,
-          transform: [{ scale: containerScale }]
+          opacity: containerOpacity
         }
       ]}
     >
@@ -117,21 +91,14 @@ export const StartupSequence: React.FC<StartupSequenceProps> = ({
           {/* Top buffer */}
           <View style={styles.topBuffer} />
 
-          {/* 3. Hero Orbital System & Brand Stack */}
+          {/* 3. Hero Orbital System & Brand Stack — logo + name, nothing else */}
           <View style={styles.heroSection}>
             <ConversationSignal reducedMotion={reducedMotion} />
             <BrandWordmark reducedMotion={reducedMotion} />
-            <CalibrationStatus
-              phaseIndex={phaseIndex}
-              reducedMotion={reducedMotion}
-            />
           </View>
 
           {/* 4. Bottom Ambient Polish */}
-          <View style={styles.bottomPolish}>
-            <View style={[styles.bottomNodeDot, { backgroundColor: accentColor }]} />
-            <View style={[styles.homeBar, { backgroundColor: isDark ? 'rgba(243, 239, 229, 0.2)' : 'rgba(15, 23, 19, 0.2)' }]} />
-          </View>
+          <View style={styles.bottomPolish} />
         </View>
       </TouchableOpacity>
     </Animated.View>

@@ -59,7 +59,8 @@ export class GamificationService {
     // Remaining free trials count
     const remainingFree = Math.max(0, user.subscription.rehearsalsRemaining - 1);
 
-    // Badge triggers
+    // Badge triggers — checked in priority order, one badge per session so
+    // each unlock gets its own celebration moment rather than stacking.
     let badgeUnlocked: GamificationUpdateResult['badgeUnlocked'] = undefined;
     if (totalRehearsals === 1) {
       badgeUnlocked = {
@@ -75,11 +76,46 @@ export class GamificationService {
         description: 'Maintained a 3-day hard conversation streak.',
         icon: 'award'
       };
+    } else if (newStreak === 7 && streakExtended) {
+      badgeUnlocked = {
+        id: 'badge_7day_streak',
+        title: 'One Week Strong',
+        description: 'A full 7-day rehearsal streak — this is becoming a habit.',
+        icon: 'flame'
+      };
+    } else if (newStreak === 30 && streakExtended) {
+      badgeUnlocked = {
+        id: 'badge_30day_streak',
+        title: 'Unshakeable',
+        description: '30 days of consistent practice. Elite consistency.',
+        icon: 'flame'
+      };
     } else if (score >= 90) {
       badgeUnlocked = {
         id: 'badge_masterclass_score',
         title: 'Executive Composure',
         description: 'Scored 90%+ on substance and boundary holding.',
+        icon: 'shield-check'
+      };
+    } else if (totalRehearsals === 10) {
+      badgeUnlocked = {
+        id: 'badge_10_rehearsals',
+        title: 'Double Digits',
+        description: 'Completed 10 rehearsals — you\'re building real range.',
+        icon: 'award'
+      };
+    } else if (totalRehearsals === 25) {
+      badgeUnlocked = {
+        id: 'badge_25_rehearsals',
+        title: 'Seasoned Operator',
+        description: '25 rehearsals in the books. This is expertise being built.',
+        icon: 'shield-check'
+      };
+    } else if (totalRehearsals === 50) {
+      badgeUnlocked = {
+        id: 'badge_50_rehearsals',
+        title: 'Master Communicator',
+        description: '50 rehearsals — few people invest in this skill like you have.',
         icon: 'shield-check'
       };
     }

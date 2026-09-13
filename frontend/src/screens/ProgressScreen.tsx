@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Animated } from 'react-native';
-import { ArrowRight } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { ArrowRight, Sparkles } from 'lucide-react-native';
 
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
+import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { Header } from '../components/common/Header';
 
 import { ConfidenceArc } from '../components/progress/ConfidenceArc';
@@ -22,12 +24,17 @@ import { progressPalette } from '../components/progress/core/palette';
 import { useReveal, riseIn, DUR } from '../components/progress/core/motion';
 import { bandFor, BANDS, toNextBand } from '../components/progress/core/geometry';
 import { T } from '../components/progress/core/type';
-import {
-  SKILLS,
-  CONFIDENCE_SERIES,
-  ACHIEVEMENTS,
-  buildPracticeDays
-} from '../components/progress/core/progressData';
+import { SKILLS, CONFIDENCE_SERIES } from '../components/progress/core/progressData';
+import { PracticeDay } from '../components/progress/PracticeRhythm';
+import { MILESTONES } from '../data/milestones';
+import { AchievementItem } from '../types/progress';
+
+const MILESTONE_ICON_EMOJI: Record<string, string> = {
+  flame: '🔥',
+  award: '🏅',
+  'shield-check': '🛡️',
+  sparkles: '✨'
+};
 
 type Tab = 'standing' | 'skills' | 'rhythm' | 'insights';
 
@@ -46,7 +53,7 @@ const SKILL_VIEWS: TabSpec[] = [
 ];
 
 export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user } = useApp();
+  const { user, history } = useApp();
   const { colors: themeColors, isDark } = useTheme();
   const p = progressPalette(themeColors, isDark);
 
@@ -57,13 +64,50 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const [milestoneVisible, setMilestoneVisible] = useState(false);
   const [achievementsVisible, setAchievementsVisible] = useState(false);
 
-  const practiceDays = useMemo(() => buildPracticeDays(), []);
+  // Real, not fabricated: a brand-new (or freshly reset) user has done zero
+  // rehearsals, and every section below should say so plainly rather than
+  // filling in with demo numbers.
+  const hasHistory = history.length > 0 || user.totalRehearsals > 0;
+
+  // Sourced from the same MILESTONES definitions used on Profile/Milestones
+  // screens (real isUnlocked() checks against the actual user/history), not
+  // the old static ACHIEVEMENTS list this rail used to read from — that list
+  // had hardcoded "unlocked" flags and fake dates, which would have shown a
+  // brand-new user badges they never earned the moment this section moved
+  // to always-visible.
+  const realAchievements: AchievementItem[] = useMemo(
+    () =>
+      MILESTONES.map((m) => ({
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        icon: MILESTONE_ICON_EMOJI[m.icon],
+        unlocked: m.isUnlocked(user, history)
+      })),
+    [user, history]
+  );
+
+  // Real practice activity, not fabricated: one count per completed
+  // rehearsal (from `history`) plus one per completed Daily Puzzle, grouped
+  // by calendar day so the Rhythm heatmap's shading actually reflects what
+  // this user did.
+  const practiceDays: PracticeDay[] = useMemo(() => {
+    const byDate = new Map<string, number>();
+    history.forEach((h) => {
+      const key = h.completedAt.slice(0, 10);
+      byDate.set(key, (byDate.get(key) || 0) + 1);
+    });
+    (user.completedPuzzleDates || []).forEach((key) => {
+      byDate.set(key, (byDate.get(key) || 0) + 1);
+    });
+    return Array.from(byDate.entries()).map(([date, count]) => ({ date, count }));
+  }, [history, user.completedPuzzleDates]);
   const confidenceValues = useMemo(() => CONFIDENCE_SERIES.map((d) => d.score), []);
   const confidence = confidenceValues[confidenceValues.length - 1];
 
-  const totalRehearsals = user.totalRehearsals > 0 ? user.totalRehearsals : CONFIDENCE_SERIES.length;
-  const currentStreak = user.currentStreak > 0 ? user.currentStreak : 4;
-  const longestStreak = Math.max(user.longestStreak || 0, currentStreak, 6);
+  const totalRehearsals = user.totalRehearsals || 0;
+  const currentStreak = user.currentStreak || 0;
+  const longestStreak = user.longestStreak || 0;
 
   const activeSkills = useMemo(() => SKILLS.filter((s) => !s.locked), []);
 
@@ -82,11 +126,19 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
   const enter = useReveal(0, DUR.base);
 
+  const scrollRef = useRef<ScrollView>(null);
+  const fitScroll = useFitScreenScroll();
+  useFocusEffect(
+    React.useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <Header
         title="Your Progress"
-        rightAction="more"
+        rightAction="none"
         navigation={navigation}
       />
 
@@ -95,15 +147,30 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={fitScroll.scrollEnabled}
+        onLayout={fitScroll.onLayout}
+        onContentSizeChange={fitScroll.onContentSizeChange}
       >
         {tab === 'standing' && (
           <Animated.View style={riseIn(enter, 10)}>
-            {/* One figure carries trajectory + current value + band */}
-            <ConfidenceArc data={CONFIDENCE_SERIES} current={confidence} />
+            {/* Milestones first — the "starting step" badges unlock before a
+                single rehearsal is completed, so this is real content even
+                for a brand-new user, not gated behind hasHistory. */}
+            <View style={styles.railZoneTop}>
+              <SectionHead
+                title="Milestones"
+                action={{ label: 'View all', onPress: () => setAchievementsVisible(true) }}
+              />
+              <AchievementRail
+                achievements={realAchievements}
+                onPress={() => setAchievementsVisible(true)}
+              />
+            </View>
 
-            {/* Facts the arc does not already show */}
+            {/* Facts are always real — zero for a new/reset user, never demo numbers */}
             <View style={styles.factRow}>
               <Fact value={String(totalRehearsals)} label="Rehearsals" palette={p} />
               <Fact
@@ -114,26 +181,28 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 onPress={() => setMilestoneVisible(true)}
               />
               <Fact
-                value={String(activeSkills.length)}
+                value={hasHistory ? String(activeSkills.length) : '0'}
                 label="Skills in play"
                 palette={p}
               />
             </View>
 
-            {/* The next concrete move, derived */}
-            {focusSkill && <NextMove skill={focusSkill} palette={p} onPress={goPractice} />}
+            {hasHistory ? (
+              <>
+                {/* One figure carries trajectory + current value + band */}
+                <ConfidenceArc data={CONFIDENCE_SERIES} current={confidence} />
 
-            <View style={styles.railZone}>
-              <SectionHead
-                title="Milestones"
-                action={{ label: 'View all', onPress: () => setAchievementsVisible(true) }}
-                delay={200}
+                {/* The next concrete move, derived */}
+                {focusSkill && <NextMove skill={focusSkill} palette={p} onPress={goPractice} />}
+              </>
+            ) : (
+              <EmptyTabState
+                palette={p}
+                title="Your standing starts here"
+                body="Complete your first rehearsal to see your confidence trend."
+                onPress={goPractice}
               />
-              <AchievementRail
-                achievements={ACHIEVEMENTS}
-                onPress={() => setAchievementsVisible(true)}
-              />
-            </View>
+            )}
           </Animated.View>
         )}
 
@@ -141,23 +210,34 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           <View>
             <SectionHead title="Skills" />
 
-            <View style={styles.viewToggle}>
-              <SegmentedTabs
-                compact
-                tabs={SKILL_VIEWS}
-                value={skillView}
-                onChange={setSkillView}
-              />
-            </View>
+            {hasHistory ? (
+              <>
+                <View style={styles.viewToggle}>
+                  <SegmentedTabs
+                    compact
+                    tabs={SKILL_VIEWS}
+                    value={skillView}
+                    onChange={setSkillView}
+                  />
+                </View>
 
-            {skillView === 'field' ? (
-              <SkillConstellation
-                skills={SKILLS}
-                onSelectSkill={openSkill}
-                selectedId={selectedSkill?.id ?? null}
-              />
+                {skillView === 'field' ? (
+                  <SkillConstellation
+                    skills={SKILLS}
+                    onSelectSkill={openSkill}
+                    selectedId={selectedSkill?.id ?? null}
+                  />
+                ) : (
+                  <SkillLedger skills={SKILLS} onSelectSkill={openSkill} />
+                )}
+              </>
             ) : (
-              <SkillLedger skills={SKILLS} onSelectSkill={openSkill} />
+              <EmptyTabState
+                palette={p}
+                title="No skills tracked yet"
+                body="Each rehearsal scores you on clarity, empathy, assertiveness, and listening. Practice a conversation to start building your skill map."
+                onPress={goPractice}
+              />
             )}
           </View>
         )}
@@ -165,23 +245,42 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         {tab === 'rhythm' && (
           <View>
             <SectionHead title="Rhythm" />
-            <PracticeRhythm
-              days={practiceDays}
-              currentStreak={currentStreak}
-              longestStreak={longestStreak}
-            />
+            {hasHistory ? (
+              <PracticeRhythm
+                days={practiceDays}
+                currentStreak={currentStreak}
+                longestStreak={longestStreak}
+                windowDays={60}
+              />
+            ) : (
+              <EmptyTabState
+                palette={p}
+                title="No practice rhythm yet"
+                body="Once you start rehearsing, this shows your daily consistency and streaks over time."
+                onPress={goPractice}
+              />
+            )}
           </View>
         )}
 
         {tab === 'insights' && (
           <View>
             <SectionHead title="Insights" />
-            <InsightBriefing
-              skills={SKILLS}
-              confidence={confidenceValues}
-              onSelectSkill={openSkill}
-              onPractice={goPractice}
-            />
+            {hasHistory ? (
+              <InsightBriefing
+                skills={SKILLS}
+                confidence={confidenceValues}
+                onSelectSkill={openSkill}
+                onPractice={goPractice}
+              />
+            ) : (
+              <EmptyTabState
+                palette={p}
+                title="No insights yet"
+                body="After a few rehearsals, you'll get personalized callouts on patterns worth addressing."
+                onPress={goPractice}
+              />
+            )}
           </View>
         )}
       </ScrollView>
@@ -200,13 +299,32 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
       />
 
       <AchievementsModal
-        achievements={ACHIEVEMENTS}
+        achievements={realAchievements}
         visible={achievementsVisible}
         onClose={() => setAchievementsVisible(false)}
       />
     </View>
   );
 };
+
+/** Shown in place of a tab's real content when the user has no rehearsal history yet. */
+const EmptyTabState: React.FC<{
+  palette: ReturnType<typeof progressPalette>;
+  title: string;
+  body: string;
+  onPress: () => void;
+}> = ({ palette: p, title, body, onPress }) => (
+  <View style={[styles.emptyState, { backgroundColor: p.card, borderColor: p.hairline }]}>
+    <View style={[styles.emptyIconCircle, { backgroundColor: p.accent + '1A' }]}>
+      <Sparkles size={22} color={p.accent} />
+    </View>
+    <Text style={[styles.emptyTitle, { color: p.ink }]}>{title}</Text>
+    <Text style={[styles.emptyBody, { color: p.inkSoft }]}>{body}</Text>
+    <Pressable style={[styles.emptyCta, { backgroundColor: p.accent }]} onPress={onPress}>
+      <Text style={[styles.emptyCtaText, { color: p.onAccent }]}>Start a rehearsal</Text>
+    </Pressable>
+  </View>
+);
 
 /** Compact stat. Only used for values the arc does not already state. */
 const Fact: React.FC<{
@@ -264,6 +382,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
+  emptyState: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 28,
+    alignItems: 'center',
+    marginTop: 8
+  },
+  emptyIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  emptyBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginBottom: 20
+  },
+  emptyCta: {
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 14
+  },
+  emptyCtaText: {
+    fontSize: 13.5,
+    fontWeight: '700'
+  },
   tabZone: {
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -316,8 +470,8 @@ const styles = StyleSheet.create({
   nextMoveTitle: {
     ...T.heading
   },
-  railZone: {
-    marginTop: 4
+  railZoneTop: {
+    marginBottom: 18
   },
   viewToggle: {
     alignSelf: 'flex-end',

@@ -4,6 +4,7 @@ import { memoryDb } from '../db/client.js';
 import { z } from 'zod';
 
 export const generateRepliesSchema = z.object({
+  userId: z.string().optional(),
   incomingMessage: z.string().min(5, 'Please provide the incoming message or scenario to reply to'),
   contextOrRelationship: z.string().optional(),
   desiredOutcome: z.string().optional()
@@ -12,7 +13,8 @@ export const generateRepliesSchema = z.object({
 export class ReplyCoachController {
   async generateReplies(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { incomingMessage, contextOrRelationship, desiredOutcome } = req.body;
+      const { userId, incomingMessage, contextOrRelationship, desiredOutcome } = req.body;
+      const resolvedUserId = userId || req.userId || 'demo-user-1';
 
       const result = await replyCoachService.generateStrategicReplies({
         incomingMessage,
@@ -20,7 +22,7 @@ export class ReplyCoachController {
         desiredOutcome
       });
 
-      memoryDb.saveReplyResult(result);
+      await memoryDb.saveReplyResult(result, resolvedUserId);
 
       res.status(201).json({
         message: 'Strategic reply options generated',

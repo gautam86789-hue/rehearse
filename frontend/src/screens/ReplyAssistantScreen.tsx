@@ -5,12 +5,14 @@ import { Header } from '../components/common/Header';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { useTheme } from '../context/ThemeContext';
+import { useApp } from '../context/AppContext';
 import { typography } from '../theme/typography';
 import { apiService } from '../services/api';
 import { ReplyAssistantResult, ReplyOption } from '../types';
 
 export const ReplyAssistantScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { user } = useApp();
   const [incomingText, setIncomingText] = useState('');
   const [contextText, setContextText] = useState('');
   const [desiredOutcome, setDesiredOutcome] = useState('');
@@ -30,6 +32,7 @@ export const ReplyAssistantScreen: React.FC = () => {
 
     try {
       const res = await apiService.generateReplies({
+        userId: user.id,
         incomingMessage: incomingText.trim(),
         contextOrRelationship: contextText.trim() || undefined,
         desiredOutcome: desiredOutcome.trim() || undefined

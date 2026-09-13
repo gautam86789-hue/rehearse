@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   Sparkles,
@@ -18,13 +19,18 @@ import {
   ArrowRight,
   CheckCircle2
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 export const ConversationBriefScreen: React.FC<{ navigation: any; route?: any }> = ({
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  // Header had paddingTop: Platform.OS === 'ios' ? 56 : 20 — the Android
+  // branch had no safe-area handling, so on edge-to-edge Android the
+  // back button and title sat under the status bar / camera cutout.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const title = route?.params?.title || 'Compensation Discussion';
 
@@ -67,7 +73,7 @@ export const ConversationBriefScreen: React.FC<{ navigation: any; route?: any }>
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
           onPress={() => navigation.goBack()}
@@ -100,7 +106,7 @@ export const ConversationBriefScreen: React.FC<{ navigation: any; route?: any }>
         </View>
 
         {/* Tactical Parameters Group */}
-        <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+        <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
           {analysisItems.map((item, idx) => {
             const IconComp = item.icon;
             return (
@@ -126,7 +132,7 @@ export const ConversationBriefScreen: React.FC<{ navigation: any; route?: any }>
         {/* Section: WHAT THEY MAY DO */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>WHAT THEY MAY DO</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {whatTheyMayDo.map((item, idx) => (
               <View
                 key={idx}
@@ -144,14 +150,14 @@ export const ConversationBriefScreen: React.FC<{ navigation: any; route?: any }>
 
         {/* Action Button */}
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+          style={[styles.actionBtn, { backgroundColor: themeColors.primary }]}
           onPress={() => navigation.navigate('StrategicReply', { title })}
           activeOpacity={0.85}
         >
-          <Text style={[styles.actionBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+          <Text style={[styles.actionBtnText, { color: themeColors.textInverse }]}>
             Generate Strategic Replies
           </Text>
-          <ArrowRight size={18} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 6 }} />
+          <ArrowRight size={18} color={themeColors.textInverse} style={{ marginLeft: 6 }} />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -220,7 +226,7 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden',
     marginBottom: 18
@@ -282,7 +288,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
-    elevation: 4
+    elevation: 0
   },
   actionBtnText: {
     fontSize: 15,

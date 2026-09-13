@@ -16,7 +16,8 @@ import {
   Sparkles,
   ChevronLeft
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 const PRINCIPLES = [
   {
@@ -47,12 +48,14 @@ const PRINCIPLES = [
 ];
 
 export const MethodologyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
@@ -71,7 +74,7 @@ export const MethodologyScreen: React.FC<{ navigation: any }> = ({ navigation })
         showsVerticalScrollIndicator={false}
       >
         {/* Overview Banner */}
-        <View style={[styles.introCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+        <View style={[styles.introCard, elevation.md, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
           <View style={[styles.iconCircle, { backgroundColor: themeColors.primarySubtle }]}>
             <BookOpen size={20} color={themeColors.primary} />
           </View>
@@ -91,7 +94,7 @@ export const MethodologyScreen: React.FC<{ navigation: any }> = ({ navigation })
               return (
                 <View
                   key={index}
-                  style={[styles.principleCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}
+                  style={[styles.principleCard, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}
                 >
                   <View style={styles.principleHeader}>
                     <View style={[styles.miniIconCircle, { backgroundColor: themeColors.primarySubtle }]}>
@@ -146,7 +149,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40
   },
   introCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 18,
     alignItems: 'center',
@@ -186,7 +189,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   principleCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 14
   },

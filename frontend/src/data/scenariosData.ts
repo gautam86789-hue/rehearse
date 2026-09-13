@@ -204,5 +204,132 @@ export const CURATED_SCENARIOS: Scenario[] = [
     },
     isCurated: true,
     createdAt: new Date().toISOString()
+  },
+  {
+    id: 'scenario-talk-to-manager',
+    title: 'Pushing Back on Scope Without Losing Trust',
+    category: 'managing_up',
+    counterpartRole: 'Direct Manager',
+    counterpartName: 'Marcus Vance',
+    counterpartArchetype: 'defensive_boss',
+    difficulty: 'Intermediate',
+    estimatedMinutes: 5,
+    situation: 'Your manager just added two more workstreams to your plate mid-sprint, on top of an already full roadmap, framing it as "just a quick add."',
+    userGoal: 'Protect your current commitments and get a clear, explicit decision on what gets de-prioritized before taking anything new on.',
+    brief: {
+      counterpartPosition: 'Believes the ask is small and reasonable; will resist if it sounds like you are refusing to be a team player.',
+      probablePushbackPatterns: [
+        '"It\'s really not that much extra work."',
+        '"I thought you could handle more than this."',
+        '"Everyone else is stretched too."'
+      ],
+      whatGoodLooksLike: 'Naming your current commitments specifically, asking a direct trade-off question, and holding the line without over-apologizing.',
+      keyPhrasesToAvoid: ['"Sorry to make a big deal of this"', '"I guess I could try to fit it in"'],
+      recommendedOpeningFormula: '"I want to take this on well, not just take it on. Given my current commitments, what should come off my plate to make room?"'
+    },
+    isCurated: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'scenario-talk-to-cofounder',
+    title: 'Resolving a Strategic Disagreement With Your Co-Founder',
+    category: 'difficult_decisions',
+    counterpartRole: 'Co-Founder & Equal Partner',
+    counterpartName: 'Jordan Reyes',
+    counterpartArchetype: 'startup_cofounder',
+    difficulty: 'High Stakes',
+    estimatedMinutes: 6,
+    situation: 'You believe the company needs to pivot the core product before the runway runs out. Your co-founder disagrees and feels blindsided that you are pushing this without full buy-in.',
+    userGoal: 'Get a real decision — not a stalemate — while keeping the partnership intact and the risk clearly on the table.',
+    brief: {
+      counterpartPosition: 'Feels the shared vision is being overridden unilaterally; will frame disagreement as a loyalty or trust issue.',
+      probablePushbackPatterns: [
+        '"This isn\'t about who\'s really the CEO."',
+        '"If you push this through, I don\'t know if I can stay committed."',
+        '"We agreed to decide big calls together."'
+      ],
+      whatGoodLooksLike: 'Naming the specific business risk in concrete numbers, separating the relationship from the decision, and proposing a structured way to resolve the disagreement.',
+      keyPhrasesToAvoid: ['"You always do this"', '"Fine, forget it, we\'ll do it your way"'],
+      recommendedOpeningFormula: '"I don\'t want to decide this without you — I want us to actually decide it. Here\'s the runway math that\'s driving my urgency."'
+    },
+    isCurated: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'scenario-talk-to-investor',
+    title: 'Defending Your Valuation on an Update Call',
+    category: 'negotiation',
+    counterpartRole: 'Growth-Stage VC Partner',
+    counterpartName: 'Priya Kapoor',
+    counterpartArchetype: 'skeptical_investor',
+    difficulty: 'High Stakes',
+    estimatedMinutes: 6,
+    situation: 'On a term sheet call, your lead investor is anchoring valuation 30% below your ask, citing "market conditions" and recent down-round comps.',
+    userGoal: 'Hold your valuation range by anchoring on one hard, verifiable growth metric, without sounding defensive or over-explaining.',
+    brief: {
+      counterpartPosition: 'Genuinely believes the market has repriced; will keep citing comps and macro conditions rather than your specific traction.',
+      probablePushbackPatterns: [
+        '"We\'re seeing comps close well below what you\'re asking."',
+        '"I need a few more months of this growth curve before I move."',
+        '"What happens if your competitor closes a round first?"'
+      ],
+      whatGoodLooksLike: 'Redirecting from market comps to your specific trajectory, naming the exact terms that would close the round today, and not filling silence with concessions.',
+      keyPhrasesToAvoid: ['"I guess we could come down a bit"', '"Whatever you think is fair"'],
+      recommendedOpeningFormula: '"I hear the market context. Here\'s the metric that matters for us specifically, and here\'s the number that gets this closed this week."'
+    },
+    isCurated: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'scenario-new-hire-expectations',
+    title: 'Getting Real Clarity in Week One',
+    audiences: ['new_hires'],
+    category: 'managing_up',
+    counterpartRole: 'Your New Manager',
+    counterpartName: 'Daniel Osei',
+    counterpartArchetype: 'defensive_boss',
+    difficulty: 'Beginner',
+    estimatedMinutes: 5,
+    situation: 'It\'s your fourth day. Your manager has been vague about what success looks like in your first quarter, and you don\'t want to keep guessing.',
+    userGoal: 'Get concrete, specific expectations for your first 90 days without sounding like you need hand-holding.',
+    brief: {
+      counterpartPosition: 'Assumes things are obvious from the job description and is busy; may respond with vague reassurance instead of specifics.',
+      probablePushbackPatterns: [
+        '"You\'ll figure it out as you go, don\'t overthink it."',
+        '"Just focus on getting up to speed for now."',
+        '"We can talk about that later once you\'ve settled in."'
+      ],
+      whatGoodLooksLike: 'Asking a specific, narrow question about what "good" looks like by a specific date, rather than a broad open-ended one that\'s easy to deflect.',
+      keyPhrasesToAvoid: ['"I don\'t really know what I\'m supposed to be doing"', '"Sorry to bother you with this"'],
+      recommendedOpeningFormula: '"Before I dive further in — what would make my first 30 days a clear success from your side, specifically?"'
+    },
+    isCurated: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'scenario-new-hire-offer-negotiation',
+    title: 'Negotiating the Offer Without Losing It',
+    audiences: ['new_hires'],
+    category: 'negotiation',
+    counterpartRole: 'Talent Acquisition Lead',
+    counterpartName: 'Renee Falk',
+    counterpartArchetype: 'hard_negotiator',
+    difficulty: 'Intermediate',
+    estimatedMinutes: 6,
+    situation: 'You received an offer 12% below the market range you researched. The recruiter is friendly but firm that "this is our standard band for the level."',
+    userGoal: 'Push for a better package — salary or otherwise — without risking the offer or sounding ungrateful.',
+    brief: {
+      counterpartPosition: 'Has real band constraints but some flexibility on non-salary levers; will test how firm your ask actually is.',
+      probablePushbackPatterns: [
+        '"This is our standard band for this level company-wide."',
+        '"We\'d need a strong reason to make an exception."',
+        '"Are you saying you won\'t accept without a change?"'
+      ],
+      whatGoodLooksLike: 'Anchoring on specific market data, asking about the whole package (bonus, start date, review timeline) rather than just base salary, and asking for time to decide instead of answering on the spot.',
+      keyPhrasesToAvoid: ['"I guess that\'s fine"', '"I have another offer"  (unless true)'],
+      recommendedOpeningFormula: '"I\'m genuinely excited about this role. Based on market data for this level, I was expecting closer to $X — is there flexibility there or elsewhere in the package?"'
+    },
+    isCurated: true,
+    createdAt: new Date().toISOString()
   }
 ];

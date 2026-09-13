@@ -27,7 +27,7 @@ import {
   HelpCircle,
   Award
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 
 interface DialogueTurn {
   id: string;
@@ -41,7 +41,7 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
 
   const title = route?.params?.title || 'Compensation Discussion';
   const persona = route?.params?.persona || 'realistic';
@@ -214,7 +214,7 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
 
         <View style={styles.headerCenter}>
           <View style={styles.timerBadge}>
-            <View style={[styles.pulsingDot, { backgroundColor: '#E74C3C' }]} />
+            <View style={[styles.pulsingDot, { backgroundColor: themeColors.error }]} />
             <Text style={[styles.timerText, { color: themeColors.textPrimary }]}>
               {formatTimer(secondsElapsed)}
             </Text>
@@ -232,7 +232,7 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
           {isMuted ? (
             <VolumeX size={18} color={themeColors.textSecondary} />
           ) : (
-            <Volume2 size={18} color={isDark ? '#C8AA6A' : '#173D2C'} />
+            <Volume2 size={18} color={themeColors.primary} />
           )}
         </TouchableOpacity>
       </View>
@@ -241,16 +241,16 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
       <View style={[styles.counterpartHero, { backgroundColor: themeColors.surfaceCard, borderBottomColor: themeColors.surfaceBorder }]}>
         <View style={styles.heroRow}>
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatarRing, { borderColor: isCounterpartSpeaking ? (isDark ? '#C8AA6A' : '#173D2C') : themeColors.surfaceBorder }]}>
-              <View style={[styles.avatarInner, { backgroundColor: isDark ? '#173D2C' : '#E0ECE4' }]}>
-                <Text style={[styles.avatarInitial, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
+            <View style={[styles.avatarRing, { borderColor: isCounterpartSpeaking ? themeColors.primary : themeColors.surfaceBorder }]}>
+              <View style={[styles.avatarInner, { backgroundColor: themeColors.primarySubtle }]}>
+                <Text style={[styles.avatarInitial, { color: themeColors.primary }]}>
                   AC
                 </Text>
               </View>
             </View>
             {isCounterpartSpeaking && (
-              <View style={[styles.speakingIndicator, { backgroundColor: '#2ECC71' }]}>
-                <Activity size={10} color="#FFFFFF" />
+              <View style={[styles.speakingIndicator, { backgroundColor: themeColors.success }]}>
+                <Activity size={10} color={themeColors.textInverse} />
               </View>
             )}
           </View>
@@ -276,8 +276,8 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
           {/* Composure Bar */}
           <View style={styles.pressureBox}>
             <Text style={[styles.pressureLabel, { color: themeColors.textSecondary }]}>PRESSURE</Text>
-            <View style={styles.pressureBarTrack}>
-              <View style={[styles.pressureBarFill, { width: '70%', backgroundColor: '#E67E22' }]} />
+            <View style={[styles.pressureBarTrack, { backgroundColor: themeColors.surfaceBorder }]}>
+              <View style={[styles.pressureBarFill, { width: '70%', backgroundColor: themeColors.flame }]} />
             </View>
             <Text style={[styles.pressureValue, { color: themeColors.textPrimary }]}>Med-High</Text>
           </View>
@@ -303,13 +303,13 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
                 style={[
                   styles.dialogueBubble,
                   isUser
-                    ? [styles.userBubble, { backgroundColor: isDark ? '#173D2C' : '#E4EFE8', borderColor: isDark ? '#235940' : '#D0E3D6' }]
+                    ? [styles.userBubble, { backgroundColor: themeColors.sageSubtle, borderColor: themeColors.sage }]
                     : [styles.counterpartBubble, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]
                 ]}
               >
                 {!isUser && (
                   <View style={styles.bubbleHeader}>
-                    <Text style={[styles.bubbleSender, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
+                    <Text style={[styles.bubbleSender, { color: themeColors.primary }]}>
                       Alex Chen
                     </Text>
                     {item.sentiment && (
@@ -333,10 +333,10 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
         })}
 
         {/* Real-Time Coach Whisper Card */}
-        <View style={[styles.coachWhisperCard, { backgroundColor: isDark ? '#1C2920' : '#F7FAF8', borderColor: isDark ? '#C8AA6A' : '#173D2C' }]}>
+        <View style={[styles.coachWhisperCard, elevation.sm, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.primary }]}>
           <View style={styles.whisperTop}>
-            <Sparkles size={14} color={isDark ? '#C8AA6A' : '#173D2C'} />
-            <Text style={[styles.whisperTitle, { color: isDark ? '#C8AA6A' : '#173D2C' }]}>
+            <Sparkles size={14} color={themeColors.primary} />
+            <Text style={[styles.whisperTitle, { color: themeColors.primary }]}>
               REAL-TIME COACH WHISPER
             </Text>
           </View>
@@ -357,7 +357,7 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
                 styles.waveformBar,
                 {
                   backgroundColor: isSpeaking || isCounterpartSpeaking
-                    ? (isDark ? '#C8AA6A' : '#173D2C')
+                    ? themeColors.primary
                     : themeColors.surfaceBorder,
                   transform: [{ scaleY: isSpeaking || isCounterpartSpeaking ? anim : 0.2 }]
                 }
@@ -374,7 +374,7 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
             onPress={() => setShowHintDrawer(!showHintDrawer)}
             activeOpacity={0.7}
           >
-            <Lightbulb size={18} color={isDark ? '#C8AA6A' : '#173D2C'} />
+            <Lightbulb size={18} color={themeColors.primary} />
             <Text style={[styles.secondaryControlText, { color: themeColors.textPrimary }]}>
               Hint
             </Text>
@@ -387,17 +387,15 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
                 styles.micButton,
                 {
                   backgroundColor: isSpeaking
-                    ? '#E74C3C'
-                    : isDark
-                    ? '#C8AA6A'
-                    : '#173D2C'
+                    ? themeColors.error
+                    : themeColors.primary
                 }
               ]}
               onPressIn={handleHoldToSpeak}
               onPressOut={handleReleaseSpeak}
               activeOpacity={0.85}
             >
-              <Mic size={24} color={isDark && !isSpeaking ? '#0B1712' : '#FFFFFF'} />
+              <Mic size={24} color={themeColors.textInverse} />
             </TouchableOpacity>
           </Animated.View>
 
@@ -407,7 +405,7 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
             onPress={handleEndSimulation}
             activeOpacity={0.7}
           >
-            <Award size={18} color={isDark ? '#C8AA6A' : '#173D2C'} />
+            <Award size={18} color={themeColors.primary} />
             <Text style={[styles.secondaryControlText, { color: themeColors.textPrimary }]}>
               Autopsy
             </Text>
@@ -540,7 +538,6 @@ const styles = StyleSheet.create({
   pressureBarTrack: {
     width: 48,
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 2,
     marginVertical: 3,
     overflow: 'hidden'
@@ -609,7 +606,7 @@ const styles = StyleSheet.create({
     textAlign: 'right'
   },
   coachWhisperCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderStyle: 'dashed',
     padding: 12,
@@ -681,7 +678,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 6
+    elevation: 0
   },
   micHintText: {
     fontSize: 11,

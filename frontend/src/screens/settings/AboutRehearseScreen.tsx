@@ -19,11 +19,14 @@ import {
   ChevronRight,
   X
 } from 'lucide-react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme, RADII } from '../../context/ThemeContext';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
 
 export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const [activeModal, setActiveModal] = useState<{
     title: string;
@@ -91,7 +94,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
@@ -110,7 +113,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
         showsVerticalScrollIndicator={false}
       >
         {/* Brand Card */}
-        <View style={[styles.brandCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+        <View style={[styles.brandCard, elevation.md, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
           <Text style={[styles.brandWordmark, { color: themeColors.textPrimary }]}>REHEARSE</Text>
           <Text style={[styles.brandTagline, { color: themeColors.textSecondary }]}>
             AI Difficult Conversation Simulator
@@ -123,7 +126,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
         {/* Section: What is Rehearse */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>WHAT IS REHEARSE?</Text>
-          <View style={[styles.summaryCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.summaryCard, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <Text style={[styles.summaryText, { color: themeColors.textSecondary }]}>
               Rehearse helps leaders, managers, and executives practice high-stakes conversations before having them in real life. Build lasting conversational muscle memory through realistic AI simulation loops.
             </Text>
@@ -133,7 +136,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
         {/* Section: Methodology */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>LEARN</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomWidth: 0 }]}
               onPress={() => navigation.navigate('Methodology')}
@@ -151,7 +154,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
         {/* Section: Support */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>SUPPORT</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
               onPress={handleOpenHelp}
@@ -181,7 +184,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
         {/* Section: Legal */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>LEGAL</Text>
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
               onPress={handleOpenPrivacy}
@@ -236,7 +239,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
         onRequestClose={() => setActiveModal(null)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.modalCard, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: themeColors.textPrimary }]}>{activeModal?.title}</Text>
               <TouchableOpacity onPress={() => setActiveModal(null)}>
@@ -307,7 +310,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40
   },
   brandCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 18,
     alignItems: 'center',
@@ -344,7 +347,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   summaryCard: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 14
   },
@@ -353,7 +356,7 @@ const styles = StyleSheet.create({
     lineHeight: 19
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -393,7 +396,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 380,
-    borderRadius: 16,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     padding: 20
   },

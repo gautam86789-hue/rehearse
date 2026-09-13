@@ -14,8 +14,9 @@ import {
   Check,
   ChevronLeft
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, RADII } from '../../context/ThemeContext';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
 
 const ROLES = [
@@ -42,7 +43,9 @@ const FOCUS_AREAS = [
 
 export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, setUser } = useApp();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const [selectedRole, setSelectedRole] = useState(user.role || 'Executive Leader');
   const [selectedSeniority, setSelectedSeniority] = useState(user.experienceLevel || 'Mid-Senior');
@@ -56,7 +59,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
 
   const handleSelectRole = (role: string) => {
     setSelectedRole(role);
-    setUser({ ...user, role });
+    setUser((prev) => ({ ...prev, role }));
     setToast({
       visible: true,
       message: `Role set to ${role}.`,
@@ -66,7 +69,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
 
   const handleSelectSeniority = (level: string) => {
     setSelectedSeniority(level);
-    setUser({ ...user, experienceLevel: level });
+    setUser((prev) => ({ ...prev, experienceLevel: level }));
     setToast({
       visible: true,
       message: `Experience level updated to ${level}.`,
@@ -76,7 +79,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
 
   const handleSelectFocus = (focus: string) => {
     setSelectedFocus(focus);
-    setUser({ ...user, primaryDreadCategory: focus });
+    setUser((prev) => ({ ...prev, primaryDreadCategory: focus }));
     setToast({
       visible: true,
       message: `Primary focus updated to ${focus}.`,
@@ -87,7 +90,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
@@ -109,7 +112,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>PRIMARY ROLE</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {ROLES.map((role, index) => {
               const isSelected = selectedRole === role;
               return (
@@ -138,7 +141,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>EXPERIENCE LEVEL</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {EXPERIENCE_LEVELS.map((level, index) => {
               const isSelected = selectedSeniority === level;
               return (
@@ -167,7 +170,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>PRIMARY FOCUS</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {FOCUS_AREAS.map((focus, index) => {
               const isSelected = selectedFocus === focus;
               return (
@@ -249,7 +252,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },

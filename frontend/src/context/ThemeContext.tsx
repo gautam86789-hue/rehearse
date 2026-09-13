@@ -4,6 +4,100 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 
+// Corner-radius scale — not theme-dependent, exported standalone so any
+// screen can pull a consistent radius without going through useTheme().
+// `lg`/`md` codify what most existing cards already use; this pass is about
+// making that consistent, not inventing a new scale.
+export type RadiusKey = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl' | 'pill';
+export const RADII: Record<RadiusKey, number> = {
+  xs: 8,
+  sm: 12,
+  md: 14,
+  lg: 18,
+  xl: 22,
+  xxl: 28,
+  pill: 999
+};
+
+export interface ElevationStyle {
+  shadowColor: string;
+  shadowOffset: { width: number; height: number };
+  shadowOpacity: number;
+  shadowRadius: number;
+  elevation: number;
+}
+export type ElevationKey = 'flat' | 'sm' | 'md' | 'lg';
+
+// Dark mode intentionally returns {} for sm/md — depth comes from surface
+// color layering, not RN shadows, matching Card.tsx's existing convention.
+// `lg` is the exception: it's reserved for elements that float over
+// arbitrary content (the tab bar) rather than sitting flush on a surface,
+// so it keeps a faint shadow even in dark mode.
+//
+// `elevation: 0` everywhere below is deliberate, not an oversight: Android's
+// native `elevation` prop is the one thing in this system that ISN'T just a
+// soft drop shadow — it renders a real Material outline shadow shape, which
+// on real Android hardware showed up as a visible boxy halo/inset rectangle
+// around card content the moment a rounded card sat on a light/tinted
+// background (invisible on iOS, web, and in the Expo-web browser preview,
+// which is why this wasn't caught until testing on a physical device). Since
+// Android is the only platform that reads `elevation` at all, zeroing it out
+// makes Android fall back to flat depth (border + tinted background carry
+// the visual weight there) while iOS/web keep the soft shadow* properties
+// completely unaffected.
+function buildElevation(isDark: boolean): Record<ElevationKey, ElevationStyle> {
+  const flat: ElevationStyle = { shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0 };
+  if (isDark) {
+    return {
+      flat,
+      sm: flat,
+      md: flat,
+      lg: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
+        elevation: 0
+      }
+    };
+  }
+  return {
+    flat,
+    sm: {
+      shadowColor: '#5B5FEF',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      elevation: 0
+    },
+    md: {
+      shadowColor: '#5B5FEF',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 0
+    },
+    lg: {
+      shadowColor: '#5B5FEF',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.1,
+      shadowRadius: 20,
+      elevation: 0
+    }
+  };
+}
+
+// Per-category feature-card palette — one named color per app "topic" so
+// feature cards (Home tiles, Practice modes, etc.) can each carry their own
+// theme instead of a uniform card background. Built from color families that
+// already exist per light/dark branch below, not new hexes (except infoSubtle).
+export type CardCategoryKey = 'indigo' | 'sage' | 'champagne' | 'flame' | 'teal' | 'purple' | 'ruby' | 'info';
+export interface CardCategoryColor {
+  solid: string;
+  subtle: string;
+  border: string;
+}
+
 export interface AccentColorOption {
   id: string;
   name: string;
@@ -15,50 +109,50 @@ export interface AccentColorOption {
 }
 
 export const ACCENT_PALETTES: Record<string, AccentColorOption> = {
-  '#C8AA6A': {
-    id: 'champagne',
-    name: 'Champagne Gold',
-    hex: '#C8AA6A',
-    light: '#DFCA99',
-    dark: '#A38440',
-    subtle: 'rgba(200, 170, 106, 0.14)',
-    glow: 'rgba(200, 170, 106, 0.25)'
+  '#5B5FEF': {
+    id: 'indigo',
+    name: 'Rehearse Indigo',
+    hex: '#5B5FEF',
+    light: '#8B8FF5',
+    dark: '#4245C4',
+    subtle: 'rgba(91, 95, 239, 0.12)',
+    glow: 'rgba(91, 95, 239, 0.28)'
   },
-  '#8F997F': {
-    id: 'sage',
-    name: 'Executive Sage',
-    hex: '#8F997F',
-    light: '#B0BBA2',
-    dark: '#677158',
-    subtle: 'rgba(143, 153, 127, 0.15)',
-    glow: 'rgba(143, 153, 127, 0.25)'
+  '#22C55E': {
+    id: 'emerald',
+    name: 'Emerald Growth',
+    hex: '#22C55E',
+    light: '#5FE08A',
+    dark: '#15803D',
+    subtle: 'rgba(34, 197, 94, 0.14)',
+    glow: 'rgba(34, 197, 94, 0.28)'
   },
-  '#60A5FA': {
-    id: 'slate_blue',
-    name: 'Executive Blue',
-    hex: '#60A5FA',
+  '#FF9500': {
+    id: 'sunset',
+    name: 'Sunset Streak',
+    hex: '#FF9500',
+    light: '#FFB84D',
+    dark: '#D97706',
+    subtle: 'rgba(255, 149, 0, 0.14)',
+    glow: 'rgba(255, 149, 0, 0.28)'
+  },
+  '#EC4899': {
+    id: 'rose',
+    name: 'Rose Momentum',
+    hex: '#EC4899',
+    light: '#F472B6',
+    dark: '#BE185D',
+    subtle: 'rgba(236, 72, 153, 0.14)',
+    glow: 'rgba(236, 72, 153, 0.28)'
+  },
+  '#3B82F6': {
+    id: 'ocean',
+    name: 'Ocean Focus',
+    hex: '#3B82F6',
     light: '#93C5FD',
-    dark: '#2563EB',
-    subtle: 'rgba(96, 165, 250, 0.15)',
-    glow: 'rgba(96, 165, 250, 0.25)'
-  },
-  '#9B72CF': {
-    id: 'royal_violet',
-    name: 'Royal Violet',
-    hex: '#9B72CF',
-    light: '#BA9AE3',
-    dark: '#764BA2',
-    subtle: 'rgba(155, 114, 207, 0.15)',
-    glow: 'rgba(155, 114, 207, 0.25)'
-  },
-  '#E07A5F': {
-    id: 'terracotta',
-    name: 'Terracotta Flame',
-    hex: '#E07A5F',
-    light: '#EAA28D',
-    dark: '#C45A3E',
-    subtle: 'rgba(224, 122, 95, 0.15)',
-    glow: 'rgba(224, 122, 95, 0.25)'
+    dark: '#1D4ED8',
+    subtle: 'rgba(59, 130, 246, 0.14)',
+    glow: 'rgba(59, 130, 246, 0.28)'
   }
 };
 
@@ -117,11 +211,22 @@ export interface ThemeColors {
   error: string;
   danger: string;
   info: string;
+  infoSubtle: string;
 
   headerBackground: string;
   tabBarBackground: string;
   tabBarBorder: string;
   tabBarInactive: string;
+
+  // Secondary "score" accent — used specifically for the Result screen's ring
+  // and metric bars, keeping primary indigo reserved for CTAs.
+  scoreTeal: string;
+  scoreTealSubtle: string;
+
+  // One named color per feature "topic" so feature cards (Home tiles,
+  // Practice modes, etc.) can each carry their own theme. Values are drawn
+  // from the color families above, not independent hexes.
+  cardCategories: Record<CardCategoryKey, CardCategoryColor>;
 }
 
 interface ThemeContextType {
@@ -131,6 +236,7 @@ interface ThemeContextType {
   setAccentColor: (color: string) => Promise<void>;
   isDark: boolean;
   colors: ThemeColors;
+  elevation: Record<ElevationKey, ElevationStyle>;
   availableAccents: string[];
 }
 
@@ -142,7 +248,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
-  const [accentColor, setAccentColorState] = useState<string>('#C8AA6A');
+  const [accentColor, setAccentColorState] = useState<string>('#5B5FEF');
   const [, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -193,18 +299,24 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [themeMode, systemColorScheme]);
 
   const colors: ThemeColors = useMemo(() => {
-    const accent = ACCENT_PALETTES[accentColor] || ACCENT_PALETTES['#C8AA6A'];
+    const accent = ACCENT_PALETTES[accentColor] || ACCENT_PALETTES['#5B5FEF'];
 
     if (isDark) {
+      // True-black system: every neutral is R=G=B (no navy/purple tint), so
+      // indigo is the only hue competing with the ground. Two brand hues
+      // total — indigo (primary) and champagne (warm accent) — with `teal`/
+      // `purple` as shade/tint variants of indigo itself (not new hues) and
+      // `sage`/`ruby` demoted to purely semantic (correct/error), never used
+      // as decorative category branding.
       return {
-        background: '#0B1712',
-        surface: '#12231B',
-        surfaceElevated: '#182C22',
-        surfaceCard: '#12231B',
-        surfaceBorder: '#2A4235',
-        surfaceHighlight: '#182C22',
-        cardBorder: 'rgba(200, 170, 106, 0.15)',
-        border: '#2A4235',
+        background: '#000000',
+        surface: '#0A0A0A',
+        surfaceElevated: '#121214',
+        surfaceCard: '#121214',
+        surfaceBorder: '#232326',
+        surfaceHighlight: '#1A1A1D',
+        cardBorder: '#232326',
+        border: '#232326',
 
         primary: accent.hex,
         primaryLight: accent.light,
@@ -212,115 +324,150 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         primarySubtle: accent.subtle,
         primaryGlow: accent.glow,
 
-        forestDark: '#0B1712',
-        forestBase: '#12231B',
-        forestCenter: '#182C22',
-        forestCard: '#12231B',
-        forestBorder: 'rgba(200, 170, 106, 0.15)',
-        forestSubtle: 'rgba(18, 35, 27, 0.6)',
+        forestDark: '#000000',
+        forestBase: '#0A0A0A',
+        forestCenter: '#121214',
+        forestCard: '#121214',
+        forestBorder: '#232326',
+        forestSubtle: 'rgba(18, 18, 20, 0.6)',
 
-        champagne: '#C8AA6A',
-        champagneLight: '#DFCA99',
-        champagneDark: '#A38440',
-        champagneGlow: 'rgba(200, 170, 106, 0.25)',
-        champagneSubtle: 'rgba(200, 170, 106, 0.12)',
+        champagne: '#F59E0B',
+        champagneLight: '#FBBF24',
+        champagneDark: '#D97706',
+        champagneGlow: 'rgba(245, 158, 11, 0.3)',
+        champagneSubtle: 'rgba(245, 158, 11, 0.15)',
 
-        sage: '#8F997F',
-        sageLight: '#B0BBA2',
-        sageDark: '#677158',
-        sageSubtle: 'rgba(143, 153, 127, 0.15)',
+        sage: '#34D399',
+        sageLight: '#6EE7B7',
+        sageDark: '#059669',
+        sageSubtle: 'rgba(52, 211, 153, 0.15)',
 
-        ivory: '#F3EFE5',
-        mutedText: '#A7AEA6',
-        textPrimary: '#F3EFE5',
-        textSecondary: '#A7AEA6',
-        textMuted: '#6B7569',
-        textInverse: '#0B1712',
+        ivory: '#F2F2F2',
+        mutedText: '#9A9A9E',
+        textPrimary: '#F2F2F2',
+        textSecondary: '#9A9A9E',
+        textMuted: '#68686C',
+        textInverse: '#000000',
 
-        flame: '#E07A5F',
-        flameGlow: 'rgba(224, 122, 95, 0.25)',
-        gold: '#C8AA6A',
-        goldSubtle: 'rgba(200, 170, 106, 0.15)',
-        ruby: '#C84B31',
-        rubySubtle: 'rgba(200, 75, 49, 0.15)',
-        purple: '#9B72CF',
-        purpleSubtle: 'rgba(155, 114, 207, 0.15)',
+        flame: '#F59E0B',
+        flameGlow: 'rgba(245, 158, 11, 0.3)',
+        gold: '#F59E0B',
+        goldSubtle: 'rgba(245, 158, 11, 0.18)',
+        ruby: '#F87171',
+        rubySubtle: 'rgba(248, 113, 113, 0.18)',
+        purple: accent.light,
+        purpleSubtle: accent.subtle,
 
-        success: '#8F997F',
-        warning: '#C8AA6A',
-        error: '#C84B31',
-        danger: '#C84B31',
-        info: '#6482AD',
+        success: '#34D399',
+        warning: '#F59E0B',
+        error: '#F87171',
+        danger: '#F87171',
+        info: accent.hex,
+        infoSubtle: accent.subtle,
 
-        headerBackground: '#0B1712',
-        tabBarBackground: '#12231B',
-        tabBarBorder: '#2A4235',
-        tabBarInactive: '#8F997F'
+        headerBackground: '#000000',
+        tabBarBackground: '#121214',
+        tabBarBorder: '#232326',
+        tabBarInactive: '#9A9A9E',
+
+        scoreTeal: accent.dark,
+        scoreTealSubtle: accent.subtle,
+
+        cardCategories: {
+          indigo: { solid: accent.hex, subtle: accent.subtle, border: accent.light },
+          sage: { solid: '#34D399', subtle: 'rgba(52, 211, 153, 0.15)', border: '#6EE7B7' },
+          champagne: { solid: '#F59E0B', subtle: 'rgba(245, 158, 11, 0.15)', border: '#FBBF24' },
+          flame: { solid: '#F59E0B', subtle: 'rgba(245, 158, 11, 0.15)', border: '#FBBF24' },
+          teal: { solid: accent.dark, subtle: accent.subtle, border: accent.hex },
+          purple: { solid: accent.light, subtle: accent.subtle, border: accent.light },
+          ruby: { solid: '#F87171', subtle: 'rgba(248, 113, 113, 0.18)', border: '#F87171' },
+          info: { solid: accent.hex, subtle: accent.subtle, border: accent.light }
+        }
       };
     }
 
     return {
-      background: '#F5F2E9',
-      surface: '#FFFCF5',
+      background: '#F7F7FC',
+      surface: '#FFFFFF',
       surfaceElevated: '#FFFFFF',
-      surfaceCard: '#FFFCF5',
-      surfaceBorder: '#D9D8CC',
-      surfaceHighlight: '#FFFFFF',
-      cardBorder: '#D9D8CC',
-      border: '#D9D8CC',
+      surfaceCard: '#FFFFFF',
+      surfaceBorder: '#ECEBF7',
+      surfaceHighlight: '#F0EFFB',
+      cardBorder: '#ECEBF7',
+      border: '#ECEBF7',
 
-      primary: accentColor === '#C8AA6A' ? '#173D2C' : accent.hex,
+      primary: accent.hex,
       primaryLight: accent.light,
       primaryDark: accent.dark,
       primarySubtle: accent.subtle,
       primaryGlow: accent.glow,
 
-      forestDark: '#E8E4D8',
-      forestBase: '#FFFCF5',
+      forestDark: '#ECEBF7',
+      forestBase: '#FFFFFF',
       forestCenter: '#FFFFFF',
-      forestCard: '#FFFCF5',
-      forestBorder: '#D9D8CC',
-      forestSubtle: 'rgba(23, 61, 44, 0.05)',
+      forestCard: '#FFFFFF',
+      forestBorder: '#ECEBF7',
+      forestSubtle: 'rgba(91, 95, 239, 0.05)',
 
-      champagne: '#B08D4F',
-      champagneLight: '#C8AA6A',
-      champagneDark: '#856627',
-      champagneGlow: 'rgba(176, 141, 79, 0.2)',
-      champagneSubtle: 'rgba(176, 141, 79, 0.12)',
+      champagne: '#F59E0B',
+      champagneLight: '#FBBF24',
+      champagneDark: '#D97706',
+      champagneGlow: 'rgba(245, 158, 11, 0.2)',
+      champagneSubtle: 'rgba(245, 158, 11, 0.12)',
 
-      sage: '#5F7053',
-      sageLight: '#7A8C6E',
-      sageDark: '#44523B',
-      sageSubtle: 'rgba(95, 112, 83, 0.12)',
+      sage: '#16A34A',
+      sageLight: '#4ADE80',
+      sageDark: '#15803D',
+      sageSubtle: 'rgba(22, 163, 74, 0.12)',
 
-      ivory: '#17241E',
-      mutedText: '#667168',
-      textPrimary: '#17241E',
-      textSecondary: '#667168',
-      textMuted: '#8E9990',
+      ivory: '#1A1B25',
+      mutedText: '#6B6C80',
+      textPrimary: '#1A1B25',
+      textSecondary: '#6B6C80',
+      textMuted: '#9C9DB0',
       textInverse: '#FFFFFF',
 
-      flame: '#D3583B',
-      flameGlow: 'rgba(211, 88, 59, 0.2)',
-      gold: '#B08D4F',
-      goldSubtle: 'rgba(176, 141, 79, 0.15)',
-      ruby: '#C84B31',
-      rubySubtle: 'rgba(200, 75, 49, 0.15)',
-      purple: '#764BA2',
-      purpleSubtle: 'rgba(118, 75, 162, 0.15)',
+      flame: '#D97706',
+      flameGlow: 'rgba(245, 158, 11, 0.2)',
+      gold: '#F59E0B',
+      goldSubtle: 'rgba(245, 158, 11, 0.15)',
+      ruby: '#EF4444',
+      rubySubtle: 'rgba(239, 68, 68, 0.12)',
+      purple: accent.light,
+      purpleSubtle: accent.subtle,
 
-      success: '#173D2C',
-      warning: '#B08D4F',
-      error: '#C84B31',
-      danger: '#C84B31',
-      info: '#2563EB',
+      success: '#16A34A',
+      warning: '#F59E0B',
+      error: '#EF4444',
+      danger: '#EF4444',
+      info: accent.hex,
+      infoSubtle: accent.subtle,
 
-      headerBackground: '#F5F2E9',
-      tabBarBackground: '#FFFCF5',
-      tabBarBorder: '#D9D8CC',
-      tabBarInactive: '#667168'
+      headerBackground: '#F7F7FC',
+      tabBarBackground: '#FFFFFF',
+      tabBarBorder: '#ECEBF7',
+      tabBarInactive: '#9C9DB0',
+
+      scoreTeal: accent.dark,
+      scoreTealSubtle: accent.subtle,
+
+      // Same two-hue reduction as dark mode: indigo (primary) + champagne
+      // (accent), with teal/purple as indigo shade/tint variants and
+      // sage/ruby reserved for semantic correct/error use only.
+      cardCategories: {
+        indigo: { solid: accent.hex, subtle: accent.subtle, border: accent.light },
+        sage: { solid: '#16A34A', subtle: 'rgba(22, 163, 74, 0.12)', border: '#4ADE80' },
+        champagne: { solid: '#D97706', subtle: 'rgba(245, 158, 11, 0.12)', border: '#FBBF24' },
+        flame: { solid: '#D97706', subtle: 'rgba(245, 158, 11, 0.12)', border: '#FBBF24' },
+        teal: { solid: accent.dark, subtle: accent.subtle, border: accent.hex },
+        purple: { solid: accent.light, subtle: accent.subtle, border: accent.light },
+        ruby: { solid: '#EF4444', subtle: 'rgba(239, 68, 68, 0.12)', border: '#EF4444' },
+        info: { solid: accent.hex, subtle: accent.subtle, border: accent.light }
+      }
     };
   }, [isDark, accentColor]);
+
+  const elevation = useMemo(() => buildElevation(isDark), [isDark]);
 
   const value = {
     themeMode,
@@ -329,6 +476,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAccentColor,
     isDark,
     colors,
+    elevation,
     availableAccents: Object.keys(ACCENT_PALETTES)
   };
 

@@ -5,12 +5,19 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. Users Table
+-- id is TEXT, not UUID: the app addresses users by Supabase Auth UUIDs *and*
+-- fixed non-UUID sentinels ('guest-session', 'user-session') for the
+-- unauthenticated/guest flow, so the primary key must accept both.
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id TEXT PRIMARY KEY,
     email TEXT UNIQUE,
+    password_hash TEXT,
+    password_salt TEXT,
     full_name TEXT,
+    avatar_url TEXT,
     role TEXT DEFAULT 'Manager',
     experience_level TEXT DEFAULT 'Mid-Level',
+    audience TEXT DEFAULT 'professionals',
     primary_dread_category TEXT DEFAULT 'negotiation',
     total_rehearsals INT DEFAULT 0,
     total_xp INT DEFAULT 0,
@@ -18,17 +25,31 @@ CREATE TABLE IF NOT EXISTS users (
     longest_streak INT DEFAULT 0,
     last_practice_date DATE,
     subscription_status TEXT DEFAULT 'free_trial', -- 'free_trial', 'active_monthly', 'active_annual', 'expired'
-    rehearsals_remaining INT DEFAULT 2, -- 2 free rehearsals total per blueprint
+    rehearsals_remaining INT DEFAULT 2, -- 2 free rehearsals, then paywall
     trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '5 days'),
     revenuecat_customer_id TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 1b. User Auth Sessions Table
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(token);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+
 -- 2. Scenarios Table (Curated & User Custom Generated)
 CREATE TABLE IF NOT EXISTS scenarios (
     id TEXT PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     category TEXT NOT NULL,
     counterpart_role TEXT NOT NULL,
@@ -46,7 +67,7 @@ CREATE TABLE IF NOT EXISTS scenarios (
 -- 3. Rehearsal Sessions Table
 CREATE TABLE IF NOT EXISTS rehearsal_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     scenario_id TEXT REFERENCES scenarios(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'in_progress', -- 'in_progress', 'completed', 'abandoned'
     started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -69,11 +90,11 @@ CREATE TABLE IF NOT EXISTS session_turns (
 CREATE TABLE IF NOT EXISTS scorecards (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     session_id UUID UNIQUE REFERENCES rehearsal_sessions(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    stated_the_ask_score INT NOT NULL,      -- 0-100
-    held_the_boundary_score INT NOT NULL,   -- 0-100
-    stayed_specific_score INT NOT NULL,     -- 0-100
-    emotional_composure_score INT NOT NULL, -- 0-100
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    clarity_score INT NOT NULL,       -- 0-100
+    empathy_score INT NOT NULL,       -- 0-100
+    assertiveness_score INT NOT NULL, -- 0-100
+    listening_score INT NOT NULL,     -- 0-100
     overall_score INT NOT NULL,             -- 0-100
     strengths TEXT[] DEFAULT '{}',
     growth_areas TEXT[] DEFAULT '{}',
@@ -110,7 +131,7 @@ CREATE TABLE IF NOT EXISTS daily_puzzles (
 
 CREATE TABLE IF NOT EXISTS user_puzzle_submissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     puzzle_id TEXT REFERENCES daily_puzzles(id) ON DELETE CASCADE,
     selected_option_id TEXT NOT NULL,
     is_optimal BOOLEAN NOT NULL,
@@ -122,7 +143,7 @@ CREATE TABLE IF NOT EXISTS user_puzzle_submissions (
 -- 8. Message Coach / Reply Assistant History
 CREATE TABLE IF NOT EXISTS reply_assistant_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     original_situation TEXT NOT NULL,
     generated_options JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

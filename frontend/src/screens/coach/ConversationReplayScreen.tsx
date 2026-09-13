@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   Play,
@@ -42,7 +43,12 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
   navigation,
   route
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors } = useTheme();
+  // Header had paddingTop: Platform.OS === 'ios' ? 56 : 20 — the Android
+  // branch had no safe-area handling, so on edge-to-edge Android the
+  // back button and title sat under the status bar / camera cutout.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const title = route?.params?.title || 'Compensation Discussion';
   const [isPlaying, setIsPlaying] = useState(false);
@@ -123,7 +129,7 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
           onPress={() => navigation.goBack()}
@@ -142,26 +148,26 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
       {/* Mini Audio Playback Bar */}
       <View style={[styles.playerBar, { backgroundColor: themeColors.surfaceCard, borderBottomColor: themeColors.surfaceBorder }]}>
         <TouchableOpacity
-          style={[styles.playBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+          style={[styles.playBtn, { backgroundColor: themeColors.primary }]}
           onPress={() => setIsPlaying(!isPlaying)}
           activeOpacity={0.8}
         >
           {isPlaying ? (
-            <Pause size={16} color={isDark ? '#0B1712' : '#FFFFFF'} />
+            <Pause size={16} color={themeColors.textInverse} />
           ) : (
-            <Play size={16} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 2 }} />
+            <Play size={16} color={themeColors.textInverse} style={{ marginLeft: 2 }} />
           )}
         </TouchableOpacity>
 
         {/* Scrubber track */}
         <View style={styles.scrubberContainer}>
-          <View style={styles.scrubberTrack}>
-            <View style={[styles.scrubberFill, { width: '65%', backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]} />
+          <View style={[styles.scrubberTrack, { backgroundColor: themeColors.surfaceBorder }]}>
+            <View style={[styles.scrubberFill, { width: '65%', backgroundColor: themeColors.primary }]} />
             {/* Markers */}
-            <View style={[styles.markerPip, { left: '15%', backgroundColor: '#2ECC71' }]} />
-            <View style={[styles.markerPip, { left: '42%', backgroundColor: '#2ECC71' }]} />
-            <View style={[styles.markerPip, { left: '65%', backgroundColor: '#E74C3C' }]} />
-            <View style={[styles.markerPip, { left: '88%', backgroundColor: '#2ECC71' }]} />
+            <View style={[styles.markerPip, { left: '15%', backgroundColor: themeColors.success }]} />
+            <View style={[styles.markerPip, { left: '42%', backgroundColor: themeColors.success }]} />
+            <View style={[styles.markerPip, { left: '65%', backgroundColor: themeColors.error }]} />
+            <View style={[styles.markerPip, { left: '88%', backgroundColor: themeColors.success }]} />
           </View>
           <View style={styles.scrubberTimeRow}>
             <Text style={[styles.timeLabel, { color: themeColors.textSecondary }]}>02:18</Text>
@@ -188,7 +194,7 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
                 {
                   backgroundColor: themeColors.surfaceCard,
                   borderColor: isActive
-                    ? (isDark ? '#C8AA6A' : '#173D2C')
+                    ? themeColors.primary
                     : themeColors.surfaceBorder
                 }
               ]}
@@ -199,7 +205,7 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
                   <View
                     style={[
                       styles.turnAvatarDot,
-                      { backgroundColor: isUser ? (isDark ? '#C8AA6A' : '#173D2C') : '#8E8E93' }
+                      { backgroundColor: isUser ? themeColors.primary : themeColors.textMuted }
                     ]}
                   />
                   <Text style={[styles.speakerName, { color: themeColors.textPrimary }]}>
@@ -216,8 +222,8 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
                       styles.leverageBadge,
                       {
                         backgroundColor: t.evaluation.leverageShift.startsWith('+')
-                          ? 'rgba(46,204,113,0.12)'
-                          : 'rgba(231,76,60,0.12)'
+                          ? themeColors.sageSubtle
+                          : themeColors.rubySubtle
                       }
                     ]}
                   >
@@ -226,8 +232,8 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
                         styles.leverageText,
                         {
                           color: t.evaluation.leverageShift.startsWith('+')
-                            ? '#2ECC71'
-                            : '#E74C3C'
+                            ? themeColors.sage
+                            : themeColors.ruby
                         }
                       ]}
                     >
@@ -247,17 +253,17 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
                 style={[
                   styles.critiqueBox,
                   {
-                    backgroundColor: isDark ? '#14201A' : '#F4F7F5',
-                    borderLeftColor: isDark ? '#C8AA6A' : '#173D2C'
+                    backgroundColor: themeColors.surfaceElevated,
+                    borderLeftColor: themeColors.primary
                   }
                 ]}
               >
                 <View style={styles.critiqueHeader}>
-                  <Sparkles size={12} color={isDark ? '#C8AA6A' : '#173D2C'} />
+                  <Sparkles size={12} color={themeColors.primary} />
                   <Text
                     style={[
                       styles.critiqueLabel,
-                      { color: isDark ? '#C8AA6A' : '#173D2C' }
+                      { color: themeColors.primary }
                     ]}
                   >
                     TACTICAL ASSESSMENT
@@ -279,11 +285,11 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
                     onPress={() => toggleExpandApproach(t.id)}
                     activeOpacity={0.7}
                   >
-                    <Repeat size={13} color={isDark ? '#C8AA6A' : '#173D2C'} />
+                    <Repeat size={13} color={themeColors.primary} />
                     <Text
                       style={[
                         styles.betterToggleText,
-                        { color: isDark ? '#C8AA6A' : '#173D2C' }
+                        { color: themeColors.primary }
                       ]}
                     >
                       {showBetter ? 'Hide Optimal Rewrite' : 'View High-Leverage Rewrite'}
@@ -295,8 +301,8 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
                       style={[
                         styles.betterContentCard,
                         {
-                          backgroundColor: isDark ? '#1B2C23' : '#EDF6F0',
-                          borderColor: isDark ? '#235940' : '#D0E3D6'
+                          backgroundColor: themeColors.sageSubtle,
+                          borderColor: themeColors.sage
                         }
                       ]}
                     >
@@ -313,14 +319,14 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
 
         {/* CTA */}
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }]}
+          style={[styles.actionBtn, { backgroundColor: themeColors.primary }]}
           onPress={() => navigation.navigate('CoachingNextSteps', { title })}
           activeOpacity={0.85}
         >
-          <Text style={[styles.actionBtnText, { color: isDark ? '#0B1712' : '#FFFFFF' }]}>
+          <Text style={[styles.actionBtnText, { color: themeColors.textInverse }]}>
             Proceed to Action Plan
           </Text>
-          <ArrowRight size={18} color={isDark ? '#0B1712' : '#FFFFFF'} style={{ marginLeft: 6 }} />
+          <ArrowRight size={18} color={themeColors.textInverse} style={{ marginLeft: 6 }} />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -375,7 +381,6 @@ const styles = StyleSheet.create({
   },
   scrubberTrack: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 3,
     position: 'relative',
     overflow: 'hidden'

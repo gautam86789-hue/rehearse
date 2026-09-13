@@ -3,7 +3,9 @@ export type ArchetypeId =
   | 'guilt_tripper'
   | 'hard_negotiator'
   | 'passive_aggressive_peer'
-  | 'micromanager';
+  | 'micromanager'
+  | 'skeptical_investor'
+  | 'startup_cofounder';
 
 export interface Archetype {
   id: ArchetypeId;
@@ -37,6 +39,7 @@ export interface ScenarioBrief {
 export interface Scenario {
   id: string;
   title: string;
+  audiences?: Audience[];
   category: ScenarioCategory;
   counterpartRole: string;
   counterpartName: string;
@@ -70,10 +73,10 @@ export interface WeakestLineRewrite {
 }
 
 export interface SubstanceRubric {
-  statedTheAsk: number;
-  heldTheBoundary: number;
-  stayedSpecific: number;
-  emotionalComposure: number;
+  clarity: number;
+  empathy: number;
+  assertiveness: number;
+  listening: number;
   overallScore: number;
   strengths: string[];
   growthAreas: string[];
@@ -111,6 +114,7 @@ export interface FrameworkOfTheDay {
   id: string;
   title: string;
   sourceCredit: string;
+  audiences?: Audience[];
   tagline: string;
   summary: string;
   components: {
@@ -120,6 +124,15 @@ export interface FrameworkOfTheDay {
     example: string;
   }[];
   suggestedScenarioId: string;
+  releaseDate: string;
+}
+
+export interface WordOfTheDay {
+  id: string;
+  term: string;
+  audiences: Audience[];
+  meaning: string;
+  whyItMatters: string;
   releaseDate: string;
 }
 
@@ -155,14 +168,83 @@ export interface ReplyOption {
 
 export interface ReplyAssistantResult {
   id: string;
+  userId?: string;
   originalSituation: string;
   options: ReplyOption[];
   createdAt: string;
 }
 
+export type Audience = 'founders_investors' | 'new_managers' | 'mba_students' | 'professionals' | 'new_hires';
+
+export type StoryTrajectory = 'assertive' | 'diplomatic' | 'avoidant' | 'aggressive';
+
+export interface StoryOption {
+  id: 'A' | 'B' | 'C' | 'D';
+  text: string;
+  trajectory: StoryTrajectory;
+}
+
+export interface StoryBeat {
+  narrative: string;
+  options: StoryOption[];
+}
+
+export interface StoryEnding {
+  title: string;
+  narrative: string;
+  tone: 'strong' | 'growth' | 'mixed';
+}
+
+export interface StoryTree {
+  id: string;
+  date: string;
+  title: string;
+  premise: string;
+  q1: StoryBeat;
+  q2: Record<StoryTrajectory, StoryBeat>;
+  q3: Record<StoryTrajectory, StoryBeat>;
+  q4: Record<StoryTrajectory, StoryBeat>;
+  q5: Record<StoryTrajectory, StoryBeat>;
+  endings: Record<StoryTrajectory, StoryEnding>;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  icon?: 'flame' | 'award' | 'shield-check' | 'sparkles';
+  createdAt: string;
+  read: boolean;
+}
+
+export interface HistoryEntry {
+  id: string;
+  scenarioTitle: string;
+  counterpartName: string;
+  category: ScenarioCategory | string;
+  overallScore: number;
+  clarity: number;
+  empathy: number;
+  assertiveness: number;
+  listening: number;
+  growthAreas: string[];
+  completedAt: string;
+}
+
 export interface UserProfile {
   id: string;
+  email?: string;
+  name: string;
+  fullName?: string;
+  avatarUri?: string;
   role: string;
+  audience?: Audience;
+  milestoneFlags?: Record<string, boolean>;
+  completedPuzzleDates?: string[];
+  completedStoryDates?: string[];
+  readArticleIds?: string[];
+  completedJourneyNodeIds?: string[];
+  savedScenarioIds?: string[];
   experienceLevel: string;
   primaryDreadCategory: string;
   totalRehearsals: number;
@@ -171,7 +253,7 @@ export interface UserProfile {
   longestStreak: number;
   lastPracticeDate?: string;
   subscription: {
-    status: 'free_trial' | 'active_monthly' | 'active_annual' | 'expired';
+    status: 'free_trial' | 'active_monthly' | 'active_three_month' | 'active_annual' | 'expired';
     rehearsalsRemaining: number;
     trialEndsAt?: string;
     planName?: string;

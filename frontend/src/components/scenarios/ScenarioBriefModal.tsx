@@ -44,7 +44,7 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
   onStartRehearsal,
   onOpenInCoach
 }) => {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors } = useTheme();
   const [copiedFormula, setCopiedFormula] = useState(false);
 
   if (!scenario) return null;
@@ -94,18 +94,18 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                   styles.difficultyPill,
                   {
                     backgroundColor: isHighStakes
-                      ? 'rgba(231,76,60,0.12)'
+                      ? themeColors.rubySubtle
                       : themeColors.surfaceElevated
                   }
                 ]}
               >
                 {isHighStakes && (
-                  <Flame size={11} color="#E74C3C" style={{ marginRight: 3 }} />
+                  <Flame size={11} color={themeColors.ruby} style={{ marginRight: 3 }} />
                 )}
                 <Text
                   style={[
                     styles.difficultyText,
-                    { color: isHighStakes ? '#E74C3C' : themeColors.textSecondary }
+                    { color: isHighStakes ? themeColors.ruby : themeColors.textSecondary }
                   ]}
                 >
                   {scenario.difficulty}
@@ -173,7 +173,7 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                 style={[
                   styles.infoBox,
                   {
-                    backgroundColor: isDark ? '#14201A' : '#F4F7F5',
+                    backgroundColor: themeColors.surfaceElevated,
                     borderColor: themeColors.surfaceBorder
                   }
                 ]}
@@ -194,13 +194,13 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                   styles.goalBox,
                   {
                     backgroundColor: themeColors.surfaceCard,
-                    borderColor: isDark ? '#C8AA6A' : '#173D2C'
+                    borderColor: themeColors.primary
                   }
                 ]}
               >
                 <Target
                   size={18}
-                  color={isDark ? '#C8AA6A' : '#173D2C'}
+                  color={themeColors.primary}
                   style={{ marginTop: 2, marginRight: 10, flexShrink: 0 }}
                 />
                 <Text style={[styles.goalText, { color: themeColors.textPrimary }]}>
@@ -237,7 +237,7 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                     >
                       <AlertTriangle
                         size={15}
-                        color="#E67E22"
+                        color={themeColors.flame}
                         style={{ marginTop: 2, marginRight: 8, flexShrink: 0 }}
                       />
                       <Text style={[styles.pushText, { color: themeColors.textPrimary }]}>
@@ -261,7 +261,7 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                       styles.copyFormulaBtn,
                       {
                         backgroundColor: copiedFormula
-                          ? '#2ECC71'
+                          ? themeColors.success
                           : themeColors.surfaceElevated
                       }
                     ]}
@@ -270,8 +270,8 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                   >
                     {copiedFormula ? (
                       <>
-                        <Check size={12} color="#FFFFFF" />
-                        <Text style={[styles.copyFormulaText, { color: '#FFFFFF' }]}>Copied</Text>
+                        <Check size={12} color={themeColors.textInverse} />
+                        <Text style={[styles.copyFormulaText, { color: themeColors.textInverse }]}>Copied</Text>
                       </>
                     ) : (
                       <>
@@ -288,8 +288,8 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                   style={[
                     styles.formulaCard,
                     {
-                      backgroundColor: isDark ? '#1C2B22' : '#EAF4EE',
-                      borderColor: isDark ? '#2B5740' : '#C2E0CC'
+                      backgroundColor: themeColors.sageSubtle,
+                      borderColor: themeColors.sage
                     }
                   ]}
                 >
@@ -328,7 +328,7 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
                     >
                       <X
                         size={14}
-                        color="#E74C3C"
+                        color={themeColors.ruby}
                         style={{ marginTop: 2, marginRight: 8, flexShrink: 0 }}
                       />
                       <Text style={[styles.avoidText, { color: themeColors.textPrimary }]}>
@@ -346,7 +346,7 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
             <TouchableOpacity
               style={[
                 styles.primaryRehearseBtn,
-                { backgroundColor: isDark ? '#C8AA6A' : '#173D2C' }
+                { backgroundColor: themeColors.primary }
               ]}
               onPress={() => {
                 onClose();
@@ -356,20 +356,20 @@ export const ScenarioBriefModal: React.FC<ScenarioBriefModalProps> = ({
             >
               <Play
                 size={16}
-                color={isDark ? '#0B1712' : '#FFFFFF'}
+                color={themeColors.textInverse}
                 style={{ marginRight: 8 }}
               />
               <Text
                 style={[
                   styles.primaryRehearseText,
-                  { color: isDark ? '#0B1712' : '#FFFFFF' }
+                  { color: themeColors.textInverse }
                 ]}
               >
                 Launch High-Stakes Rehearsal
               </Text>
               <ArrowRight
                 size={16}
-                color={isDark ? '#0B1712' : '#FFFFFF'}
+                color={themeColors.textInverse}
                 style={{ marginLeft: 6 }}
               />
             </TouchableOpacity>

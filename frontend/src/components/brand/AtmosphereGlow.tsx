@@ -80,8 +80,8 @@ export const AtmosphereGlow: React.FC<AtmosphereGlowProps> = ({
   }, [intensity, reducedMotion, showCenterOrb]);
 
   const gradientColors = isDark
-    ? (['#10231B', '#0B1712', '#07100D'] as const)
-    : (['#F0F4EE', '#E7EDE4', '#DFE6DC'] as const);
+    ? (['#1E1E32', '#161625', '#12121F'] as const)
+    : (['#EEEDFB', '#F2F1FC', '#F7F7FC'] as const);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -107,8 +107,8 @@ export const AtmosphereGlow: React.FC<AtmosphereGlowProps> = ({
             <LinearGradient
               colors={[
                 accentColor + '38',
-                colors.primarySubtle || 'rgba(143, 153, 127, 0.16)',
-                isDark ? 'rgba(16, 35, 27, 0.6)' : 'rgba(215, 225, 218, 0.6)',
+                colors.primarySubtle || 'rgba(91, 95, 239, 0.12)',
+                isDark ? 'rgba(24, 24, 40, 0.6)' : 'rgba(236, 235, 247, 0.6)',
                 'transparent'
               ]}
               locations={[0, 0.4, 0.7, 0.85]}

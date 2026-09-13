@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Send,
   ArrowLeft,
@@ -18,20 +20,25 @@ import {
   VolumeX,
   Shield,
   Award,
-  AlertCircle
+  AlertCircle,
+  Mic,
+  Lock
 } from 'lucide-react-native';
 import { PersonaAvatar } from '../components/common/PersonaAvatar';
 import { Button } from '../components/common/Button';
+import { getArchetypeAvatarImage } from '../data/generatedImages';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { apiService } from '../services/api';
-import { Scenario, MessageTurn, RoleplaySession } from '../types';
+import { Scenario, MessageTurn, RoleplaySession, Scorecard } from '../types';
 
 export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
   const { scenario } = route.params as { scenario: Scenario };
-  const { user, setActiveSession, setLastScorecard, setUnlockedBadge, setIsPaywallVisible } = useApp();
-  const { colors } = useTheme();
+  const { user, isPro, setActiveSession, setLastScorecard, setUnlockedBadge, setIsPaywallVisible, addHistoryEntry, addNotification, refreshProfile, unlockMilestone } = useApp();
+  const { colors, elevation } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const [session, setSession] = useState<RoleplaySession | null>(null);
   const [turns, setTurns] = useState<MessageTurn[]>([]);
@@ -45,6 +52,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
 
   useEffect(() => {
     initSession();
+    unlockMilestone('badge_first_session_started', 'Stepped Up', 'Started your very first rehearsal.', 'flame');
   }, []);
 
   const initSession = async () => {
@@ -56,7 +64,13 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
         setActiveSession(res.session);
       }
     } catch (err: any) {
-      if (err.message?.includes('Free trial limit reached') || err.message?.includes('PAYWALL')) {
+      const isTrialLimitError = err.message?.includes('Free trial limit reached') || err.message?.includes('PAYWALL');
+      // isPro comes straight from the RevenueCat SDK's live CustomerInfo, so
+      // it's already true immediately after a real purchase — even if the
+      // backend's own subscription record hasn't caught up yet (RevenueCat's
+      // webhook to our server can lag a purchase completing on-device by a
+      // second or two). Don't block a just-paying user behind that gap.
+      if (isTrialLimitError && !isPro) {
         setIsPaywallVisible(true);
         navigation.goBack();
       } else {
@@ -129,48 +143,73 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
       const res = await apiService.scoreSession(session.id);
       if (res?.scorecard) {
         setLastScorecard(res.scorecard);
+        addHistoryEntry(scenario, res.scorecard);
         if (res.scorecard.badgeUnlocked) {
           setUnlockedBadge(res.scorecard.badgeUnlocked);
+          addNotification({
+            title: 'Milestone unlocked',
+            body: `${res.scorecard.badgeUnlocked.title} — ${res.scorecard.badgeUnlocked.description}`,
+            icon: (res.scorecard.badgeUnlocked.icon as any) || 'award'
+          });
         }
+
+        // Pick up the post-session rehearsal count and nudge toward Pro once
+        // it's running low, mirroring the "Go Pro" footnote already on Home.
+        const refreshed = await refreshProfile();
+        const remaining = refreshed?.subscription?.rehearsalsRemaining;
+        const isFree = refreshed?.subscription?.status === 'free_trial';
+        if (isFree && remaining === 1) {
+          addNotification({
+            title: 'One free rehearsal left',
+            body: "You're almost through your free rehearsals — go Pro for unlimited practice.",
+            icon: 'sparkles'
+          });
+        } else if (isFree && remaining === 0) {
+          addNotification({
+            title: 'Free rehearsals used up',
+            body: 'Go Pro to keep rehearsing without limits.',
+            icon: 'sparkles'
+          });
+        }
+
         navigation.replace('Score', { scorecard: res.scorecard, scenario });
       }
     } catch (err) {
-      // Local fallback scorecard
-      const fallbackScorecard: any = {
+      // Local fallback scorecard — matches the real Scorecard shape exactly
+      // so ScoreScreen/FeedbackScreen render correctly even if the network
+      // call to /roleplay/score fails.
+      const weakestLine = turns.find((t) => t.speaker === 'user')?.message || 'I think we need to rethink this timeline.';
+      const fallbackScorecard: Scorecard = {
         id: `score-${Date.now()}`,
         sessionId: session.id,
-        statedTheAsk: 85,
-        anchoredFirmly: 78,
-        calibratedQuestions: 88,
-        handledPushback: 82,
-        maintainedComposure: 90,
-        overallScore: 85,
-        substanceRubric: {
-          clarityAndDirectness: 86,
-          emotionalRegulation: 88,
-          boundaryIntegrity: 84,
-          strategicPersuasion: 82
-        },
+        clarity: 85,
+        empathy: 74,
+        assertiveness: 82,
+        listening: 78,
+        overallScore: 80,
         strengths: [
-          'Excellent tactical poise under counterpart resistance',
+          'Stayed composed under counterpart resistance',
           'Clearly established the objective early in the conversation',
           'Did not concede key ground when challenged'
         ],
-        weaknesses: [
-          'Could use more calibrated "How/What" open questions before giving direct responses'
+        growthAreas: [
+          'Acknowledge the counterpart\'s perspective before pressing your point',
+          'Use more calibrated "How/What" open questions before giving direct responses'
         ],
-        rewrites: [
-          {
-            original: turns.find((t) => t.speaker === 'user')?.message || 'I think we need to rethink this timeline.',
-            upgraded: 'Help me understand the key priority: if we push for Friday, which deliverables should we de-scope to maintain quality?',
-            technique: 'Calibrated "How" Anchor',
-            rationale: 'Forces the counterpart to solve the resource constraint with you instead of pushing back.'
-          }
-        ],
-        summary: 'Strong executive presence and boundary holding throughout the rehearsal dialogue.',
-        createdAt: new Date().toISOString()
+        weakestLineRewrite: {
+          originalLine: weakestLine,
+          suggestedRewrite: 'Help me understand the key priority: if we push for Friday, which deliverables should we de-scope to maintain quality?',
+          coachingRationale: 'Forces the counterpart to solve the resource constraint with you instead of pushing back.',
+          techniqueApplied: 'Calibrated "How" Anchor'
+        },
+        keyTakeaways: ['Strong presence and boundary holding throughout the rehearsal dialogue.'],
+        newStreak: user.currentStreak || 1,
+        streakExtended: false,
+        xpEarned: 50,
+        generatedAt: new Date().toISOString()
       };
       setLastScorecard(fallbackScorecard);
+      addHistoryEntry(scenario, fallbackScorecard);
       navigation.replace('Score', { scorecard: fallbackScorecard, scenario });
     } finally {
       setIsEnding(false);
@@ -189,17 +228,29 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // 'padding' does nothing meaningful on Android; leaving it `undefined`
+      // there meant the keyboard just covered the bottom of the screen with
+      // no adjustment at all — the input dock and latest messages sat behind
+      // it instead of resizing above it. 'height' is the standard Android
+      // fix (paired with the default adjustResize windowSoftInputMode).
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       {/* Top Rehearsal Header */}
-      <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomColor: colors.surfaceBorder }]}>
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomColor: colors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
           <ArrowLeft size={20} color={colors.textPrimary} />
         </TouchableOpacity>
 
         <View style={styles.counterpartInfo}>
-          <PersonaAvatar archetypeId={scenario.counterpartArchetype} size={36} showBadge={false} />
+          {getArchetypeAvatarImage(scenario.counterpartArchetype) ? (
+            <Image
+              source={getArchetypeAvatarImage(scenario.counterpartArchetype)!}
+              style={styles.counterpartPhoto}
+            />
+          ) : (
+            <PersonaAvatar archetypeId={scenario.counterpartArchetype} size={36} showBadge={false} />
+          )}
           <View>
             <Text style={[typography.h4, { color: colors.textPrimary }]}>{scenario.counterpartName}</Text>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>{scenario.counterpartRole}</Text>
@@ -224,7 +275,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
       </View>
 
       {/* Target Goal Reminder Bar */}
-      <View style={[styles.goalBar, { backgroundColor: colors.surfaceElevated, borderBottomColor: colors.surfaceBorder }]}>
+      <View style={[styles.goalBar, elevation.sm, { backgroundColor: colors.surfaceElevated, borderBottomColor: colors.surfaceBorder }]}>
         <Text style={[typography.overline, { color: colors.gold }]}>YOUR GOAL:</Text>
         <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
           {scenario.userGoal}
@@ -237,7 +288,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
 
       {/* Coaching Hint Banner */}
       {coachingHint && (
-        <View style={[styles.hintBanner, { backgroundColor: colors.goldSubtle, borderBottomColor: colors.gold }]}>
+        <View style={[styles.hintBanner, elevation.sm, { backgroundColor: colors.goldSubtle, borderBottomColor: colors.gold }]}>
           <AlertCircle size={16} color={colors.gold} />
           <Text style={[typography.bodySmall, { color: colors.gold, flex: 1 }]}>{coachingHint}</Text>
           <TouchableOpacity onPress={() => setCoachingHint(null)}>
@@ -318,9 +369,20 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
 
       {/* Input Dock */}
       <View style={[styles.inputDock, { backgroundColor: colors.surfaceCard, borderTopColor: colors.surfaceBorder }]}>
+        <TouchableOpacity
+          style={[styles.micButton, { backgroundColor: colors.surfaceHighlight }]}
+          onPress={() => setIsPaywallVisible(true)}
+          activeOpacity={0.75}
+        >
+          <Mic size={17} color={colors.textMuted} />
+          <View style={[styles.micLockBadge, { backgroundColor: colors.champagne }]}>
+            <Lock size={8} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+
         <TextInput
           style={[styles.chatInput, { backgroundColor: colors.surfaceElevated, borderColor: colors.surfaceBorder, color: colors.textPrimary }]}
-          placeholder="Speak or type your response..."
+          placeholder="Type your response..."
           placeholderTextColor={colors.textMuted}
           value={inputText}
           onChangeText={setInputText}
@@ -360,6 +422,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10
+  },
+  counterpartPhoto: {
+    width: 36,
+    height: 36,
+    borderRadius: 18
   },
   endRehearsalBtn: {
     borderWidth: 1,
@@ -463,5 +530,25 @@ const styles = StyleSheet.create({
   },
   disabledSend: {
     opacity: 0.4
+  },
+  micButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative'
+  },
+  micLockBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF'
   }
 });

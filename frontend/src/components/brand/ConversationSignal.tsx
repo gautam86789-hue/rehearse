@@ -158,8 +158,8 @@ export const ConversationSignal: React.FC<ConversationSignalProps> = ({
   });
 
   const auraColors = isDark
-    ? (['rgba(200, 170, 106, 0.26)', 'rgba(143, 153, 127, 0.18)', 'rgba(16, 35, 27, 0.65)', 'transparent'] as const)
-    : ([accentColor + '20', 'rgba(143, 153, 127, 0.14)', 'rgba(215, 225, 218, 0.45)', 'transparent'] as const);
+    ? (['rgba(91, 95, 239, 0.26)', 'rgba(139, 143, 245, 0.18)', 'rgba(18, 18, 31, 0.65)', 'transparent'] as const)
+    : ([accentColor + '20', 'rgba(91, 95, 239, 0.12)', 'rgba(236, 235, 247, 0.45)', 'transparent'] as const);
 
   return (
     <View style={styles.orbitalContainer}>
@@ -193,7 +193,7 @@ export const ConversationSignal: React.FC<ConversationSignalProps> = ({
             cx={128}
             cy={128}
             r={126}
-            stroke={isDark ? 'rgba(200, 170, 106, 0.22)' : 'rgba(166, 130, 56, 0.35)'}
+            stroke={isDark ? 'rgba(139, 143, 245, 0.25)' : 'rgba(91, 95, 239, 0.3)'}
             strokeWidth={1}
             fill="none"
           />
@@ -226,7 +226,7 @@ export const ConversationSignal: React.FC<ConversationSignalProps> = ({
             cx={108}
             cy={108}
             r={106}
-            stroke={isDark ? 'rgba(200, 170, 106, 0.28)' : 'rgba(166, 130, 56, 0.4)'}
+            stroke={isDark ? 'rgba(139, 143, 245, 0.3)' : 'rgba(91, 95, 239, 0.35)'}
             strokeWidth={1}
             strokeDasharray="3 4"
             fill="none"
@@ -260,7 +260,7 @@ export const ConversationSignal: React.FC<ConversationSignalProps> = ({
             cx={84}
             cy={84}
             r={82}
-            stroke={isDark ? 'rgba(143, 153, 127, 0.28)' : 'rgba(95, 112, 83, 0.36)'}
+            stroke={isDark ? 'rgba(196, 181, 253, 0.28)' : 'rgba(139, 143, 245, 0.36)'}
             strokeWidth={1}
             fill="none"
           />
@@ -279,9 +279,9 @@ export const ConversationSignal: React.FC<ConversationSignalProps> = ({
         style={[
           styles.frostedSquircle,
           {
-            backgroundColor: '#162A24',
-            borderColor: isDark ? 'rgba(200, 170, 106, 0.35)' : 'rgba(22, 42, 36, 0.25)',
-            shadowColor: isDark ? '#000000' : 'rgba(22, 42, 36, 0.3)'
+            backgroundColor: accentColor,
+            borderColor: isDark ? 'rgba(196, 181, 253, 0.35)' : 'rgba(66, 69, 196, 0.25)',
+            shadowColor: isDark ? '#000000' : 'rgba(91, 95, 239, 0.3)'
           }
         ]}
       >
@@ -304,15 +304,15 @@ export const ConversationSignal: React.FC<ConversationSignalProps> = ({
             cx={50}
             cy={114}
             r={5.5}
-            fill="#D97736"
+            fill="#F59E0B"
           />
         </Svg>
 
-        {/* 3 Animated Terracotta Resonance Bars */}
+        {/* 3 Animated Amber Resonance Bars */}
         <View style={styles.waveformContainer}>
-          <Animated.View style={[styles.audioBar, { height: bar1, backgroundColor: '#D97736' }]} />
-          <Animated.View style={[styles.audioBar, { height: bar2, backgroundColor: '#D97736' }]} />
-          <Animated.View style={[styles.audioBar, { height: bar3, backgroundColor: '#D97736' }]} />
+          <Animated.View style={[styles.audioBar, { height: bar1, backgroundColor: '#F59E0B' }]} />
+          <Animated.View style={[styles.audioBar, { height: bar2, backgroundColor: '#F59E0B' }]} />
+          <Animated.View style={[styles.audioBar, { height: bar3, backgroundColor: '#F59E0B' }]} />
         </View>
       </View>
     </View>
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.9,
     shadowRadius: 40,
-    elevation: 16
+    elevation: 0
   },
   cornerBracketTopRight: {
     position: 'absolute',

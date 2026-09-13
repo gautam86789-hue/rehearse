@@ -73,17 +73,17 @@ export const PersonaWaveformSignal: React.FC<PersonaWaveformSignalProps> = ({
       <Svg width={WAVE_WIDTH} height={70} viewBox="0 0 280 70" fill="none">
         <Defs>
           <SvgLinearGradient id="waveGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor="#3B82F6" stopOpacity="0" />
-            <Stop offset="30%" stopColor="#60A5FA" stopOpacity="0.45" />
-            <Stop offset="50%" stopColor="#93C5FD" stopOpacity="0.85" />
+            <Stop offset="0%" stopColor="#5B5FEF" stopOpacity="0" />
+            <Stop offset="30%" stopColor="#8B8FF5" stopOpacity="0.45" />
+            <Stop offset="50%" stopColor="#C4B5FD" stopOpacity="0.85" />
             <Stop offset="70%" stopColor="#818CF8" stopOpacity="0.45" />
             <Stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
           </SvgLinearGradient>
 
           <SvgLinearGradient id="waveGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor="#60A5FA" stopOpacity="0" />
-            <Stop offset="50%" stopColor="#38BDF8" stopOpacity="0.55" />
-            <Stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+            <Stop offset="0%" stopColor="#8B8FF5" stopOpacity="0" />
+            <Stop offset="50%" stopColor="#A78BFA" stopOpacity="0.55" />
+            <Stop offset="100%" stopColor="#4245C4" stopOpacity="0" />
           </SvgLinearGradient>
         </Defs>
 
@@ -108,7 +108,7 @@ export const PersonaWaveformSignal: React.FC<PersonaWaveformSignalProps> = ({
         {/* Counterpart abstract presence nodes */}
         <Path
           d="M130 18 Q140 10, 150 18 T140 28 Z"
-          fill="rgba(147, 197, 253, 0.15)"
+          fill="rgba(139, 143, 245, 0.15)"
         />
       </Svg>
     </Animated.View>

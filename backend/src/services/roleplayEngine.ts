@@ -1,6 +1,7 @@
 import { LLMService, llmService, LLMMessage } from './llmService.js';
 import { Scenario, MessageTurn, ArchetypeId } from '../types/index.js';
 import { ARCHETYPES } from '../db/seedData.js';
+import { getDomainContext } from './domainContext.js';
 
 export interface TurnResponse {
   message: string;
@@ -20,6 +21,7 @@ export class RoleplayEngine {
     latestUserMessage: string
   ): Promise<TurnResponse> {
     const archetype = ARCHETYPES[scenario.counterpartArchetype] || ARCHETYPES.defensive_boss;
+    const domainContext = getDomainContext(scenario.counterpartArchetype);
 
     const systemPrompt = `You are roleplaying as ${scenario.counterpartName}, who is in the role of "${scenario.counterpartRole}".
 You embody the archetype: ${archetype.title}.
@@ -28,7 +30,7 @@ PERSONALITY & RESISTANCE PROFILE:
 - Description: ${archetype.personalityDescription}
 - Resistance Pattern: ${archetype.resistancePattern}
 - Typical Phrases: ${archetype.typicalPhrases.join(' | ')}
-
+${domainContext ? `\nDOMAIN FLUENCY:\n${domainContext}\n` : ''}
 SCENARIO CONTEXT:
 - Situation: ${scenario.situation}
 - Counterpart Initial Stance: ${scenario.brief.counterpartPosition}
@@ -136,6 +138,16 @@ ROLEPLAY RULES:
         "I wouldn't have to ask for daily syncs if I had real-time visibility into the blockers before the VP asks me about them.",
         "Sending me a quick message whenever you adjust the sprint scope isn't unreasonable—it takes 30 seconds.",
         "Let's try a compromise: you give me a bulleted summary every morning at 9 AM and we skip the midday call. Does that work?"
+      ],
+      skeptical_investor: [
+        "Walk me through your CAC payback again — that retention number feels optimistic given what we're seeing across the portfolio.",
+        "I like the team, but at this stage we're seeing comps close well below what you're asking for.",
+        "What's your answer if your biggest competitor closes a round next month? I need to understand the downside case."
+      ],
+      startup_cofounder: [
+        "I've put in the same hours as you since day one — this isn't about who's really the CEO here.",
+        "If you push this pivot through without my buy-in, I don't know if I can stay fully committed to it.",
+        "We agreed to decide the big calls together. This feels like you're going around me on this one."
       ]
     };
 

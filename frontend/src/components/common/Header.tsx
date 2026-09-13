@@ -4,8 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Image,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   Search,
@@ -15,7 +17,6 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
-import { AcousticLoopLogo } from '../brand/AcousticLoopLogo';
 
 export interface HeaderProps {
   type?: 'home' | 'page';
@@ -37,15 +38,12 @@ export const StreakBadge: React.FC<{ onPress?: () => void }> = ({ onPress }) => 
     <TouchableOpacity
       style={[
         styles.streakBadge,
-        {
-          backgroundColor: isDark ? '#192C23' : '#F4EFE6',
-          borderColor: isDark ? '#2D4537' : '#E8DFD3'
-        }
+        { backgroundColor: colors.flameGlow, borderColor: colors.flame }
       ]}
       activeOpacity={0.8}
       onPress={onPress}
     >
-      <Flame size={13} color="#D97736" style={{ marginRight: 4 }} />
+      <Flame size={13} color={colors.flame} style={{ marginRight: 4 }} />
       <Text style={[styles.streakText, { color: colors.textPrimary }]}>
         {user.currentStreak || 3}d
       </Text>
@@ -61,15 +59,12 @@ export const XPBadge: React.FC<{ onPress?: () => void }> = ({ onPress }) => {
     <TouchableOpacity
       style={[
         styles.xpBadge,
-        {
-          backgroundColor: isDark ? '#192C23' : '#F4EFE6',
-          borderColor: isDark ? '#2D4537' : '#E8DFD3'
-        }
+        { backgroundColor: colors.primarySubtle, borderColor: colors.primaryLight }
       ]}
       activeOpacity={0.8}
       onPress={onPress}
     >
-      <Award size={13} color={isDark ? '#C8AA6A' : '#173D2C'} style={{ marginRight: 4 }} />
+      <Award size={13} color={colors.primary} style={{ marginRight: 4 }} />
       <Text style={[styles.xpText, { color: colors.textPrimary }]}>
         {user.totalXP || 380} XP
       </Text>
@@ -87,6 +82,12 @@ export const Header: React.FC<HeaderProps> = ({
   navigation
 }) => {
   const { colors, isDark } = useTheme();
+  // This header has no top safe-area handling at all before this fix — a flat
+  // paddingTop:14 regardless of device. On edge-to-edge Android (mandatory
+  // since Android 16, see app.json) that put the title/logo directly under
+  // the status bar / camera cutout on every screen using this component.
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
 
   const handleBack = () => {
     if (onBack) {
@@ -106,18 +107,17 @@ export const Header: React.FC<HeaderProps> = ({
           styles.container,
           {
             backgroundColor: colors.background,
-            borderBottomColor: colors.surfaceBorder
+            borderBottomColor: colors.surfaceBorder,
+            paddingTop: topPadding
           }
         ]}
       >
-        {/* Left: Rehearse Acoustic Loop Logo ONLY */}
+        {/* Left: Rehearse "R" mark */}
         <View style={styles.leftContainer}>
-          <AcousticLoopLogo
-            size={30}
-            backgroundColor="#162A24"
-            loopColor="#F9FAF8"
-            waveColor="#D97736"
-            rounded={true}
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.logoMark}
+            resizeMode="contain"
           />
         </View>
 
@@ -137,7 +137,8 @@ export const Header: React.FC<HeaderProps> = ({
         styles.container,
         {
           backgroundColor: colors.background,
-          borderBottomColor: colors.surfaceBorder
+          borderBottomColor: colors.surfaceBorder,
+          paddingTop: topPadding
         }
       ]}
     >
@@ -212,6 +213,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start'
+  },
+  logoMark: {
+    width: 30,
+    height: 30
   },
   centerContainer: {
     flex: 1,

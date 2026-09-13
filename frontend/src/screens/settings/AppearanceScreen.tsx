@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,10 @@ import {
   Check,
   ChevronLeft
 } from 'lucide-react-native';
-import { useTheme, ThemeMode } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme, ThemeMode, ACCENT_PALETTES, RADII } from '../../context/ThemeContext';
 import { InAppNotification, NotificationType } from '../../components/common/InAppNotification';
-
-const PRIMARY_ACCENTS = [
-  { id: '#C8AA6A', name: 'Champagne Gold', hex: '#C8AA6A' },
-  { id: '#8F997F', name: 'Executive Sage', hex: '#8F997F' }
-];
+import { setHapticsEnabled as persistHapticsEnabled, getHapticsEnabled, hapticImpact } from '../../services/haptics';
 
 export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const {
@@ -30,10 +27,24 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
     accentColor,
     setAccentColor,
     colors: themeColors,
-    isDark
+    isDark,
+    availableAccents,
+    elevation
   } = useTheme();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 8;
+
+  const PRIMARY_ACCENTS = availableAccents.map((hex) => ({
+    id: hex,
+    name: ACCENT_PALETTES[hex].name,
+    hex
+  }));
 
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
+
+  useEffect(() => {
+    getHapticsEnabled().then(setHapticsEnabled);
+  }, []);
   const [toast, setToast] = useState<{
     visible: boolean;
     message: string;
@@ -61,7 +72,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+      <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
@@ -89,24 +100,25 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
             <TouchableOpacity
               style={[
                 styles.previewCard,
-                { backgroundColor: '#F5F2E9', borderColor: themeColors.surfaceBorder },
+                elevation.sm,
+                { backgroundColor: '#F7F7FC', borderColor: themeColors.surfaceBorder },
                 themeMode === 'light' && { borderColor: themeColors.primary, borderWidth: 2 }
               ]}
               onPress={() => handleSelectTheme('light')}
               activeOpacity={0.85}
             >
               <View style={styles.previewCardBody}>
-                <View style={[styles.miniBar, { backgroundColor: '#E2DEC9' }]}>
-                  <View style={[styles.miniDot, { backgroundColor: '#B08D4F' }]} />
+                <View style={[styles.miniBar, { backgroundColor: '#ECEBF7' }]}>
+                  <View style={[styles.miniDot, { backgroundColor: '#5B5FEF' }]} />
                 </View>
                 <View style={[styles.miniBubble, { backgroundColor: '#FFFFFF' }]} />
-                <View style={[styles.miniBubble, { backgroundColor: '#FFFCF5', alignSelf: 'flex-end', width: '60%' }]} />
+                <View style={[styles.miniBubble, { backgroundColor: '#ECEBF7', alignSelf: 'flex-end', width: '60%' }]} />
               </View>
 
               <View style={styles.previewCardFooter}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Sun size={14} color="#17241E" />
-                  <Text style={[styles.previewCardLabel, { color: '#17241E' }]}>Light</Text>
+                  <Sun size={14} color="#1A1B25" />
+                  <Text style={[styles.previewCardLabel, { color: '#1A1B25' }]}>Light</Text>
                 </View>
                 {themeMode === 'light' && (
                   <View style={[styles.checkPill, { backgroundColor: themeColors.primary }]}>
@@ -120,24 +132,25 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
             <TouchableOpacity
               style={[
                 styles.previewCard,
-                { backgroundColor: '#0B1712', borderColor: themeColors.surfaceBorder },
+                elevation.sm,
+                { backgroundColor: '#12121F', borderColor: themeColors.surfaceBorder },
                 themeMode === 'dark' && { borderColor: themeColors.primary, borderWidth: 2 }
               ]}
               onPress={() => handleSelectTheme('dark')}
               activeOpacity={0.85}
             >
               <View style={styles.previewCardBody}>
-                <View style={[styles.miniBar, { backgroundColor: '#182C22' }]}>
-                  <View style={[styles.miniDot, { backgroundColor: '#C8AA6A' }]} />
+                <View style={[styles.miniBar, { backgroundColor: '#242438' }]}>
+                  <View style={[styles.miniDot, { backgroundColor: '#8B8FF5' }]} />
                 </View>
-                <View style={[styles.miniBubble, { backgroundColor: '#12231B' }]} />
-                <View style={[styles.miniBubble, { backgroundColor: '#182C22', alignSelf: 'flex-end', width: '60%' }]} />
+                <View style={[styles.miniBubble, { backgroundColor: '#1E1E32' }]} />
+                <View style={[styles.miniBubble, { backgroundColor: '#242438', alignSelf: 'flex-end', width: '60%' }]} />
               </View>
 
               <View style={styles.previewCardFooter}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Moon size={14} color="#F3EFE5" />
-                  <Text style={[styles.previewCardLabel, { color: '#F3EFE5' }]}>Dark</Text>
+                  <Moon size={14} color="#F1F1F7" />
+                  <Text style={[styles.previewCardLabel, { color: '#F1F1F7' }]}>Dark</Text>
                 </View>
                 {themeMode === 'dark' && (
                   <View style={[styles.checkPill, { backgroundColor: themeColors.primary }]}>
@@ -152,6 +165,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
           <TouchableOpacity
             style={[
               styles.systemRow,
+              elevation.sm,
               { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder },
               themeMode === 'system' && { borderColor: themeColors.primary, borderWidth: 1.5 }
             ]}
@@ -179,7 +193,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>ACCENT</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             {PRIMARY_ACCENTS.map((accent, index) => {
               const isSelected = accentColor === accent.hex;
               return (
@@ -211,7 +225,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
         <View style={styles.section}>
           <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>TACTILE</Text>
 
-          <View style={[styles.cardGroup, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+          <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <View style={styles.toggleRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.toggleTitle, { color: themeColors.textPrimary }]}>Haptic Feedback</Text>
@@ -221,6 +235,11 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                 value={hapticsEnabled}
                 onValueChange={(val) => {
                   setHapticsEnabled(val);
+                  persistHapticsEnabled(val);
+                  // Give an immediate felt difference when turning it on —
+                  // otherwise "enabled" is just a label with nothing to
+                  // confirm it actually did something.
+                  if (val) hapticImpact();
                   setToast({
                     visible: true,
                     message: `Haptic feedback ${val ? 'enabled' : 'disabled'}.`,
@@ -297,7 +316,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: 12,
     height: 140,
@@ -348,7 +367,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1
   },
   systemLeft: {
@@ -372,7 +391,7 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   cardGroup: {
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     overflow: 'hidden'
   },
