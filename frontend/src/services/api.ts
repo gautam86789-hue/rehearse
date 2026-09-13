@@ -925,6 +925,16 @@ class ApiService {
     }
   }
 
+  // Deliberately does NOT swallow a failure into a fake success the way
+  // upgradePlan's offline fallback does — an invalid/expired code must
+  // actually be rejected, so errors propagate to the caller to show.
+  async redeemPromoCode(userId: string, code: string): Promise<{ subscription: any }> {
+    return this.request('/subscriptions/redeem-code', {
+      method: 'POST',
+      body: JSON.stringify({ userId, code })
+    });
+  }
+
   async upgradePlan(userId: string, plan: 'monthly' | 'three_month' | 'annual'): Promise<{ subscription: any }> {
     try {
       return await this.request('/subscriptions/upgrade', {

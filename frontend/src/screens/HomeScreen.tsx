@@ -11,7 +11,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  Flame,
   Play,
   Zap,
   MessageCircleHeart,
@@ -38,6 +37,7 @@ import { Scenario, Audience, WordOfTheDay, FrameworkOfTheDay } from '../types';
 import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
 import { WordOfDayModal } from '../components/common/WordOfDayModal';
+import { MilestoneIcon } from '../components/common/MilestoneIcon';
 
 interface PracticeTile {
   id: string;
@@ -192,7 +192,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           activeOpacity={0.85}
         >
           <View style={[styles.streakIconCircle, { backgroundColor: colors.flameGlow }]}>
-            <Flame size={18} color={colors.flame} fill={colors.flame} />
+            <MilestoneIcon icon="flame" size={26} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.streakTitle, { color: colors.textPrimary }]}>

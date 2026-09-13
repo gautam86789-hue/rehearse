@@ -13,7 +13,9 @@ export const FeedbackScreen: React.FC<{ route: any; navigation: any }> = ({ rout
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 8;
 
-  const isPro = user.subscription?.status === 'active_annual' || user.subscription?.status === 'active_monthly';
+  const isPro = ['active_annual', 'active_three_month', 'active_monthly', 'active_promo'].includes(
+    user.subscription?.status || ''
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

@@ -15,6 +15,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { isPurchasesSupported, presentPaywallIfNeeded, PAYWALL_RESULT } from '../../services/purchases';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
 import { AuthGateModal } from './AuthGateModal';
+import { PromoCodeGate } from './PromoCodeGate';
+import { apiService } from '../../services/api';
 
 // On native (iOS/Android), `isPaywallVisible` triggers RevenueCat's hosted,
 // dashboard-designed Paywall — real purchases, real products (yearly /
@@ -24,10 +26,35 @@ import { AuthGateModal } from './AuthGateModal';
 // this project's Expo-web browser preview is relied on all session for fast
 // UI iteration, so it needs something to demo behind the same CTA.
 export const PaywallModal: React.FC = () => {
-  const { isPaywallVisible, setIsPaywallVisible, paywallPreferredPlan, upgradeSubscription, refreshProfile } = useApp();
+  const { isPaywallVisible, setIsPaywallVisible, paywallPreferredPlan, upgradeSubscription, refreshProfile, user, unlockMilestone } = useApp();
   const { isGuest } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('annual');
+
+  // Shipaton judging-window / tester shortcut — offered once per paywall
+  // open, right after sign-in and before the real (store-billed) paywall.
+  // Resets whenever the paywall closes so the next open re-offers it.
+  const [hasDeclinedPromo, setHasDeclinedPromo] = useState(false);
+  useEffect(() => {
+    if (!isPaywallVisible) setHasDeclinedPromo(false);
+  }, [isPaywallVisible]);
+
+  const handleRedeemPromoCode = async (code: string): Promise<{ error?: string }> => {
+    try {
+      await apiService.redeemPromoCode(user.id, code);
+      await refreshProfile();
+      setIsPaywallVisible(false);
+      unlockMilestone(
+        'promo_early_bird',
+        'Early Bird Unlocked!',
+        "You've got 7 days of full Pro access — no card required. Make it count.",
+        'sparkles'
+      );
+      return {};
+    } catch (err: any) {
+      return { error: err?.message || 'Something went wrong — please try again.' };
+    }
+  };
 
   // Opens on whatever plan the user already had selected on
   // MembershipBillingScreen, rather than always resetting to Annual.
@@ -55,8 +82,11 @@ export const PaywallModal: React.FC = () => {
   useEffect(() => {
     // isGuest excluded here on purpose — a guest hits the AuthGateModal
     // render branch below instead, and this effect naturally takes over
-    // once sign-up/sign-in flips isGuest false and re-renders.
-    if (!isPurchasesSupported() || !isPaywallVisible || isGuest || isPresenting.current) return;
+    // once sign-up/sign-in flips isGuest false and re-renders. hasDeclinedPromo
+    // gates it the same way — the PromoCodeGate branch below runs first, and
+    // only "No code" (or a redeemed code closing the paywall outright) lets
+    // this effect proceed.
+    if (!isPurchasesSupported() || !isPaywallVisible || isGuest || !hasDeclinedPromo || isPresenting.current) return;
     isPresenting.current = true;
     presentPaywallIfNeeded()
       .then(async (result) => {
@@ -71,7 +101,7 @@ export const PaywallModal: React.FC = () => {
         isPresenting.current = false;
         setIsPaywallVisible(false);
       });
-  }, [isPaywallVisible, isGuest]);
+  }, [isPaywallVisible, isGuest, hasDeclinedPromo]);
 
   // Sign-in/sign-up is required only at the moment of actually paying, not
   // any earlier — applies on both native (blocks the RevenueCat hosted
@@ -82,6 +112,19 @@ export const PaywallModal: React.FC = () => {
         visible
         onAuthenticated={() => {}}
         onCancel={() => setIsPaywallVisible(false)}
+      />
+    );
+  }
+
+  // Offered once, right after sign-in and before the real paywall — a judge
+  // or tester with a code skips payment entirely; "No code" falls through to
+  // the normal purchase flow below exactly as before this existed.
+  if (isPaywallVisible && !isGuest && !hasDeclinedPromo) {
+    return (
+      <PromoCodeGate
+        visible
+        onRedeem={handleRedeemPromoCode}
+        onNoCode={() => setHasDeclinedPromo(true)}
       />
     );
   }

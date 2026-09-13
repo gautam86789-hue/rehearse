@@ -244,11 +244,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // without the logical user actually changing — without this guard, every
   // such churn re-triggers a full reload-and-replace of user state.
   const lastLoadedUserId = React.useRef<string | null>(null);
+  // Tracks whether the LAST currentUserId we saw belonged to a guest, so the
+  // effect below can tell "brand new device" apart from "this guest just
+  // signed up mid-session" — only the latter should carry the guest's local
+  // data over to the new real account id.
+  const prevWasGuestRef = React.useRef(false);
   useEffect(() => {
     if (lastLoadedUserId.current === currentUserId) return;
+    const prevUserId = lastLoadedUserId.current;
+    const prevWasGuest = prevWasGuestRef.current;
     lastLoadedUserId.current = currentUserId;
-    loadUserState(currentUserId);
-  }, [currentUserId, loadUserState]);
+    prevWasGuestRef.current = isGuest;
+
+    (async () => {
+      // Guest -> real account conversion (AuthGateModal, mid purchase-flow):
+      // without this, a guest who already finished onboarding gets dropped
+      // back into Onboarding the instant they sign up, because isOnboarded
+      // is keyed per-userId and the brand-new account has no flag yet — this
+      // copies the guest's local state onto the new id before it's read, so
+      // the app resumes wherever they were (paywall included) instead of
+      // restarting them.
+      if (prevWasGuest && prevUserId && !isGuest && currentUserId !== prevUserId) {
+        const prevOnboarded = await AsyncStorage.getItem(`@rehearse_onboarded_${prevUserId}`);
+        if (prevOnboarded === 'true') {
+          const newOnboardedKey = `@rehearse_onboarded_${currentUserId}`;
+          const alreadyOnboarded = await AsyncStorage.getItem(newOnboardedKey);
+          if (!alreadyOnboarded) {
+            await AsyncStorage.setItem(newOnboardedKey, 'true');
+            for (const prefix of ['@rehearse_user_', '@rehearse_history_', '@rehearse_notifications_']) {
+              const val = await AsyncStorage.getItem(`${prefix}${prevUserId}`);
+              if (val) await AsyncStorage.setItem(`${prefix}${currentUserId}`, val);
+            }
+          }
+        }
+      }
+      loadUserState(currentUserId);
+    })();
+  }, [currentUserId, isGuest, loadUserState]);
 
   // Reflects a RevenueCat CustomerInfo snapshot into both `isPro` (used for
   // fast local gating right after a purchase, before the webhook round-trip

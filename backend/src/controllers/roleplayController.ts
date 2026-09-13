@@ -42,14 +42,26 @@ export class RoleplayController {
       const user = await memoryDb.getUser(resolvedUserId);
 
       // Check remaining quota if on free trial
-      if (
-        user.subscription.status === 'free_trial' &&
-        user.subscription.rehearsalsRemaining <= 0
-      ) {
+      const freeTrialExhausted =
+        user.subscription.status === 'free_trial' && user.subscription.rehearsalsRemaining <= 0;
+
+      // Promo-code access (see subscriptionController.redeemPromoCode) isn't
+      // a real store subscription, so nothing else expires it automatically
+      // the way a RevenueCat webhook would — check trialEndsAt directly here,
+      // the same date-based check the free trial itself doesn't need since
+      // it's gated by rehearsal count instead.
+      const promoExpired =
+        user.subscription.status === 'active_promo' &&
+        !!user.subscription.trialEndsAt &&
+        new Date(user.subscription.trialEndsAt) < new Date();
+
+      if (freeTrialExhausted || promoExpired) {
         res.status(403).json({
-          error: 'Free trial limit reached',
+          error: freeTrialExhausted ? 'Free trial limit reached' : 'Promo access has ended',
           code: 'PAYWALL_TRIGGERED',
-          message: 'You have used your free rehearsals. Unlock unlimited high-stakes rehearsals with a 5-day trial.'
+          message: freeTrialExhausted
+            ? 'You have used your free rehearsals. Unlock unlimited high-stakes rehearsals with a 5-day trial.'
+            : 'Your 7-day Early Bird access has ended. Unlock unlimited high-stakes rehearsals with a plan.'
         });
         return;
       }

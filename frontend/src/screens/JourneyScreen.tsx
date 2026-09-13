@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Easing, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Easing, useWindowDimensions, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { ArrowLeft, Lock, Check, Play, X, Trophy, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, Lock, Check, Play, X, Sparkles } from 'lucide-react-native';
 import { useTheme, RADII } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
+
+const TROPHY_ICON = require('../../assets/icons/trophy.png');
 import { JOURNEYS, JourneyNode } from '../data/journeys';
 import { KNOWLEDGE_ARTICLES } from '../data/knowledgeBase';
 import { InAppNotification } from '../components/common/InAppNotification';
@@ -424,7 +426,7 @@ export const JourneyScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       <Modal visible={showJourneyComplete} transparent animationType="fade" onRequestClose={() => setShowJourneyComplete(false)}>
         <View style={[styles.completeOverlay, { backgroundColor: colors.background }]}>
           <View style={[styles.completeBadge, { backgroundColor: colors.champagneSubtle, borderColor: colors.champagne }]}>
-            <Trophy size={40} color={colors.champagne} />
+            <Image source={TROPHY_ICON} style={{ width: 60, height: 60 }} resizeMode="contain" />
           </View>
           <Text style={[styles.completeEyebrow, { color: colors.champagne }]}>JOURNEY COMPLETE</Text>
           <Text style={[styles.completeTitle, { color: colors.textPrimary }]}>{journey.title}</Text>

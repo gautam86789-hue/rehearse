@@ -17,6 +17,9 @@ export interface SubscriptionPlan {
   price: string;
   period: string;
   effectiveMonthly: string;
+  /** Colored "BEST VALUE"-style pill — reserved for the one plan meant to
+   *  stand out, not every plan that happens to save money (Contrast Effect
+   *  only works if it's contrasting something). */
   badge?: string;
 }
 
@@ -24,17 +27,18 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'annual',
     name: 'Annual Masterclass',
-    price: '$90',
+    price: '$69',
     period: '/year',
-    effectiveMonthly: '$7.50/month',
-    badge: 'BEST VALUE • SAVE 17%'
+    effectiveMonthly: '$5.75/month',
+    badge: 'BEST VALUE • SAVE 36%'
   },
   {
     id: 'three_month',
     name: 'Three Month Pass',
-    price: '$24',
+    price: '$19',
     period: '/3 months',
-    effectiveMonthly: '$8.00/month'
+    effectiveMonthly: '$6.33/month',
+    badge: 'SAVE 30%'
   },
   {
     id: 'monthly',
@@ -51,5 +55,6 @@ export const SUBSCRIPTION_FEATURES: string[] = [
   'Turn-by-Turn Substance Rubric Scoring',
   'Weakest-Line Executive Rewrites',
   'Daily Framework of the Day & 1-Turn Puzzles',
-  'Strategic Reply Assistant / Message Coach'
+  'Strategic Reply Assistant / Message Coach',
+  'Voice Mode (Upcoming)'
 ];

@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Easing } from 'react-native';
-import { Award, Flame, ShieldCheck, Sparkles as SparklesIcon, X } from 'lucide-react-native';
+import { Sparkles as SparklesIcon, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Button } from './Button';
 import { useApp } from '../../context/AppContext';
+import { MilestoneIcon } from './MilestoneIcon';
 
 const SPARKLE_POSITIONS = [
   { top: -6, left: '18%', delay: 80 },
@@ -46,17 +47,6 @@ export const BadgeUnlockedModal: React.FC = () => {
   }, [unlockedBadge]);
 
   if (!unlockedBadge) return null;
-
-  const renderIcon = () => {
-    switch (unlockedBadge.icon) {
-      case 'flame':
-        return <Flame size={40} color={colors.flame} />;
-      case 'shield-check':
-        return <ShieldCheck size={40} color={colors.success} />;
-      default:
-        return <Award size={40} color={colors.champagne} />;
-    }
-  };
 
   return (
     <Modal
@@ -106,7 +96,7 @@ export const BadgeUnlockedModal: React.FC = () => {
                 { backgroundColor: colors.flameGlow, borderColor: colors.flame, transform: [{ scale: iconScale }] }
               ]}
             >
-              {renderIcon()}
+              <MilestoneIcon icon={unlockedBadge.icon} size={48} />
             </Animated.View>
           </View>
 

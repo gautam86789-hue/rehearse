@@ -86,6 +86,8 @@ function planNameForStatus(status: UserProfile['subscription']['status']): strin
       return 'Three Month Pass';
     case 'active_annual':
       return 'Annual Masterclass Pass';
+    case 'active_promo':
+      return 'Early Bird — 7 Day Pass';
     default:
       return undefined;
   }

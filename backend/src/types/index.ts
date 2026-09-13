@@ -203,7 +203,7 @@ export interface UserProfile {
   longestStreak: number;
   lastPracticeDate?: string;
   subscription: {
-    status: 'free_trial' | 'active_monthly' | 'active_three_month' | 'active_annual' | 'expired';
+    status: 'free_trial' | 'active_monthly' | 'active_three_month' | 'active_annual' | 'active_promo' | 'expired';
     rehearsalsRemaining: number; // 2 free rehearsals total
     trialEndsAt?: string;
     planName?: string;

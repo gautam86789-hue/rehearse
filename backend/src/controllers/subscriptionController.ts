@@ -9,6 +9,19 @@ export const upgradeSubscriptionSchema = z.object({
   paymentMethod: z.string().optional()
 });
 
+export const redeemPromoCodeSchema = z.object({
+  userId: z.string().optional(),
+  code: z.string().min(1)
+});
+
+// Shipaton judging-window / tester access — a code-gated week of full access
+// with no payment method required, distinct from the real (store-billed)
+// free trial. See docs at PromoCodeGate.tsx for the frontend flow this backs.
+const PROMO_CODES: Record<string, { days: number; label: string }> = {
+  KGY2026: { days: 7, label: 'Early Bird — 7 Day Pass' }
+};
+const PROMO_DURATION_MS = (days: number) => days * 24 * 60 * 60 * 1000;
+
 // Our RevenueCat entitlement identifier — see frontend/src/services/purchases.ts.
 const PRO_ENTITLEMENT_ID = 'rehearse_pro';
 
@@ -86,9 +99,9 @@ export class SubscriptionController {
         plan === 'annual' ? 'active_annual' : plan === 'three_month' ? 'active_three_month' : 'active_monthly';
       const planName =
         plan === 'annual'
-          ? 'Annual Masterclass Pass ($90/yr)'
+          ? 'Annual Masterclass Pass ($69/yr)'
           : plan === 'three_month'
-          ? 'Three Month Pass ($21/3mo)'
+          ? 'Three Month Pass ($19/3mo)'
           : 'Monthly Professional ($9/mo)';
 
       const updated = await memoryDb.updateUser(user.id, {
@@ -102,6 +115,57 @@ export class SubscriptionController {
 
       res.json({
         message: 'Subscription successfully activated',
+        subscription: updated.subscription
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async redeemPromoCode(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId, code } = req.body;
+      const resolvedUserId = userId || req.userId || 'demo-user-1';
+      const normalizedCode = String(code).trim().toUpperCase();
+      const promo = PROMO_CODES[normalizedCode];
+
+      if (!promo) {
+        res.status(400).json({ error: 'That code isn\'t valid — double check and try again.' });
+        return;
+      }
+
+      const user = await memoryDb.getUser(resolvedUserId);
+
+      // Only block redemption while an existing plan (paid or promo) is
+      // still actually active — a lapsed free trial, an expired promo, or a
+      // never-subscribed account can all redeem. Deliberately not a
+      // one-time-ever flag: this code is meant for a short testing/judging
+      // window, so letting an expired promo redeem again is an acceptable
+      // tradeoff against the complexity of a permanent redemption record.
+      const hasActivePlan =
+        (user.subscription.status === 'active_monthly' ||
+          user.subscription.status === 'active_three_month' ||
+          user.subscription.status === 'active_annual' ||
+          user.subscription.status === 'active_promo') &&
+        (!user.subscription.trialEndsAt || new Date(user.subscription.trialEndsAt) > new Date());
+
+      if (hasActivePlan) {
+        res.status(400).json({ error: 'You already have an active plan — no code needed.' });
+        return;
+      }
+
+      const trialEndsAt = new Date(Date.now() + PROMO_DURATION_MS(promo.days)).toISOString();
+      const updated = await memoryDb.updateUser(user.id, {
+        subscription: {
+          status: 'active_promo',
+          rehearsalsRemaining: 999999,
+          planName: promo.label,
+          trialEndsAt
+        }
+      });
+
+      res.json({
+        message: 'Promo code redeemed',
         subscription: updated.subscription
       });
     } catch (err) {

@@ -33,6 +33,7 @@ import { useShareCard } from '../components/share/useShareCard';
 import { StreakMilestoneCard } from '../components/share/StreakMilestoneCard';
 import { syncDailyReminder, syncTrialEndingReminder, cancelAllReminders } from '../services/notificationService';
 import { SPACING } from '../theme/spacing';
+import { formatDate } from '../utils/formatDate';
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, setUser, unlockMilestone, history } = useApp();
@@ -67,7 +68,9 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     });
   }, [user.id]);
 
-  const isPro = user.subscription?.status === 'active_annual' || user.subscription?.status === 'active_monthly';
+  const isPro = ['active_annual', 'active_three_month', 'active_monthly', 'active_promo'].includes(
+    user.subscription?.status || ''
+  );
 
   const showToast = (message: string, type: NotificationType = 'info') => {
     setToast({ visible: true, message, type });
@@ -240,7 +243,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               <Text style={[styles.proBadgeTitle, { color: colors.champagneDark }]}>Pro Member</Text>
               {user.subscription?.trialEndsAt ? (
                 <Text style={[styles.proBadgeSub, { color: colors.textSecondary }]}>
-                  Valid until {new Date(user.subscription.trialEndsAt).toLocaleDateString()}
+                  Valid until {formatDate(user.subscription.trialEndsAt)}
                 </Text>
               ) : null}
             </View>

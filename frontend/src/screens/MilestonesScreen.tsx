@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { ArrowLeft, Award, Flame, ShieldCheck, Sparkles, Lock, Check, Share2 } from 'lucide-react-native';
+import { ArrowLeft, Lock, Check, Share2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, RADII } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
 import { MILESTONES, MilestoneDef } from '../data/milestones';
 import { useShareCard } from '../components/share/useShareCard';
 import { MilestoneShareCard } from '../components/share/MilestoneShareCard';
-
-const ICONS: Record<string, any> = {
-  flame: Flame,
-  award: Award,
-  'shield-check': ShieldCheck,
-  sparkles: Sparkles
-};
+import { MilestoneIcon } from '../components/common/MilestoneIcon';
 
 export const MilestonesScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors, elevation } = useTheme();
@@ -52,7 +46,6 @@ export const MilestonesScreen: React.FC<{ navigation: any }> = ({ navigation }) 
         <View style={styles.list}>
           {MILESTONES.map((m) => {
             const unlocked = m.isUnlocked(user, history);
-            const Icon = ICONS[m.icon];
             return (
               <View
                 key={m.id}
@@ -73,7 +66,7 @@ export const MilestonesScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                   ]}
                 >
                   {unlocked ? (
-                    <Icon size={20} color={colors.champagneDark} />
+                    <MilestoneIcon icon={m.icon} size={26} />
                   ) : (
                     <Lock size={17} color={colors.textMuted} />
                   )}

@@ -67,7 +67,8 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
     isPro ||
     user.subscription?.status === 'active_annual' ||
     user.subscription?.status === 'active_three_month' ||
-    user.subscription?.status === 'active_monthly';
+    user.subscription?.status === 'active_monthly' ||
+    user.subscription?.status === 'active_promo';
   const planName = isPlus ? user.subscription?.planName || 'Rehearse Plus' : isFreeTrial ? 'Free Trial' : 'Free Plan';
 
   // Was hardcoded to "Annual renewal ($90/year)" regardless of which plan
