@@ -163,7 +163,13 @@ function userProfileUpdatesToRow(updates: Partial<UserProfile>): Record<string, 
   if (updates.subscription !== undefined) {
     if (updates.subscription.status !== undefined) row.subscription_status = updates.subscription.status;
     if (updates.subscription.rehearsalsRemaining !== undefined) row.rehearsals_remaining = updates.subscription.rehearsalsRemaining;
-    if (updates.subscription.trialEndsAt !== undefined) row.trial_ends_at = updates.subscription.trialEndsAt || null;
+    // 'in' rather than `!== undefined`: callers that upgrade to a real paid
+    // plan explicitly pass `trialEndsAt: undefined` to CLEAR a stale promo/
+    // trial date — `!== undefined` treated that the same as the field being
+    // omitted entirely, silently skipping the column and leaving the old
+    // date in place (which then wrongly drove the Home screen's "X days
+    // left" footnote for what should read as a full paid subscription).
+    if ('trialEndsAt' in updates.subscription) row.trial_ends_at = updates.subscription.trialEndsAt || null;
   }
   if (updates.promoRedeemed !== undefined) row.promo_redeemed = updates.promoRedeemed;
   row.updated_at = new Date().toISOString();
@@ -662,6 +668,7 @@ class InMemoryDatabase {
           primary_dread_category: profile.primaryDreadCategory,
           subscription_status: 'free_trial',
           rehearsals_remaining: 3,
+          trial_ends_at: null,
           created_at: now
         });
       } catch (err) {
