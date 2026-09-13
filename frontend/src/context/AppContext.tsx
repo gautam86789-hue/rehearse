@@ -72,9 +72,9 @@ const createDynamicProfile = (userId: string, role = 'Executive Leader'): UserPr
   lastPracticeDate: undefined,
   subscription: {
     status: 'free_trial',
-    rehearsalsRemaining: 2,
-    trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    planName: '5-Day Free Trial'
+    rehearsalsRemaining: 3,
+    trialEndsAt: undefined,
+    planName: '3 Free Rehearsals'
   },
   createdAt: new Date().toISOString()
 });

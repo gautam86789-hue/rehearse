@@ -79,7 +79,7 @@ if (process.env.NODE_ENV !== 'test' && process.env.SUPABASE_URL && process.env.S
 function planNameForStatus(status: UserProfile['subscription']['status']): string | undefined {
   switch (status) {
     case 'free_trial':
-      return '5-Day Free Trial';
+      return '3 Free Rehearsals';
     case 'active_monthly':
       return 'Monthly Professional';
     case 'active_three_month':
@@ -115,6 +115,7 @@ function rowToUserProfile(row: any): UserProfile {
       trialEndsAt: row.trial_ends_at || undefined,
       planName: planNameForStatus(row.subscription_status)
     },
+    promoRedeemed: row.promo_redeemed || false,
     createdAt: row.created_at
   };
 }
@@ -135,8 +136,8 @@ function defaultUserRow(userId: string): Record<string, any> {
     current_streak: 0,
     longest_streak: 0,
     subscription_status: 'free_trial',
-    rehearsals_remaining: 2,
-    trial_ends_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    rehearsals_remaining: 3,
+    trial_ends_at: null,
     created_at: new Date().toISOString()
   };
 }
@@ -164,6 +165,7 @@ function userProfileUpdatesToRow(updates: Partial<UserProfile>): Record<string, 
     if (updates.subscription.rehearsalsRemaining !== undefined) row.rehearsals_remaining = updates.subscription.rehearsalsRemaining;
     if (updates.subscription.trialEndsAt !== undefined) row.trial_ends_at = updates.subscription.trialEndsAt || null;
   }
+  if (updates.promoRedeemed !== undefined) row.promo_redeemed = updates.promoRedeemed;
   row.updated_at = new Date().toISOString();
   return row;
 }
@@ -403,9 +405,9 @@ class InMemoryDatabase {
       longestStreak: 0,
       subscription: {
         status: 'free_trial',
-        rehearsalsRemaining: 2,
-        trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        planName: '5-Day Free Trial'
+        rehearsalsRemaining: 3,
+        trialEndsAt: undefined,
+        planName: '3 Free Rehearsals'
       },
       isActive: true,
       createdAt: new Date().toISOString()
@@ -433,9 +435,9 @@ class InMemoryDatabase {
         longestStreak: 0,
         subscription: {
           status: 'free_trial',
-          rehearsalsRemaining: 2,
-          trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          planName: '5-Day Free Trial'
+          rehearsalsRemaining: 3,
+          trialEndsAt: undefined,
+          planName: '3 Free Rehearsals'
         },
         createdAt: new Date().toISOString()
       };
@@ -636,9 +638,9 @@ class InMemoryDatabase {
       longestStreak: 0,
       subscription: {
         status: 'free_trial',
-        rehearsalsRemaining: 2,
-        trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        planName: '5-Day Free Trial'
+        rehearsalsRemaining: 3,
+        trialEndsAt: undefined,
+        planName: '3 Free Rehearsals'
       },
       passwordHash: hash,
       passwordSalt: salt,
@@ -659,7 +661,7 @@ class InMemoryDatabase {
           audience: profile.audience,
           primary_dread_category: profile.primaryDreadCategory,
           subscription_status: 'free_trial',
-          rehearsals_remaining: 2,
+          rehearsals_remaining: 3,
           created_at: now
         });
       } catch (err) {

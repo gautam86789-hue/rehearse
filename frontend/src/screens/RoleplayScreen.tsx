@@ -367,8 +367,19 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
         )}
       </ScrollView>
 
-      {/* Input Dock */}
-      <View style={[styles.inputDock, { backgroundColor: colors.surfaceCard, borderTopColor: colors.surfaceBorder }]}>
+      {/* Input Dock — some Android devices paint content underneath their
+          on-screen nav bar without safe-area-insets reporting its true
+          height (confirmed on a real Android 10 unit: the dock rendered
+          visually fine but a real tap on it hit the OS home gesture
+          instead, same failure mode found and fixed on the onboarding CTA).
+          The floor below is independent of insets.bottom so the dock clears
+          that zone even when the inset value can't be trusted. */}
+      <View
+        style={[
+          styles.inputDock,
+          { backgroundColor: colors.surfaceCard, borderTopColor: colors.surfaceBorder, paddingBottom: Math.max(insets.bottom, 16) }
+        ]}
+      >
         <TouchableOpacity
           style={[styles.micButton, { backgroundColor: colors.surfaceHighlight }]}
           onPress={() => setIsPaywallVisible(true)}

@@ -204,10 +204,15 @@ export interface UserProfile {
   lastPracticeDate?: string;
   subscription: {
     status: 'free_trial' | 'active_monthly' | 'active_three_month' | 'active_annual' | 'active_promo' | 'expired';
-    rehearsalsRemaining: number; // 2 free rehearsals total
+    rehearsalsRemaining: number; // 3 free rehearsals total
     trialEndsAt?: string;
     planName?: string;
   };
+  // Permanent record that this account has ever redeemed a promo code —
+  // kept separate from subscription.status so it survives the promo period
+  // expiring (status will move on to 'expired', but this stays true forever,
+  // which is what actually blocks a second redemption).
+  promoRedeemed?: boolean;
   createdAt: string;
 }
 

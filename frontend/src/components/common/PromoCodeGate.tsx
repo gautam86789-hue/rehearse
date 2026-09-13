@@ -6,14 +6,18 @@ import { useTheme, RADII } from '../../context/ThemeContext';
 interface PromoCodeGateProps {
   visible: boolean;
   onRedeem: (code: string) => Promise<{ error?: string }>;
-  onClose: () => void;
+  // Called both by the header X and the "No code" link — same outcome
+  // either way (fall through to the real payment step), just two familiar
+  // affordances for it.
+  onNoCode: () => void;
 }
 
-// A floating card over the payment section (Membership & Billing), opened
-// by its "Have a promo code?" link — not a forced step before payment.
-// Closing it just returns to the plan cards underneath, same as dismissing
-// any other overlay.
-export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem, onClose }) => {
+// Sits between sign-in and the real payment step of "going Pro" — not a
+// standalone screen reachable on its own. Someone with a code redeems it
+// right here and skips payment entirely; everyone else taps "No code" (or
+// the X) and continues straight to the plan/payment screen, exactly as if
+// this card weren't there at all.
+export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem, onNoCode }) => {
   const { colors, elevation } = useTheme();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -22,7 +26,7 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
   const handleClose = () => {
     setCode('');
     setError('');
-    onClose();
+    onNoCode();
   };
 
   const handleRedeem = async () => {

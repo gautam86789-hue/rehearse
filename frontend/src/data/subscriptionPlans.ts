@@ -27,23 +27,23 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'annual',
     name: 'Annual Masterclass',
-    price: '$69',
+    price: '$40',
     period: '/year',
-    effectiveMonthly: '$5.75/month',
-    badge: 'BEST VALUE • SAVE 36%'
+    effectiveMonthly: '$3.33/month',
+    badge: 'BEST VALUE • SAVE 33%'
   },
   {
     id: 'three_month',
     name: 'Three Month Pass',
-    price: '$19',
+    price: '$13',
     period: '/3 months',
-    effectiveMonthly: '$6.33/month',
-    badge: 'SAVE 30%'
+    effectiveMonthly: '$4.33/month',
+    badge: 'SAVE 13%'
   },
   {
     id: 'monthly',
     name: 'Monthly Professional',
-    price: '$9',
+    price: '$5',
     period: '/month',
     effectiveMonthly: 'Billed monthly • Cancel anytime'
   }

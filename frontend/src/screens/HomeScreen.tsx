@@ -142,7 +142,16 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const firstName = (user.name || 'there').split(' ')[0];
   const isFreeTrial = user.subscription?.status === 'free_trial';
-  const remainingRehearsals = user.subscription?.rehearsalsRemaining ?? 2;
+  const remainingRehearsals = user.subscription?.rehearsalsRemaining ?? 3;
+  // Promo access (and a real store-billed trial once RevenueCat sets
+  // trialEndsAt) is time-boxed rather than count-based, so it needs its own
+  // "days left" reading instead of the free tier's rehearsal count.
+  const trialDaysLeft = user.subscription?.trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(user.subscription.trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : undefined;
+  const isTimeBoxedTrial =
+    (user.subscription?.status === 'active_promo' || user.subscription?.status === 'active_monthly' || user.subscription?.status === 'active_three_month' || user.subscription?.status === 'active_annual') &&
+    trialDaysLeft !== undefined;
   const streak = user.currentStreak || 0;
 
   const hour = new Date().getHours();
@@ -322,7 +331,10 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* 6. TRIAL FOOTNOTE */}
+        {/* 6. TRIAL FOOTNOTE — free tier reads by rehearsal count (no time
+            pressure on those 3), an active promo/trial reads by days left
+            (that one IS time-boxed), shown every day so where someone
+            stands is never a surprise. */}
         {isFreeTrial && (
           <TouchableOpacity
             style={styles.trialFootnote}
@@ -334,6 +346,13 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Text style={{ color: colors.primary, fontWeight: '700' }}>Go Pro →</Text>
             </Text>
           </TouchableOpacity>
+        )}
+        {isTimeBoxedTrial && (
+          <View style={styles.trialFootnote}>
+            <Text style={[styles.trialFootnoteText, { color: colors.textSecondary }]}>
+              {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} left on {user.subscription?.planName || 'your trial'}
+            </Text>
+          </View>
         )}
       </ScrollView>
 

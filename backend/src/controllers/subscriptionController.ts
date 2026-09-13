@@ -136,12 +136,15 @@ export class SubscriptionController {
 
       const user = await memoryDb.getUser(resolvedUserId);
 
-      // Only block redemption while an existing plan (paid or promo) is
-      // still actually active — a lapsed free trial, an expired promo, or a
-      // never-subscribed account can all redeem. Deliberately not a
-      // one-time-ever flag: this code is meant for a short testing/judging
-      // window, so letting an expired promo redeem again is an acceptable
-      // tradeoff against the complexity of a permanent redemption record.
+      // Permanent, one-time-per-account: once this account has ever
+      // redeemed a code, it can never redeem another — checked on a flag
+      // that outlives the promo period itself, not on whether that period
+      // happens to still be active right now.
+      if (user.promoRedeemed) {
+        res.status(400).json({ error: 'This account has already redeemed a promo code.' });
+        return;
+      }
+
       const hasActivePlan =
         (user.subscription.status === 'active_monthly' ||
           user.subscription.status === 'active_three_month' ||
@@ -161,7 +164,8 @@ export class SubscriptionController {
           rehearsalsRemaining: 999999,
           planName: promo.label,
           trialEndsAt
-        }
+        },
+        promoRedeemed: true
       });
 
       res.json({

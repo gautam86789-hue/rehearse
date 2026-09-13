@@ -25,8 +25,9 @@ CREATE TABLE IF NOT EXISTS users (
     longest_streak INT DEFAULT 0,
     last_practice_date DATE,
     subscription_status TEXT DEFAULT 'free_trial', -- 'free_trial', 'active_monthly', 'active_annual', 'expired'
-    rehearsals_remaining INT DEFAULT 2, -- 2 free rehearsals, then paywall
-    trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '5 days'),
+    rehearsals_remaining INT DEFAULT 3, -- 3 free rehearsals, then paywall (real trial requires payment method)
+    trial_ends_at TIMESTAMP WITH TIME ZONE, -- only set once a real (store-billed) or promo trial actually starts
+    promo_redeemed BOOLEAN DEFAULT FALSE, -- permanent, survives the promo period expiring — blocks a second redemption
     revenuecat_customer_id TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

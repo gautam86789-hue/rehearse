@@ -94,18 +94,30 @@ export const AIAssistantWidget: React.FC = () => {
   // bottom-right on those screens keeps it out of the way of whatever
   // content/buttons are actually down there.
   const [onTabsRoot, setOnTabsRoot] = useState(true);
+  // Roleplay has its own fixed input dock flush to the bottom (the chat
+  // text box + send button) — tucking the FAB flush to the corner there
+  // (the plain "no tab bar" case) puts it right beside/overlapping that
+  // dock instead of clear of it. Track that one screen specifically so it
+  // can get dock-height clearance instead of 0.
+  const [onRoleplayScreen, setOnRoleplayScreen] = useState(false);
   useEffect(() => {
-    const computeOnTabsRoot = () => {
+    const computeRoute = () => {
       const state = navigationRef.isReady() ? navigationRef.getRootState() : undefined;
-      setOnTabsRoot(!state || state.routes[state.index]?.name === 'HomeTabs');
+      const routeName = state?.routes[state.index]?.name;
+      setOnTabsRoot(!state || routeName === 'HomeTabs');
+      setOnRoleplayScreen(routeName === 'Roleplay');
     };
-    computeOnTabsRoot();
-    return navigationRef.addListener('state', computeOnTabsRoot);
+    computeRoute();
+    return navigationRef.addListener('state', computeRoute);
   }, []);
   // 68 is the original hand-tuned clearance for sitting just above the
-  // floating tab bar; 0 on any other screen tucks the FAB flush to the
-  // corner since there's no tab bar there to clear.
-  const fabBottom = Math.max(insets.bottom, 12) + (onTabsRoot ? 68 : 0);
+  // floating tab bar; ~76 clears Roleplay's input dock (its mic/send
+  // buttons are ~44px plus their own padding); 0 on any other screen tucks
+  // the FAB flush to the corner since there's nothing there to clear. The
+  // floor on insets.bottom matters most on the flush case — on a real
+  // Android 10 device insets.bottom under-reported the on-screen nav bar's
+  // true height, leaving the FAB sitting inside it.
+  const fabBottom = Math.max(insets.bottom, 16) + (onTabsRoot ? 68 : onRoleplayScreen ? 76 : 0);
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -177,13 +189,24 @@ export const AIAssistantWidget: React.FC = () => {
 
       <Modal visible={isOpen} animationType="slide" transparent onRequestClose={() => setIsOpen(false)}>
         <View style={styles.overlay}>
-          <KeyboardAvoidingView
-            // 'padding' is iOS-only in practice; Android needs 'height' or
-            // the keyboard just covers the input/latest messages with no
-            // adjustment (reported: "output stays at the bottom, rigid").
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={[styles.sheet, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 12) }]}
-          >
+          {/* The 82% height used to live directly on the KeyboardAvoidingView
+              along with behavior="height" — on Android those two fought each
+              other under a real keyboard (the resize the keyboard triggers
+              and the percentage height it was also trying to hold both apply
+              at once), collapsing the whole sheet to invisible rather than
+              just shrinking it. Giving the fixed height to this plain outer
+              wrapper instead, and letting KeyboardAvoidingView only
+              redistribute space *within* that already-fixed box, is what
+              keeps it stable — confirmed by reproducing the vanishing sheet
+              on a real device with the old structure. */}
+          <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+            <KeyboardAvoidingView
+              // 'padding' is iOS-only in practice; Android needs 'height' or
+              // the keyboard just covers the input/latest messages with no
+              // adjustment (reported: "output stays at the bottom, rigid").
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 16) }}
+            >
             <View style={[styles.header, { borderBottomColor: colors.surfaceBorder }]}>
               <View style={styles.headerLeft}>
                 <View style={[styles.headerIcon, { backgroundColor: colors.primarySubtle }]}>
@@ -268,7 +291,8 @@ export const AIAssistantWidget: React.FC = () => {
                 <Send size={16} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </View>
         </View>
       </Modal>
     </>
