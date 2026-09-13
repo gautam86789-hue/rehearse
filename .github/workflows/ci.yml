@@ -22,6 +22,8 @@ jobs:
 
       - name: Run Backend Tests
         run: npm test --prefix backend
+        env:
+          REVENUECAT_WEBHOOK_SECRET: ${{ secrets.REVENUECAT_WEBHOOK_SECRET }}
 
       - name: Verify Frontend Types
         run: npx tsc --noEmit --project frontend/tsconfig.json

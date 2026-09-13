@@ -12,3 +12,5 @@ jobs:
           node-version: 22
       - run: npm install --prefix backend
       - run: npm test --prefix backend
+        env:
+          REVENUECAT_WEBHOOK_SECRET: ${{ secrets.REVENUECAT_WEBHOOK_SECRET }}
