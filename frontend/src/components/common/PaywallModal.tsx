@@ -38,8 +38,18 @@ export const PaywallModal: React.FC = () => {
   // normal purchase flow exactly as if this step weren't there. Resets
   // whenever the paywall closes so the next open re-offers it.
   const [hasDeclinedPromo, setHasDeclinedPromo] = useState(false);
+  // Set synchronously by AuthGateModal's onAuthenticated, the instant
+  // sign-up/sign-in resolves — switching off of this instead of waiting for
+  // isGuest to flip through AuthContext and re-render here is what closes
+  // the gap: gating on isGuest alone left a frame between AuthGateModal
+  // closing and PromoCodeGate mounting where neither was on screen, showing
+  // a bare white flash of whatever sat underneath (reported directly).
+  const [justAuthenticated, setJustAuthenticated] = useState(false);
   useEffect(() => {
-    if (!isPaywallVisible) setHasDeclinedPromo(false);
+    if (!isPaywallVisible) {
+      setHasDeclinedPromo(false);
+      setJustAuthenticated(false);
+    }
   }, [isPaywallVisible]);
 
   const handleRedeemPromoCode = async (code: string): Promise<{ error?: string }> => {
@@ -90,13 +100,14 @@ export const PaywallModal: React.FC = () => {
   const isPresenting = useRef(false);
 
   useEffect(() => {
-    // isGuest excluded here on purpose — a guest hits the AuthGateModal
-    // render branch below instead, and this effect naturally takes over
-    // once sign-up/sign-in flips isGuest false and re-renders.
-    // hasDeclinedPromo gates it the same way — the PromoCodeGate branch
-    // below runs first, and only "No code" (or a redeemed code closing the
-    // paywall outright) lets this effect proceed.
-    if (!isPurchasesSupported() || !isPaywallVisible || isGuest || !hasDeclinedPromo || isPresenting.current) return;
+    // A guest (and not yet justAuthenticated) hits the AuthGateModal render
+    // branch below instead — this effect naturally takes over once sign-up/
+    // sign-in flips justAuthenticated true. hasDeclinedPromo gates it the
+    // same way — the PromoCodeGate branch below runs first, and only "No
+    // code" (or a redeemed code closing the paywall outright) lets this
+    // effect proceed.
+    const stillGuest = isGuest && !justAuthenticated;
+    if (!isPurchasesSupported() || !isPaywallVisible || stillGuest || !hasDeclinedPromo || isPresenting.current) return;
     isPresenting.current = true;
     presentPaywallIfNeeded()
       .then(async (result) => {
@@ -111,16 +122,16 @@ export const PaywallModal: React.FC = () => {
         isPresenting.current = false;
         setIsPaywallVisible(false);
       });
-  }, [isPaywallVisible, isGuest, hasDeclinedPromo]);
+  }, [isPaywallVisible, isGuest, justAuthenticated, hasDeclinedPromo]);
 
   // Sign-in/sign-up is required only at the moment of actually paying, not
   // any earlier — applies on both native (blocks the RevenueCat hosted
   // paywall above) and web (blocks the hand-built modal below).
-  if (isPaywallVisible && isGuest) {
+  if (isPaywallVisible && isGuest && !justAuthenticated) {
     return (
       <AuthGateModal
         visible
-        onAuthenticated={() => {}}
+        onAuthenticated={() => setJustAuthenticated(true)}
         onCancel={() => setIsPaywallVisible(false)}
       />
     );
@@ -130,7 +141,7 @@ export const PaywallModal: React.FC = () => {
   // fallback modal below — a judge/tester with a code skips payment
   // entirely; "No code" falls through to the normal purchase flow exactly
   // as if this card weren't there.
-  if (isPaywallVisible && !isGuest && !hasDeclinedPromo) {
+  if (isPaywallVisible && (!isGuest || justAuthenticated) && !hasDeclinedPromo) {
     return (
       <PromoCodeGate
         visible

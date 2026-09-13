@@ -74,6 +74,7 @@ import { useTheme } from '../context/ThemeContext';
 import { PaywallModal } from '../components/common/PaywallModal';
 import { BadgeUnlockedModal } from '../components/common/BadgeUnlockedModal';
 import { AIAssistantWidget } from '../components/common/AIAssistantWidget';
+import { FabClearanceProvider } from '../context/FabClearanceContext';
 
 import { CustomTabBar } from '../components/common/CustomTabBar';
 
@@ -155,6 +156,7 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <NavigationContainer theme={navigationTheme} ref={navigationRef}>
+      <FabClearanceProvider>
       <Stack.Navigator
         id="RootStack"
         screenOptions={{
@@ -243,6 +245,7 @@ export const AppNavigator: React.FC = () => {
 
       {/* Floating AI Assistant — only once there's a real app to assist with */}
       {isAuthenticated && isOnboarded && <AIAssistantWidget />}
+      </FabClearanceProvider>
     </NavigationContainer>
   );
 };

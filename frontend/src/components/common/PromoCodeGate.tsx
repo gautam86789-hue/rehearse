@@ -91,6 +91,10 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
           >
             {isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.redeemBtnText}>Redeem</Text>}
           </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleClose} style={styles.noCodeBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+            <Text style={[styles.noCodeText, { color: colors.textSecondary }]}>No code</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -168,5 +172,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14.5,
     fontWeight: '700'
+  },
+  noCodeBtn: {
+    marginTop: 14,
+    padding: 4
+  },
+  noCodeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline'
   }
 });

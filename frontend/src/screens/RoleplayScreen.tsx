@@ -32,6 +32,7 @@ import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { apiService } from '../services/api';
 import { Scenario, MessageTurn, RoleplaySession, Scorecard } from '../types';
+import { useFabClearance } from '../context/FabClearanceContext';
 
 export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
   const { scenario } = route.params as { scenario: Scenario };
@@ -39,6 +40,11 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
   const { colors, elevation } = useTheme();
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 8;
+  // Tells the floating AI Assistant button to clear this screen's own fixed
+  // input dock (mic/text/send row + its bottom padding) instead of tucking
+  // flush to the corner and landing beside/overlapping it — see
+  // FabClearanceContext for how any screen can opt into this.
+  useFabClearance(64 + Math.max(insets.bottom, 16) + 12);
 
   const [session, setSession] = useState<RoleplaySession | null>(null);
   const [turns, setTurns] = useState<MessageTurn[]>([]);

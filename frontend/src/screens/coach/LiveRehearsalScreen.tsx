@@ -28,6 +28,7 @@ import {
   Award
 } from 'lucide-react-native';
 import { useTheme, RADII } from '../../context/ThemeContext';
+import { useFabClearance } from '../../context/FabClearanceContext';
 
 interface DialogueTurn {
   id: string;
@@ -42,6 +43,9 @@ export const LiveRehearsalScreen: React.FC<{ navigation: any; route?: any }> = (
   route
 }) => {
   const { colors: themeColors, elevation } = useTheme();
+  // Clears this screen's own fixed bottom control bar (waveform + hint/mic/
+  // finish buttons) — see FabClearanceContext.
+  useFabClearance(190);
 
   const title = route?.params?.title || 'Compensation Discussion';
   const persona = route?.params?.persona || 'realistic';

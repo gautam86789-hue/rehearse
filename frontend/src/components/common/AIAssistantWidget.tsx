@@ -20,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import { navigationRef } from '../../navigation/navigationRef';
+import { useFabClearanceValue } from '../../context/FabClearanceContext';
 
 // A distinct mark for the Coach instead of a generic sparkle icon — two
 // rings rotating independently around a solid core, evoking "thinking"
@@ -94,30 +95,27 @@ export const AIAssistantWidget: React.FC = () => {
   // bottom-right on those screens keeps it out of the way of whatever
   // content/buttons are actually down there.
   const [onTabsRoot, setOnTabsRoot] = useState(true);
-  // Roleplay has its own fixed input dock flush to the bottom (the chat
-  // text box + send button) — tucking the FAB flush to the corner there
-  // (the plain "no tab bar" case) puts it right beside/overlapping that
-  // dock instead of clear of it. Track that one screen specifically so it
-  // can get dock-height clearance instead of 0.
-  const [onRoleplayScreen, setOnRoleplayScreen] = useState(false);
   useEffect(() => {
     const computeRoute = () => {
       const state = navigationRef.isReady() ? navigationRef.getRootState() : undefined;
       const routeName = state?.routes[state.index]?.name;
       setOnTabsRoot(!state || routeName === 'HomeTabs');
-      setOnRoleplayScreen(routeName === 'Roleplay');
     };
     computeRoute();
     return navigationRef.addListener('state', computeRoute);
   }, []);
+  // Any screen with its own fixed bottom UI (a chat input dock, a sticky
+  // CTA) claims clearance via useFabClearance — see FabClearanceContext.
+  // That's what keeps this generic across the whole app instead of this
+  // widget needing to know every route name that happens to have one.
+  const screenClearance = useFabClearanceValue();
   // 68 is the original hand-tuned clearance for sitting just above the
-  // floating tab bar; ~76 clears Roleplay's input dock (its mic/send
-  // buttons are ~44px plus their own padding); 0 on any other screen tucks
-  // the FAB flush to the corner since there's nothing there to clear. The
-  // floor on insets.bottom matters most on the flush case — on a real
+  // floating tab bar; 0 on any other screen with no registered clearance
+  // tucks the FAB flush to the corner since there's nothing there to clear.
+  // The floor on insets.bottom matters most on that flush case — on a real
   // Android 10 device insets.bottom under-reported the on-screen nav bar's
   // true height, leaving the FAB sitting inside it.
-  const fabBottom = Math.max(insets.bottom, 16) + (onTabsRoot ? 68 : onRoleplayScreen ? 76 : 0);
+  const fabBottom = Math.max(insets.bottom, 16) + (onTabsRoot ? 68 : screenClearance);
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
