@@ -187,28 +187,10 @@ export class RoleplayController {
         user,
         rubric.overallScore
       );
-      // Temporary diagnostic: capture what updateUser actually returns/does,
-      // plus a fresh re-read straight after, so the response itself can
-      // show whether the persisted value matches what we just tried to
-      // write — the API was observed always echoing gamificationResult's
-      // computed value regardless of whether the write actually landed.
-      let debugUpdateResult: any = null;
-      let debugPostReRead: any = null;
-      try {
-        const updated = await memoryDb.updateUser(user.id, gamificationResult.updatedProfile);
-        debugUpdateResult = {
-          rehearsalsRemaining: updated.subscription.rehearsalsRemaining,
-          totalRehearsals: updated.totalRehearsals,
-          supabaseError: getLastUpdateUserError()
-        };
-      } catch (e: any) {
-        debugUpdateResult = { threw: true, message: e?.message };
-      }
-      try {
-        const reRead = await memoryDb.getUser(user.id);
-        debugPostReRead = { rehearsalsRemaining: reRead.subscription.rehearsalsRemaining, totalRehearsals: reRead.totalRehearsals };
-      } catch (e: any) {
-        debugPostReRead = { threw: true, message: e?.message };
+      await memoryDb.updateUser(user.id, gamificationResult.updatedProfile);
+      const persistError = getLastUpdateUserError();
+      if (persistError) {
+        console.warn('scoreAndEndSession: user update did not persist to Supabase', persistError);
       }
 
       const scorecard: Scorecard = {
@@ -233,8 +215,7 @@ export class RoleplayController {
         message: 'Rehearsal completed and scored',
         scorecard,
         session,
-        updatedUser: gamificationResult.updatedProfile,
-        _debug: { updateUserReturned: debugUpdateResult, postUpdateReRead: debugPostReRead }
+        updatedUser: gamificationResult.updatedProfile
       });
     } catch (err) {
       next(err);

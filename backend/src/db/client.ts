@@ -846,11 +846,13 @@ class InMemoryDatabase {
         if (insertError) throw insertError;
         return rowToUserProfile(inserted);
       } catch (err: any) {
-        // Temporary diagnostic: the previous catch-and-warn here swallowed
-        // the real Supabase error entirely, so a controller calling
-        // updateUser had no way to see WHY it fell back to memory — this
-        // exposes the last error via getLastUpdateUserError() so it can be
-        // surfaced in an API response instead of only Render's log stream.
+        // A bare catch-and-warn here previously swallowed the real Supabase
+        // error entirely — a caller had no way to know updateUser silently
+        // fell back to memory (this is exactly how a missing/stale column
+        // in Supabase's schema cache caused rehearsals_remaining and other
+        // fields to stop persisting without any visible failure). Callers
+        // that care can check getLastUpdateUserError() right after calling
+        // updateUser.
         lastUpdateUserError = { message: err?.message, code: err?.code, details: err?.details, hint: err?.hint };
         console.warn('Supabase updateUser failed, falling back to in-memory store:', err);
       }
