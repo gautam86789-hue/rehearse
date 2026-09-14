@@ -46,7 +46,7 @@ export function verifyPassword(password: string, hash: string, salt: string): bo
 // (everything needed to offline-brute-force the password) ships to the
 // client in plain JSON.
 function stripSensitive(account: UserAccount): UserProfile {
-  const { passwordHash, passwordSalt, isActive, ...profile } = account;
+  const { passwordHash, passwordSalt, isActive, emailVerificationCode, emailVerificationExpiresAt, ...profile } = account;
   return profile;
 }
 
@@ -127,6 +127,7 @@ function rowToUserProfile(row: any): UserProfile {
       planName: planNameForStatus(row.subscription_status)
     },
     promoRedeemed: row.promo_redeemed || false,
+    emailVerified: row.email_verified || false,
     createdAt: row.created_at
   };
 }
@@ -183,6 +184,7 @@ function userProfileUpdatesToRow(updates: Partial<UserProfile>): Record<string, 
     if ('trialEndsAt' in updates.subscription) row.trial_ends_at = updates.subscription.trialEndsAt || null;
   }
   if (updates.promoRedeemed !== undefined) row.promo_redeemed = updates.promoRedeemed;
+  if (updates.emailVerified !== undefined) row.email_verified = updates.emailVerified;
   row.updated_at = new Date().toISOString();
   return row;
 }
@@ -830,6 +832,80 @@ class InMemoryDatabase {
       }
     }
     return this.memoryUpdateUser(userId, updates);
+  }
+
+  // Stores a fresh verification code + expiry directly, bypassing
+  // updateUser/userProfileUpdatesToRow entirely — the code is never part of
+  // UserProfile and must never round-trip through a path that could end up
+  // in a res.json response (see stripSensitive).
+  async setEmailVerificationCode(userId: string, code: string, expiresAt: string): Promise<void> {
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('users')
+          .update({ email_verification_code: code, email_verification_expires_at: expiresAt, updated_at: new Date().toISOString() })
+          .eq('id', userId);
+        if (error) throw error;
+        return;
+      } catch (err) {
+        console.warn('Supabase setEmailVerificationCode failed, falling back to in-memory store:', err);
+      }
+    }
+    const user = this.users.get(userId) as UserAccount | undefined;
+    if (user) {
+      user.emailVerificationCode = code;
+      user.emailVerificationExpiresAt = expiresAt;
+      this.users.set(userId, user);
+      this.persistToDisk();
+    }
+  }
+
+  // Checks the code server-side and flips emailVerified — the code itself
+  // never leaves this method either way.
+  async verifyEmailCode(userId: string, code: string): Promise<{ success: boolean; error?: string }> {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('email_verification_code, email_verification_expires_at')
+          .eq('id', userId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data || !data.email_verification_code) {
+          return { success: false, error: 'No verification code was requested for this account.' };
+        }
+        if (data.email_verification_expires_at && new Date(data.email_verification_expires_at) < new Date()) {
+          return { success: false, error: 'That code has expired — request a new one.' };
+        }
+        if (data.email_verification_code !== code) {
+          return { success: false, error: 'Incorrect code — check and try again.' };
+        }
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ email_verified: true, email_verification_code: null, email_verification_expires_at: null, updated_at: new Date().toISOString() })
+          .eq('id', userId);
+        if (updateError) throw updateError;
+        return { success: true };
+      } catch (err) {
+        console.warn('Supabase verifyEmailCode failed, falling back to in-memory store:', err);
+      }
+    }
+    const user = this.users.get(userId) as UserAccount | undefined;
+    if (!user || !user.emailVerificationCode) {
+      return { success: false, error: 'No verification code was requested for this account.' };
+    }
+    if (user.emailVerificationExpiresAt && new Date(user.emailVerificationExpiresAt) < new Date()) {
+      return { success: false, error: 'That code has expired — request a new one.' };
+    }
+    if (user.emailVerificationCode !== code) {
+      return { success: false, error: 'Incorrect code — check and try again.' };
+    }
+    user.emailVerified = true;
+    delete user.emailVerificationCode;
+    delete user.emailVerificationExpiresAt;
+    this.users.set(userId, user);
+    this.persistToDisk();
+    return { success: true };
   }
 
   // Scenario Operations — curated + custom scenarios are always served from

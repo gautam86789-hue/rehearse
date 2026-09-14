@@ -3,7 +3,9 @@ import {
   authController,
   registerSchema,
   loginSchema,
-  onboardingSchema
+  onboardingSchema,
+  sendVerificationSchema,
+  verifyEmailSchema
 } from '../controllers/authController.js';
 import { validateBody } from '../middleware/errorHandler.js';
 
@@ -15,6 +17,10 @@ router.post('/signup', validateBody(registerSchema), authController.register);
 router.post('/login', validateBody(loginSchema), authController.login);
 router.post('/signin', validateBody(loginSchema), authController.login);
 router.post('/logout', authController.logout);
+
+// Email Verification
+router.post('/send-verification', validateBody(sendVerificationSchema), authController.sendVerificationCode);
+router.post('/verify-email', validateBody(verifyEmailSchema), authController.verifyEmail);
 
 // User Profile & Onboarding
 router.get('/me', authController.getMe);

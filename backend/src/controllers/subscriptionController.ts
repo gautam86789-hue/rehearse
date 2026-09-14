@@ -145,6 +145,15 @@ export class SubscriptionController {
         return;
       }
 
+      // Confirmed email is what makes "one redemption per account" actually
+      // mean one per person rather than one per disposable address — the
+      // 'code' field is a machine-readable marker the frontend keys off of
+      // to show the verification step directly instead of a dead-end error.
+      if (!user.emailVerified) {
+        res.status(403).json({ error: 'Please verify your email before redeeming a code.', code: 'EMAIL_NOT_VERIFIED' });
+        return;
+      }
+
       const hasActivePlan =
         (user.subscription.status === 'active_monthly' ||
           user.subscription.status === 'active_three_month' ||

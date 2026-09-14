@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { memoryDb } from '../db/client.js';
+import { sendVerificationEmail } from '../services/emailService.js';
 import { z } from 'zod';
 
 export const registerSchema = z.object({
@@ -11,6 +12,26 @@ export const registerSchema = z.object({
   audience: z.enum(['founders_investors', 'new_managers', 'mba_students', 'professionals', 'new_hires']).optional(),
   primaryDreadCategory: z.string().optional()
 });
+
+export const sendVerificationSchema = z.object({
+  userId: z.string().min(1)
+});
+
+export const verifyEmailSchema = z.object({
+  userId: z.string().min(1),
+  code: z.string().min(1)
+});
+
+const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
+// Soft per-user cooldown against "resend" spam-clicking — resets on
+// server restart, which is an acceptable tradeoff for a rate limit whose
+// only job is stopping a single impatient tapper, not abuse at scale.
+const RESEND_COOLDOWN_MS = 60 * 1000;
+const lastSentAt = new Map<string, number>();
+
+function generateCode(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address format'),
@@ -38,6 +59,20 @@ export class AuthController {
         audience,
         primaryDreadCategory
       });
+
+      // Fire-and-forget: a slow or failing email provider shouldn't hold up
+      // account creation, or fail it outright — verification is only ever
+      // required later, at redemption time, not at signup.
+      if (user.email) {
+        const code = generateCode();
+        const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS).toISOString();
+        lastSentAt.set(user.id, Date.now());
+        memoryDb
+          .setEmailVerificationCode(user.id, code, expiresAt)
+          .then(() => sendVerificationEmail(user.email!, code))
+          .catch((err) => console.warn('Failed to send signup verification email:', err));
+      }
+
       res.status(201).json({
         user,
         token,
@@ -48,6 +83,61 @@ export class AuthController {
         res.status(409).json({ error: err.message });
         return;
       }
+      next(err);
+    }
+  }
+
+  async sendVerificationCode(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId } = req.body;
+      const resolvedUserId = userId || req.userId;
+      if (!resolvedUserId) {
+        res.status(400).json({ error: 'userId is required.' });
+        return;
+      }
+
+      const lastSent = lastSentAt.get(resolvedUserId);
+      if (lastSent && Date.now() - lastSent < RESEND_COOLDOWN_MS) {
+        res.status(429).json({ error: 'Please wait a moment before requesting another code.' });
+        return;
+      }
+
+      const user = await memoryDb.getUser(resolvedUserId);
+      if (!user.email) {
+        res.status(400).json({ error: 'This account has no email address on file.' });
+        return;
+      }
+
+      const code = generateCode();
+      const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS).toISOString();
+      lastSentAt.set(resolvedUserId, Date.now());
+      await memoryDb.setEmailVerificationCode(resolvedUserId, code, expiresAt);
+      await sendVerificationEmail(user.email, code);
+
+      res.json({ message: 'Verification code sent.' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async verifyEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId, code } = req.body;
+      const resolvedUserId = userId || req.userId;
+      if (!resolvedUserId) {
+        res.status(400).json({ error: 'userId is required.' });
+        return;
+      }
+
+      const result = await memoryDb.verifyEmailCode(resolvedUserId, String(code).trim());
+      if (!result.success) {
+        res.status(400).json({ error: result.error || 'Verification failed.' });
+        return;
+      }
+
+      const user = await memoryDb.getUser(resolvedUserId);
+      res.json({ user, message: 'Email verified.' });
+    } catch (err) {
       next(err);
     }
   }

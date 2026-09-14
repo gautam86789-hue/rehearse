@@ -45,6 +45,7 @@ import { JourneyStoryScreen } from '../screens/JourneyStoryScreen';
 import { KnowledgeArticleScreen } from '../screens/KnowledgeArticleScreen';
 import { DailyPuzzleScreen } from '../screens/DailyPuzzleScreen';
 import { ReplyAssistantScreen } from '../screens/ReplyAssistantScreen';
+import { AICoachScreen } from '../screens/AICoachScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { AppearanceScreen } from '../screens/settings/AppearanceScreen';
@@ -217,6 +218,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="KnowledgeArticle" component={KnowledgeArticleScreen} />
             <Stack.Screen name="DailyPuzzle" component={DailyPuzzleScreen} />
             <Stack.Screen name="ReplyCoach" component={ReplyAssistantScreen} />
+            <Stack.Screen name="AICoach" component={AICoachScreen} />
             <Stack.Screen name="Appearance" component={AppearanceScreen} />
             <Stack.Screen name="AccountSecurity" component={AccountSecurityScreen} />
             <Stack.Screen name="ExecutiveProfile" component={ExecutiveProfileScreen} />

@@ -269,5 +269,8 @@ export interface UserProfile {
     trialEndsAt?: string;
     planName?: string;
   };
+  // Confirmed via a sent code — gates promo code redemption specifically,
+  // not general app access (see PaywallModal / EmailVerificationModal).
+  emailVerified?: boolean;
   createdAt: string;
 }

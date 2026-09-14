@@ -395,7 +395,12 @@ class ApiService {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || errData.message || `Request failed with status ${res.status}`);
+        const error = new Error(errData.error || errData.message || `Request failed with status ${res.status}`);
+        // A few endpoints (promo redemption's EMAIL_NOT_VERIFIED) return a
+        // machine-readable code alongside the message so a caller can
+        // switch to the right follow-up UI instead of just showing text.
+        if (errData.code) (error as any).code = errData.code;
+        throw error;
       }
 
       return (await res.json()) as T;
@@ -932,6 +937,20 @@ class ApiService {
   // actually be rejected, so errors propagate to the caller to show.
   async redeemPromoCode(userId: string, code: string): Promise<{ subscription: any }> {
     return this.request('/subscriptions/redeem-code', {
+      method: 'POST',
+      body: JSON.stringify({ userId, code })
+    });
+  }
+
+  async sendVerificationCode(userId: string): Promise<{ message: string }> {
+    return this.request('/auth/send-verification', {
+      method: 'POST',
+      body: JSON.stringify({ userId })
+    });
+  }
+
+  async verifyEmailCode(userId: string, code: string): Promise<{ user: any; message: string }> {
+    return this.request('/auth/verify-email', {
       method: 'POST',
       body: JSON.stringify({ userId, code })
     });

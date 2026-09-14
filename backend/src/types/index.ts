@@ -213,6 +213,11 @@ export interface UserProfile {
   // expiring (status will move on to 'expired', but this stays true forever,
   // which is what actually blocks a second redemption).
   promoRedeemed?: boolean;
+  // True once the account has confirmed its email via a sent code — gates
+  // promo code redemption (see subscriptionController) so a throwaway or
+  // mistyped address can't be used to farm the promo. Doesn't gate general
+  // app access — a guest/free account is fully usable unverified.
+  emailVerified?: boolean;
   createdAt: string;
 }
 
@@ -220,6 +225,9 @@ export interface UserAccount extends UserProfile {
   passwordHash?: string;
   passwordSalt?: string;
   isActive?: boolean;
+  // Never sent to the client — see stripSensitive in db/client.ts.
+  emailVerificationCode?: string;
+  emailVerificationExpiresAt?: string;
 }
 
 export interface AuthSession {

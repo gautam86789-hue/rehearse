@@ -15,6 +15,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { isPurchasesSupported, presentPaywallIfNeeded, PAYWALL_RESULT } from '../../services/purchases';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
 import { AuthGateModal } from './AuthGateModal';
+import { EmailVerificationModal } from './EmailVerificationModal';
 import { PromoCodeGate } from './PromoCodeGate';
 import { apiService } from '../../services/api';
 import { navigationRef } from '../../navigation/navigationRef';
@@ -45,10 +46,15 @@ export const PaywallModal: React.FC = () => {
   // closing and PromoCodeGate mounting where neither was on screen, showing
   // a bare white flash of whatever sat underneath (reported directly).
   const [justAuthenticated, setJustAuthenticated] = useState(false);
+  // Same synchronous-flag reasoning as justAuthenticated — switching off
+  // user.emailVerified alone means waiting on refreshProfile's round trip
+  // before this component re-renders past the verification step.
+  const [justVerified, setJustVerified] = useState(false);
   useEffect(() => {
     if (!isPaywallVisible) {
       setHasDeclinedPromo(false);
       setJustAuthenticated(false);
+      setJustVerified(false);
     }
   }, [isPaywallVisible]);
 
@@ -137,11 +143,33 @@ export const PaywallModal: React.FC = () => {
     );
   }
 
-  // Right after sign-in, before either the real hosted paywall or the web
-  // fallback modal below — a judge/tester with a code skips payment
-  // entirely; "No code" falls through to the normal purchase flow exactly
-  // as if this card weren't there.
-  if (isPaywallVisible && (!isGuest || justAuthenticated) && !hasDeclinedPromo) {
+  // Right after sign-in, before the promo step — a code redeemed on an
+  // unverified email would just be rejected server-side (see
+  // subscriptionController's EMAIL_NOT_VERIFIED check), so this collects
+  // the code already sent at signup before ever showing that step. "Skip
+  // for now" falls all the way through to real payment, same as declining
+  // the promo step itself — there's no point offering a promo-code entry
+  // that's guaranteed to fail right after someone's declined to verify.
+  if (isPaywallVisible && (!isGuest || justAuthenticated) && !user.emailVerified && !justVerified && !hasDeclinedPromo) {
+    return (
+      <EmailVerificationModal
+        visible
+        email={user.email || ''}
+        userId={user.id}
+        onVerified={() => {
+          setJustVerified(true);
+          refreshProfile();
+        }}
+        onCancel={() => setHasDeclinedPromo(true)}
+      />
+    );
+  }
+
+  // Right after sign-in (and, if unverified, after that step) — a
+  // judge/tester with a code skips payment entirely; "No code" falls
+  // through to the normal purchase flow exactly as if this card weren't
+  // there.
+  if (isPaywallVisible && (!isGuest || justAuthenticated) && (user.emailVerified || justVerified) && !hasDeclinedPromo) {
     return (
       <PromoCodeGate
         visible

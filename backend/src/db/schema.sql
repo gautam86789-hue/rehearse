@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS users (
     rehearsals_remaining INT DEFAULT 3, -- 3 free rehearsals, then paywall (real trial requires payment method)
     trial_ends_at TIMESTAMP WITH TIME ZONE, -- only set once a real (store-billed) or promo trial actually starts
     promo_redeemed BOOLEAN DEFAULT FALSE, -- permanent, survives the promo period expiring — blocks a second redemption
+    email_verified BOOLEAN DEFAULT FALSE, -- confirmed via a sent code; gates promo redemption, not general app access
+    email_verification_code TEXT, -- cleared once verified; never sent to the client (see stripSensitive)
+    email_verification_expires_at TIMESTAMP WITH TIME ZONE,
     revenuecat_customer_id TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
