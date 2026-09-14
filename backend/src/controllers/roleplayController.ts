@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { memoryDb } from '../db/client.js';
+import { memoryDb, getLastUpdateUserError } from '../db/client.js';
 import { roleplayEngine } from '../services/roleplayEngine.js';
 import { scoringEngine } from '../services/scoringEngine.js';
 import { gamificationService } from '../services/gamificationService.js';
@@ -196,7 +196,11 @@ export class RoleplayController {
       let debugPostReRead: any = null;
       try {
         const updated = await memoryDb.updateUser(user.id, gamificationResult.updatedProfile);
-        debugUpdateResult = { rehearsalsRemaining: updated.subscription.rehearsalsRemaining, totalRehearsals: updated.totalRehearsals };
+        debugUpdateResult = {
+          rehearsalsRemaining: updated.subscription.rehearsalsRemaining,
+          totalRehearsals: updated.totalRehearsals,
+          supabaseError: getLastUpdateUserError()
+        };
       } catch (e: any) {
         debugUpdateResult = { threw: true, message: e?.message };
       }

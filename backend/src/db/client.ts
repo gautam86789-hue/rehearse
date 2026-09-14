@@ -92,6 +92,12 @@ if (process.env.NODE_ENV !== 'test' && process.env.SUPABASE_URL && process.env.S
   }
 }
 
+// Temporary diagnostic — see updateUser's catch block.
+let lastUpdateUserError: { message?: string; code?: string; details?: string; hint?: string } | null = null;
+export function getLastUpdateUserError() {
+  return lastUpdateUserError;
+}
+
 // ---------------------------------------------------------------------------
 // Row <-> Domain mappers (snake_case Postgres columns <-> camelCase TS types)
 // ---------------------------------------------------------------------------
@@ -824,29 +830,28 @@ class InMemoryDatabase {
   }
 
   async updateUser(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    lastUpdateUserError = null;
     if (supabase) {
       try {
         const patch = userProfileUpdatesToRow(updates);
-        // Temporary diagnostic: the persisted rehearsals_remaining/total_rehearsals
-        // were observed staying at their pre-session values in Supabase despite
-        // this call apparently not throwing — logging the exact patch and the
-        // exact row Supabase reports back settles whether the patch is wrong,
-        // the match is wrong, or something else entirely.
-        console.log('[updateUser] patch for', userId, ':', JSON.stringify(patch));
         const { data, error } = await supabase.from('users').update(patch).eq('id', userId).select('*').maybeSingle();
         if (error) throw error;
         if (data) {
-          console.log('[updateUser] Supabase returned updated row, rehearsals_remaining=', data.rehearsals_remaining, 'total_rehearsals=', data.total_rehearsals);
           return rowToUserProfile(data);
         }
-        console.log('[updateUser] Supabase update matched no row for', userId, '— falling to insert branch');
 
         // Row didn't exist yet — create it with defaults + the requested patch.
         const insertRow = { ...defaultUserRow(userId), ...patch };
         const { data: inserted, error: insertError } = await supabase.from('users').insert(insertRow).select('*').single();
         if (insertError) throw insertError;
         return rowToUserProfile(inserted);
-      } catch (err) {
+      } catch (err: any) {
+        // Temporary diagnostic: the previous catch-and-warn here swallowed
+        // the real Supabase error entirely, so a controller calling
+        // updateUser had no way to see WHY it fell back to memory — this
+        // exposes the last error via getLastUpdateUserError() so it can be
+        // surfaced in an API response instead of only Render's log stream.
+        lastUpdateUserError = { message: err?.message, code: err?.code, details: err?.details, hint: err?.hint };
         console.warn('Supabase updateUser failed, falling back to in-memory store:', err);
       }
     }
