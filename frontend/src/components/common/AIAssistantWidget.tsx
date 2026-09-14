@@ -62,11 +62,17 @@ export const AIAssistantWidget: React.FC = () => {
   // screens keeps it out of the way of whatever content/buttons are
   // actually down there.
   const [onTabsRoot, setOnTabsRoot] = useState(true);
+  // Hidden entirely on its own destination screen — tapping "open the
+  // coach" while already looking at the coach is meaningless, and it was
+  // rendering on top of that screen's own send button (reported directly:
+  // the FAB sat right over it).
+  const [onCoachScreen, setOnCoachScreen] = useState(false);
   useEffect(() => {
     const computeRoute = () => {
       const state = navigationRef.isReady() ? navigationRef.getRootState() : undefined;
       const routeName = state?.routes[state.index]?.name;
       setOnTabsRoot(!state || routeName === 'HomeTabs');
+      setOnCoachScreen(routeName === 'AICoach');
     };
     computeRoute();
     return navigationRef.addListener('state', computeRoute);
@@ -89,6 +95,8 @@ export const AIAssistantWidget: React.FC = () => {
   // applying — on a real Android 10 device insets.bottom under-reported the
   // on-screen nav bar's true height, leaving the FAB sitting inside it.
   const fabBottom = Math.max(insets.bottom, 16) + (onTabsRoot ? 68 : 0) + screenClearance;
+
+  if (onCoachScreen) return null;
 
   return (
     <TouchableOpacity
