@@ -31,11 +31,11 @@ export class LLMService {
     messages: LLMMessage[],
     options: LLMGenerateOptions = {}
   ): Promise<string> {
-    const { temperature = 0.7, responseFormat = 'text' } = options;
+    const { temperature = 0.7, responseFormat = 'text', maxTokens } = options;
 
     if (this.geminiApiKey) {
       try {
-        const response = await this.callGemini(messages, temperature, responseFormat);
+        const response = await this.callGemini(messages, temperature, responseFormat, maxTokens);
         if (response) return response;
       } catch (err) {
         console.warn('Gemini API call failed, falling back to simulated response...', err);
@@ -49,7 +49,8 @@ export class LLMService {
   private async callGemini(
     messages: LLMMessage[],
     temperature: number,
-    responseFormat: string
+    responseFormat: string,
+    maxTokens?: number
   ): Promise<string> {
     const prompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`;
@@ -66,7 +67,8 @@ export class LLMService {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature,
-            responseMimeType: responseFormat === 'json' ? 'application/json' : 'text/plain'
+            responseMimeType: responseFormat === 'json' ? 'application/json' : 'text/plain',
+            ...(maxTokens ? { maxOutputTokens: maxTokens } : {})
           }
         })
       });

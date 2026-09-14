@@ -266,7 +266,17 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
     stepAnim.setValue(0);
     Animated.timing(stepAnim, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   };
+  // Step 1 and 2 render entirely different content (different card counts,
+  // different total height) inside the same ScrollView. Without resetting
+  // scroll position on every step change, a user who scrolled down while
+  // browsing one step's options lands at that same pixel offset in the
+  // other step's unrelated content — on the next step that's a jump into
+  // the middle of the list, and on the way back it's a jump past the
+  // header entirely. Both read as a "shake" in the transition; resetting
+  // to the top before the new step mounts removes it.
+  const scrollRef = useRef<ScrollView>(null);
   const goToStep = (next: 1 | 2) => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
     setStep(next);
     animateStepIn();
   };
@@ -351,6 +361,7 @@ export const OnboardingScreen: React.FC<{ navigation: any; route?: any }> = ({
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScrollView
+        ref={scrollRef}
         // The actual root cause of the CTA button's [0,0][0,0] layout,
         // finally found via the full uiautomator tree dump rather than the
         // single node: with no `style` here, only `contentContainerStyle`,

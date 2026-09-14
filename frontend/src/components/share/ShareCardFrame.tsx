@@ -1,9 +1,8 @@
 import React, { forwardRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import ViewShot, { ViewShotRef } from 'react-native-view-shot';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme, RADII } from '../../context/ThemeContext';
-import { RehearseEmblem } from '../brand/RehearseEmblem';
 
 interface ShareCardFrameProps {
   children: React.ReactNode;
@@ -52,7 +51,7 @@ export const ShareCardFrame = forwardRef<ViewShotRef, ShareCardFrameProps>(
             <View style={styles.content}>{children}</View>
 
             <View style={styles.footer}>
-              <RehearseEmblem size={28} />
+              <Image source={require('../../../assets/icon.png')} style={styles.logo} />
               <Text style={[styles.wordmark, { color: colors.textPrimary }]}>REHEARSE</Text>
               <Text style={[styles.tagline, { color: colors.textSecondary }]}>
                 Practice difficult conversations.
@@ -92,6 +91,12 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     gap: 4
+  },
+  logo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    marginBottom: 2
   },
   wordmark: {
     fontSize: 13,
