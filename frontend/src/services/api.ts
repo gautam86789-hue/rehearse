@@ -949,6 +949,20 @@ class ApiService {
     });
   }
 
+  async createCashfreeOrder(
+    userId: string,
+    plan: 'monthly' | 'three_month' | 'annual'
+  ): Promise<{ orderId: string; paymentSessionId: string; amount: number }> {
+    return this.request('/subscriptions/cashfree/create-order', {
+      method: 'POST',
+      body: JSON.stringify({ userId, plan })
+    });
+  }
+
+  async getCashfreeOrderStatus(orderId: string): Promise<{ status: string; plan?: string }> {
+    return this.request(`/subscriptions/cashfree/order/${encodeURIComponent(orderId)}`);
+  }
+
   async sendVerificationCode(userId: string): Promise<{ message: string }> {
     return this.request('/auth/send-verification', {
       method: 'POST',

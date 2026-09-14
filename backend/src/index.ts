@@ -13,7 +13,18 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
+// Cashfree's webhook signature is an HMAC over the exact raw request bytes —
+// re-serializing the parsed JSON body wouldn't reliably reproduce the same
+// bytes (key order, whitespace), so the raw body is stashed here for that
+// one route to verify against (see subscriptionController.handleCashfreeWebhook).
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req, _res, buf) => {
+      (req as any).rawBody = buf.toString('utf8');
+    }
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));

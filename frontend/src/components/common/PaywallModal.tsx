@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import { Check, ShieldCheck, Sparkles, X, Crown } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { isPurchasesSupported, presentPaywallIfNeeded, PAYWALL_RESULT } from '../../services/purchases';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
 import { AuthGateModal } from './AuthGateModal';
 import { EmailVerificationModal } from './EmailVerificationModal';
@@ -20,15 +19,14 @@ import { PromoCodeGate } from './PromoCodeGate';
 import { apiService } from '../../services/api';
 import { navigationRef } from '../../navigation/navigationRef';
 
-// On native (iOS/Android), `isPaywallVisible` triggers RevenueCat's hosted,
-// dashboard-designed Paywall — real purchases, real products (yearly /
-// three_month / monthly), no hand-built plan UI to keep in sync with the
-// dashboard. The JSX below (the original hand-built modal) only renders as a
-// **web fallback**: react-native-purchases-ui has no web implementation, and
-// this project's Expo-web browser preview is relied on all session for fast
-// UI iteration, so it needs something to demo behind the same CTA.
+// Plan selection + checkout now goes through Cashfree (CashfreeCheckoutScreen)
+// on every platform — this modal is the universal plan picker; "Upgrade to
+// Plus" below hands off to that screen rather than presenting RevenueCat's
+// native paywall. RevenueCat/Play Billing code (services/purchases.ts,
+// AppContext.upgradeSubscription) is left in place, not deleted, in case
+// Play Store distribution later needs it back.
 export const PaywallModal: React.FC = () => {
-  const { isPaywallVisible, setIsPaywallVisible, paywallPreferredPlan, upgradeSubscription, refreshProfile, user, unlockMilestone } = useApp();
+  const { isPaywallVisible, setIsPaywallVisible, paywallPreferredPlan, refreshProfile, user, unlockMilestone } = useApp();
   const { isGuest } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('annual');
@@ -98,44 +96,25 @@ export const PaywallModal: React.FC = () => {
   }, [isPaywallVisible, paywallPreferredPlan]);
   const [isUpgrading, setIsUpgrading] = useState(false);
 
+  // Cashfree checkout replaces both the native RevenueCat paywall and the
+  // hand-built modal's own upgrade call below — closes this modal and hands
+  // off to CashfreeCheckoutScreen, which owns the rest of the payment flow
+  // (order creation, WebView checkout, confirmation).
+  const goToCashfreeCheckout = () => {
+    setIsPaywallVisible(false);
+    if (navigationRef.isReady()) {
+      (navigationRef.navigate as (name: string, params?: object) => void)('CashfreeCheckout', { plan: selectedPlan });
+    }
+  };
+
   const handleUpgrade = async () => {
     setIsUpgrading(true);
     try {
-      await upgradeSubscription(selectedPlan);
+      goToCashfreeCheckout();
     } finally {
       setIsUpgrading(false);
     }
   };
-
-  // Guards against double-presenting if this effect re-fires while a paywall
-  // is already on screen (e.g. a parent re-render while the async present
-  // call is still pending).
-  const isPresenting = useRef(false);
-
-  useEffect(() => {
-    // A guest (and not yet justAuthenticated) hits the AuthGateModal render
-    // branch below instead — this effect naturally takes over once sign-up/
-    // sign-in flips justAuthenticated true. hasDeclinedPromo gates it the
-    // same way — the PromoCodeGate branch below runs first, and only "No
-    // code" (or a redeemed code closing the paywall outright) lets this
-    // effect proceed.
-    const stillGuest = isGuest && !justAuthenticated;
-    if (!isPurchasesSupported() || !isPaywallVisible || stillGuest || !hasDeclinedPromo || isPresenting.current) return;
-    isPresenting.current = true;
-    presentPaywallIfNeeded()
-      .then(async (result) => {
-        if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
-          // AppContext's CustomerInfo listener already reflects the new
-          // entitlement locally; refreshProfile reconciles with the backend
-          // once RevenueCat's webhook lands, for cross-device consistency.
-          await refreshProfile();
-        }
-      })
-      .finally(() => {
-        isPresenting.current = false;
-        setIsPaywallVisible(false);
-      });
-  }, [isPaywallVisible, isGuest, justAuthenticated, hasDeclinedPromo]);
 
   // Sign-in/sign-up is required only at the moment of actually paying, not
   // any earlier — applies on both native (blocks the RevenueCat hosted
@@ -189,8 +168,6 @@ export const PaywallModal: React.FC = () => {
       />
     );
   }
-
-  if (isPurchasesSupported()) return null;
 
   if (!isPaywallVisible) return null;
 

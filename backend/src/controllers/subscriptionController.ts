@@ -2,6 +2,17 @@ import { Request, Response, NextFunction } from 'express';
 import { memoryDb } from '../db/client.js';
 import { z } from 'zod';
 import { UserProfile } from '../types/index.js';
+import {
+  createCashfreeOrder,
+  getCashfreeOrderStatus,
+  verifyCashfreeWebhookSignature,
+  CashfreePlanId
+} from '../services/cashfreeService.js';
+
+export const createCashfreeOrderSchema = z.object({
+  userId: z.string().optional(),
+  plan: z.enum(['monthly', 'three_month', 'annual'])
+});
 
 export const upgradeSubscriptionSchema = z.object({
   userId: z.string().optional(),
@@ -24,6 +35,21 @@ const PROMO_DURATION_MS = (days: number) => days * 24 * 60 * 60 * 1000;
 
 // Our RevenueCat entitlement identifier — see frontend/src/services/purchases.ts.
 const PRO_ENTITLEMENT_ID = 'rehearse_pro';
+
+function subscriptionForCashfreePlan(plan: CashfreePlanId): {
+  status: UserProfile['subscription']['status'];
+  planName: string;
+} {
+  switch (plan) {
+    case 'annual':
+      return { status: 'active_annual', planName: 'Annual Masterclass' };
+    case 'three_month':
+      return { status: 'active_three_month', planName: 'Three Month Pass' };
+    case 'monthly':
+    default:
+      return { status: 'active_monthly', planName: 'Monthly Professional' };
+  }
+}
 
 // Maps a RevenueCat product identifier (== the package identifier configured
 // in the dashboard: 'yearly' | 'three_month' | 'monthly') to this app's own
@@ -269,6 +295,81 @@ export class SubscriptionController {
       next(err);
     }
   }
+
+  // Creates a Cashfree order and hands back the payment_session_id the
+  // frontend's WebView checkout screen needs to render Cashfree's hosted
+  // checkout (see CashfreeCheckoutScreen.tsx). The actual entitlement grant
+  // happens in handleCashfreeWebhook once Cashfree confirms payment, not
+  // here — this endpoint only opens the payment session.
+  createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { userId, plan } = req.body as { userId?: string; plan: CashfreePlanId };
+      const resolvedUserId = userId || req.userId || 'demo-user-1';
+      const user = await memoryDb.getUser(resolvedUserId);
+
+      const order = await createCashfreeOrder(resolvedUserId, plan, user.email, undefined);
+      res.status(201).json(order);
+    } catch (err: any) {
+      // Surfaces Cashfree's own error text (e.g. the pending-activation
+      // message) instead of a generic 500, so the frontend can show it.
+      res.status(502).json({ error: err?.message || 'Failed to create Cashfree order' });
+    }
+  };
+
+  // Cashfree calls this on payment events (PAYMENT_SUCCESS, PAYMENT_FAILED,
+  // etc). Verified via HMAC-SHA256 over the raw body (see
+  // cashfreeService.verifyCashfreeWebhookSignature) — Cashfree's own scheme,
+  // distinct from RevenueCat's shared-secret header above.
+  handleCashfreeWebhook = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const signature = req.headers['x-webhook-signature'] as string | undefined;
+      const timestamp = req.headers['x-webhook-timestamp'] as string | undefined;
+      const rawBody = (req as any).rawBody as string | undefined;
+
+      if (!signature || !timestamp || !rawBody || !verifyCashfreeWebhookSignature(rawBody, timestamp, signature)) {
+        res.status(401).json({ error: 'Invalid webhook signature' });
+        return;
+      }
+
+      const eventType: string | undefined = req.body?.type;
+      const orderData = req.body?.data?.order;
+      const orderId: string | undefined = orderData?.order_id;
+      const plan: CashfreePlanId | undefined = orderData?.order_tags?.plan;
+      const customerId: string | undefined = orderData?.customer_details?.customer_id;
+
+      console.log('Cashfree webhook:', eventType, orderId, customerId);
+
+      if (eventType === 'PAYMENT_SUCCESS_WEBHOOK' && customerId && plan) {
+        const { status, planName } = subscriptionForCashfreePlan(plan);
+        await memoryDb.updateUser(customerId, {
+          subscription: {
+            status,
+            rehearsalsRemaining: 999999,
+            planName,
+            trialEndsAt: undefined
+          }
+        });
+      }
+
+      res.status(200).json({ received: true });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  // Lightweight polling endpoint the checkout WebView calls right after
+  // Cashfree redirects back, in case the webhook hasn't landed yet (network
+  // timing) — checks the order status directly with Cashfree rather than
+  // waiting on our own webhook delivery.
+  getOrderStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const orderId = String(req.params.orderId);
+      const result = await getCashfreeOrderStatus(orderId);
+      res.json(result);
+    } catch (err: any) {
+      res.status(502).json({ error: err?.message || 'Failed to fetch Cashfree order status' });
+    }
+  };
 }
 
 export const subscriptionController = new SubscriptionController();

@@ -46,6 +46,7 @@ import { KnowledgeArticleScreen } from '../screens/KnowledgeArticleScreen';
 import { DailyPuzzleScreen } from '../screens/DailyPuzzleScreen';
 import { ReplyAssistantScreen } from '../screens/ReplyAssistantScreen';
 import { AICoachScreen } from '../screens/AICoachScreen';
+import { CashfreeCheckoutScreen } from '../screens/CashfreeCheckoutScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { AppearanceScreen } from '../screens/settings/AppearanceScreen';
@@ -235,6 +236,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="AccountSecurity" component={AccountSecurityScreen} />
             <Stack.Screen name="ExecutiveProfile" component={ExecutiveProfileScreen} />
             <Stack.Screen name="MembershipBilling" component={MembershipBillingScreen} />
+            <Stack.Screen name="CashfreeCheckout" component={CashfreeCheckoutScreen} />
             <Stack.Screen name="AboutRehearse" component={AboutRehearseScreen} />
             <Stack.Screen name="PrivacyData" component={PrivacyDataScreen} />
             <Stack.Screen name="Methodology" component={MethodologyScreen} />
