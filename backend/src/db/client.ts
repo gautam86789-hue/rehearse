@@ -54,13 +54,22 @@ function stripSensitive(account: UserAccount): UserProfile {
 // ---------------------------------------------------------------------------
 // Supabase client (optional — only wired up when creds are present in env)
 // ---------------------------------------------------------------------------
-// Fail fast: until the Supabase project actually has the schema applied
-// (see backend/src/db/schema.sql), every query would otherwise hang on the
-// platform's default connect timeout (~10s) before falling back to memory —
-// multiplied across a dozen+ DB calls per roleplay session, that made both
-// the app and the test suite painfully slow. A short per-request timeout
-// keeps the graceful-fallback behavior but makes the fallback near-instant.
-const SUPABASE_FETCH_TIMEOUT_MS = 4000;
+// The schema is now applied in production (see backend/src/db/schema.sql),
+// so this no longer needs to protect against queries hanging on a
+// nonexistent table — it was cut to 4000ms for that pre-schema window, but
+// at 4s a real request chain (an LLM scoring call plus several sequential
+// Supabase round-trips in the same handler) can legitimately exceed it,
+// especially against Render's real network latency. When that happens the
+// call silently falls back to the in-process memory store below instead of
+// throwing — which is fine for a genuinely offline dev environment, but in
+// production that store lives only in the Node process and Render's free
+// tier wipes it on every restart (it spins down after ~15min idle), so a
+// write that quietly "succeeded" into memory was actually just lost: the
+// next read goes back to Supabase and shows the stale, pre-update value.
+// This was confirmed live — rehearsals_remaining stayed at 3 in the actual
+// Supabase table after 3 completed rehearsals, each of which silently timed
+// out and fell back to memory. 15s gives real requests room to complete.
+const SUPABASE_FETCH_TIMEOUT_MS = 15000;
 const timeoutFetch: typeof fetch = (input, init) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SUPABASE_FETCH_TIMEOUT_MS);
