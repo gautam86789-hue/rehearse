@@ -28,6 +28,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { T } from './core/type';
 import { CommunicationSkill } from '../../types/progress';
+import { bandFor, BANDS } from './core/geometry';
 
 interface SkillDetailViewProps {
   skill: CommunicationSkill | null;
@@ -35,6 +36,26 @@ interface SkillDetailViewProps {
   onClose: () => void;
   onPractice: (scenarioId?: string) => void;
 }
+
+// Keyed by the real ScenarioCategory id (see frontend/src/utils/deriveProgressData.ts)
+// so each skill shows copy that actually matches it, not a negotiation-only default.
+const SKILL_TAGLINE: Record<string, string> = {
+  negotiation: 'Make confident asks and create mutually beneficial outcomes.',
+  boundaries: 'Hold a clear line without over-explaining or apologizing for it.',
+  feedback: 'Deliver hard truths in a way people can actually hear and act on.',
+  managing_up: 'Influence decisions above you without waiting to be asked.',
+  difficult_decisions: 'Stay clear and decisive when every option has a cost.',
+  crisis: 'Keep the room steady and the message straight when it matters most.'
+};
+
+const SKILL_QUOTE: Record<string, string> = {
+  negotiation: 'Great negotiators don’t just ask. They create value for everyone.',
+  boundaries: 'A boundary stated once, without apology, is a boundary that holds.',
+  feedback: 'Feedback is a gift only if it’s specific enough to act on.',
+  managing_up: 'Managing up is just communication with better timing.',
+  difficult_decisions: 'Clarity under pressure is a skill, not a personality trait.',
+  crisis: 'In a crisis, people remember how you sounded more than what you said.'
+};
 
 export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
   skill,
@@ -47,11 +68,32 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
 
   if (!skill) return null;
 
-  const milestones = [
-    { label: 'Found my voice', x: 50, y: 110, completed: true },
-    { label: 'Handled pushback well', x: 170, y: 65, completed: true },
-    { label: 'Stronger closing statements', x: 285, y: 25, completed: true }
+  const tagline = SKILL_TAGLINE[skill.id] || 'Track how this skill is developing across your rehearsals.';
+  const quote = SKILL_QUOTE[skill.id];
+
+  // Real per-session trend, not a fabricated "+12 since last month": the
+  // delta across the sessions we actually have (oldest to newest) in
+  // skill.recentScores (see deriveSkillsFromHistory).
+  const scoreTrend =
+    skill.recentScores.length >= 2
+      ? skill.recentScores[skill.recentScores.length - 1] - skill.recentScores[0]
+      : null;
+
+  const band = bandFor(skill.score);
+
+  // Plots one checkpoint per real rehearsal we have (capped at 3 so the
+  // fixed trail illustration below doesn't get crowded), labeled with the
+  // actual score rather than invented narrative milestones.
+  const milestonePositions = [
+    { x: 50, y: 110 },
+    { x: 170, y: 65 },
+    { x: 285, y: 25 }
   ];
+  const milestones = skill.recentScores.slice(-3).map((scoreVal, idx, arr) => ({
+    label: `Session ${idx + 1} · ${scoreVal} pts`,
+    ...milestonePositions[idx + (3 - arr.length)],
+    completed: true
+  }));
 
   return (
     <Modal
@@ -79,7 +121,7 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Subtitle */}
           <Text style={[styles.skillTagline, { color: themeColors.textSecondary }]}>
-            Make confident asks and create mutually beneficial outcomes.
+            {tagline}
           </Text>
 
           {/* Hero Gauge & Stats Row */}
@@ -117,7 +159,12 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
             <View style={styles.metricBadgesCol}>
               <View style={styles.badgeRow}>
                 <TrendingUp size={15} color={themeColors.primary} />
-                <Text style={[styles.badgeValue, { color: themeColors.textPrimary }]}>+12 <Text style={{ color: themeColors.textSecondary, ...T.micro }}>since last month</Text></Text>
+                <Text style={[styles.badgeValue, { color: themeColors.textPrimary }]}>
+                  {scoreTrend === null ? '—' : `${scoreTrend >= 0 ? '+' : ''}${scoreTrend}`}{' '}
+                  <Text style={{ color: themeColors.textSecondary, ...T.micro }}>
+                    {scoreTrend === null ? 'not enough sessions yet' : 'across your last rehearsals'}
+                  </Text>
+                </Text>
               </View>
               <View style={styles.badgeRow}>
                 <Target size={15} color={themeColors.primary} />
@@ -125,7 +172,7 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
               </View>
               <View style={styles.badgeRow}>
                 <Award size={15} color={themeColors.primary} />
-                <Text style={[styles.badgeValue, { color: themeColors.textPrimary }]}>Top 20% <Text style={{ color: themeColors.textSecondary, ...T.micro }}>of Rehearse users</Text></Text>
+                <Text style={[styles.badgeValue, { color: themeColors.textPrimary }]}>{BANDS[band].label} <Text style={{ color: themeColors.textSecondary, ...T.micro }}>tier</Text></Text>
               </View>
             </View>
           </View>
@@ -274,12 +321,12 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
           )}
 
           {/* Quote Card */}
-          <View style={[styles.quoteCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
-            <Quote size={16} color={themeColors.primary} style={{ marginBottom: 6 }} />
-            <Text style={[styles.quoteText, { color: themeColors.textPrimary }]}>
-              "Great negotiators don't just ask. They create value for everyone."
-            </Text>
-          </View>
+          {quote && (
+            <View style={[styles.quoteCard, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
+              <Quote size={16} color={themeColors.primary} style={{ marginBottom: 6 }} />
+              <Text style={[styles.quoteText, { color: themeColors.textPrimary }]}>"{quote}"</Text>
+            </View>
+          )}
 
           {/* Practice Action CTA */}
           <TouchableOpacity

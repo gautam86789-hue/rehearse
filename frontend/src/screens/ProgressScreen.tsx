@@ -24,7 +24,7 @@ import { progressPalette } from '../components/progress/core/palette';
 import { useReveal, riseIn, DUR } from '../components/progress/core/motion';
 import { bandFor, BANDS, toNextBand } from '../components/progress/core/geometry';
 import { T } from '../components/progress/core/type';
-import { SKILLS, CONFIDENCE_SERIES } from '../components/progress/core/progressData';
+import { deriveSkillsFromHistory, deriveConfidenceSeries } from '../utils/deriveProgressData';
 import { PracticeDay } from '../components/progress/PracticeRhythm';
 import { MILESTONES } from '../data/milestones';
 import { AchievementItem } from '../types/progress';
@@ -102,14 +102,16 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     });
     return Array.from(byDate.entries()).map(([date, count]) => ({ date, count }));
   }, [history, user.completedPuzzleDates]);
-  const confidenceValues = useMemo(() => CONFIDENCE_SERIES.map((d) => d.score), []);
+  const skills = useMemo(() => deriveSkillsFromHistory(history), [history]);
+  const confidenceSeries = useMemo(() => deriveConfidenceSeries(history), [history]);
+  const confidenceValues = useMemo(() => confidenceSeries.map((d) => d.score), [confidenceSeries]);
   const confidence = confidenceValues[confidenceValues.length - 1];
 
   const totalRehearsals = user.totalRehearsals || 0;
   const currentStreak = user.currentStreak || 0;
   const longestStreak = user.longestStreak || 0;
 
-  const activeSkills = useMemo(() => SKILLS.filter((s) => !s.locked), []);
+  const activeSkills = useMemo(() => skills.filter((s) => !s.locked), [skills]);
 
   /** The one skill worth pointing at right now: lowest score among active. */
   const focusSkill = useMemo(
@@ -190,7 +192,7 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             {hasHistory ? (
               <>
                 {/* One figure carries trajectory + current value + band */}
-                <ConfidenceArc data={CONFIDENCE_SERIES} current={confidence} />
+                <ConfidenceArc data={confidenceSeries} current={confidence} />
 
                 {/* The next concrete move, derived */}
                 {focusSkill && <NextMove skill={focusSkill} palette={p} onPress={goPractice} />}
@@ -223,12 +225,12 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
                 {skillView === 'field' ? (
                   <SkillConstellation
-                    skills={SKILLS}
+                    skills={skills}
                     onSelectSkill={openSkill}
                     selectedId={selectedSkill?.id ?? null}
                   />
                 ) : (
-                  <SkillLedger skills={SKILLS} onSelectSkill={openSkill} />
+                  <SkillLedger skills={skills} onSelectSkill={openSkill} />
                 )}
               </>
             ) : (
@@ -268,7 +270,7 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             <SectionHead title="Insights" />
             {hasHistory ? (
               <InsightBriefing
-                skills={SKILLS}
+                skills={skills}
                 confidence={confidenceValues}
                 onSelectSkill={openSkill}
                 onPractice={goPractice}

@@ -89,6 +89,10 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
       return match || skills[fallbackIdx % skills.length];
     };
 
+    // Query strings match the real ScenarioCategory ids/names from
+    // deriveProgressData.ts (see frontend/src/utils/deriveProgressData.ts) —
+    // 'crisis' has no dedicated slot in this 5-node layout; it still shows
+    // up in SkillLedger and InsightBriefing since those iterate every skill.
     const slotsConfig = [
       {
         skill: findSkill('managing_up', 4),
@@ -101,7 +105,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
         badgeTop: cy - 76
       },
       {
-        skill: findSkill('executive_presence', 3),
+        skill: findSkill('difficult_decisions', 3),
         quadrant: 'bottom-left' as const,
         isLeft: true,
         nodeX: cx - (badgeWidth > 115 ? 58 : 50),
@@ -119,7 +123,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
         badgeTop: cy - 84
       },
       {
-        skill: findSkill('boundary_setting', 1),
+        skill: findSkill('boundaries', 1),
         quadrant: 'mid-right' as const,
         isLeft: false,
         nodeX: cx + (badgeWidth > 115 ? 74 : 64),
@@ -128,7 +132,7 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
         badgeTop: cy - 22
       },
       {
-        skill: findSkill('difficult_feedback', 2),
+        skill: findSkill('feedback', 2),
         quadrant: 'bottom-right' as const,
         isLeft: false,
         nodeX: cx + (badgeWidth > 115 ? 58 : 50),
@@ -289,7 +293,9 @@ export const SkillConstellation: React.FC<SkillConstellationProps> = ({
           {/* Skill Node Spheres */}
           {nodes.map((n) => {
             const isSelected = selectedId === n.skill.id;
-            const isOlive = n.skill.id.includes('executive');
+            // Visual variety only — the bottom-left node always gets the
+            // olive gradient regardless of which real skill occupies it.
+            const isOlive = n.quadrant === 'bottom-left';
             return (
               <G key={`node-${n.skill.id}`}>
                 {/* Selection Halo */}
