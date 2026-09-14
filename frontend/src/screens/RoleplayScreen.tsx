@@ -70,7 +70,10 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
         setActiveSession(res.session);
       }
     } catch (err: any) {
-      const isTrialLimitError = err.message?.includes('Free trial limit reached') || err.message?.includes('PAYWALL');
+      const isTrialLimitError =
+        err.code === 'PAYWALL_TRIGGERED' ||
+        err.message?.includes('Free trial limit reached') ||
+        err.message?.includes('PAYWALL');
       // isPro comes straight from the RevenueCat SDK's live CustomerInfo, so
       // it's already true immediately after a real purchase — even if the
       // backend's own subscription record hasn't caught up yet (RevenueCat's

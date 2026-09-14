@@ -41,12 +41,15 @@ SCENARIO CONTEXT:
 - What the user is trying to accomplish: ${scenario.userGoal}
 
 ROLEPLAY RULES:
-1. Stay in character 100%. Never mention you are an AI, a coach, or giving feedback.
-2. Keep your dialogue realistic, authentic, and spoken: 2 to 4 sentences maximum per turn.
-3. React realistically to how the user speaks:
+1. Stay in character 100%. Never mention you are an AI, a coach, or giving feedback. Never break the fourth wall.
+2. Talk like a real person in THIS conversation, not a written paragraph: 1 to 3 short sentences, under 45 words total. People under pressure react and stop — they don't monologue. A short, clipped line ("No. That doesn't work for me.") often reads more real than a fully-formed paragraph.
+3. Sound like ${scenario.counterpartName} specifically, not a generic professional. Let the Typical Phrases and Resistance Pattern above shape your actual word choice and rhythm, not just the topic. Vary sentence length turn to turn the way real speech does.
+4. Never use AI-assistant phrasing: no "I understand your concern," "I appreciate you bringing this up," "let's find a solution that works for both of us," or similar therapist-speak. This person is under real pressure — let them get defensive, interrupt, trail off, or push back bluntly when the archetype calls for it.
+5. React to what the user JUST said, specifically — call back their actual number, deadline, or claim when there is one to react to, instead of responding to a generic version of their ask.
+6. React realistically to how the user speaks:
    - If the user is apologetic, timid, or hedges ("I was just hoping...", "Sorry to bother you..."), push back harder, exploit their hesitation, or dismiss the urgency.
    - If the user uses clear data, specific numbers, and firm boundaries without getting angry, push back once or twice, then begin conceding or exploring a constructive compromise.
-4. Speak directly to the user in the first person ("I", "my department", "we").
+7. Speak directly to the user in the first person ("I", "my department", "we").
 
 ${difficultyCalibration}`;
 
@@ -61,8 +64,13 @@ ${difficultyCalibration}`;
 
     try {
       const responseText = await this.llm.generateCompletion(messages, {
-        temperature: 0.75,
-        maxTokens: 180
+        temperature: 0.8,
+        // Tightened alongside the "under 45 words" rule above — generous
+        // enough to avoid an awkward mid-sentence cutoff, tight enough that
+        // the model can't quietly ignore the length instruction. Was 180
+        // before, but maxTokens wasn't actually being sent to Gemini until
+        // this session's llmService fix, so it had no real effect until now.
+        maxTokens: 110
       });
 
       // Quick heuristic metrics for the user's turn

@@ -124,7 +124,15 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     setDetailVisible(true);
   };
 
-  const goPractice = () => navigation.navigate('Scenarios');
+  // Deep-links straight into that skill's scenarios (skill.id is the real
+  // ScenarioCategory — see deriveProgressData.ts) instead of dropping the
+  // user on the unfiltered Scenarios list. Called with no argument from the
+  // generic empty-state CTAs, which stay unfiltered on purpose.
+  const goPractice = (skillOrCategory?: ConstellationSkill | string) => {
+    const category =
+      typeof skillOrCategory === 'string' ? skillOrCategory : skillOrCategory?.id;
+    navigation.navigate('Scenarios', category ? { category } : undefined);
+  };
 
   const enter = useReveal(0, DUR.base);
 
@@ -195,7 +203,9 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 <ConfidenceArc data={confidenceSeries} current={confidence} />
 
                 {/* The next concrete move, derived */}
-                {focusSkill && <NextMove skill={focusSkill} palette={p} onPress={goPractice} />}
+                {focusSkill && (
+                  <NextMove skill={focusSkill} palette={p} onPress={() => goPractice(focusSkill)} />
+                )}
               </>
             ) : (
               <EmptyTabState

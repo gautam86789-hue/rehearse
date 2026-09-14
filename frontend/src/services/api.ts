@@ -611,7 +611,14 @@ class ApiService {
         method: 'POST',
         body: JSON.stringify({ userId, scenarioId })
       });
-    } catch {
+    } catch (err: any) {
+      // PAYWALL_TRIGGERED must reach RoleplayScreen's catch so it can show
+      // the paywall — swallowing it here and silently handing back a fake
+      // local session (the fallback below, meant for real network/server
+      // outages) was why the paywall never appeared after the free trial
+      // ran out: the app just kept generating disconnected local sessions
+      // instead of ever surfacing the limit.
+      if (err?.code === 'PAYWALL_TRIGGERED') throw err;
       const scenario = CURATED_SCENARIOS.find((s) => s.id === scenarioId) || CURATED_SCENARIOS[0];
       return {
         session: {

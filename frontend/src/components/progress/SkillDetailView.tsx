@@ -25,6 +25,7 @@ import {
   Quote,
   Target
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { T } from './core/type';
 import { CommunicationSkill } from '../../types/progress';
@@ -64,6 +65,7 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
   onPractice
 }) => {
   const { colors: themeColors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'overview' | 'strengths' | 'to_improve' | 'history'>('overview');
 
   if (!skill) return null;
@@ -103,8 +105,11 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
       onRequestClose={onClose}
     >
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder }]}>
+        {/* Header — Modal on Android isn't covered by the Activity's status-bar
+            inset the way a pushed screen is, so paddingTop here needs the
+            safe-area value added explicitly or the header merges into the
+            notification bar. */}
+        <View style={[styles.header, { borderBottomColor: themeColors.surfaceBorder, paddingTop: insets.top + 16 }]}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
             onPress={onClose}
@@ -333,7 +338,7 @@ export const SkillDetailView: React.FC<SkillDetailViewProps> = ({
             style={[styles.ctaButton, { backgroundColor: themeColors.primary }]}
             onPress={() => {
               onClose();
-              onPractice(skill.recommendedScenarioId);
+              onPractice(skill.id);
             }}
             activeOpacity={0.85}
           >

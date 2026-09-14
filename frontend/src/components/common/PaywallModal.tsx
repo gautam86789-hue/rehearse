@@ -50,11 +50,18 @@ export const PaywallModal: React.FC = () => {
   // user.emailVerified alone means waiting on refreshProfile's round trip
   // before this component re-renders past the verification step.
   const [justVerified, setJustVerified] = useState(false);
+  // Separate from hasDeclinedPromo on purpose: skipping email verification
+  // and declining the promo code are two different steps. These used to
+  // share hasDeclinedPromo, which meant "Skip for now" on verification also
+  // satisfied the promo step's gate and jumped straight to the real
+  // (RevenueCat) paywall, skipping PromoCodeGate entirely.
+  const [skippedVerification, setSkippedVerification] = useState(false);
   useEffect(() => {
     if (!isPaywallVisible) {
       setHasDeclinedPromo(false);
       setJustAuthenticated(false);
       setJustVerified(false);
+      setSkippedVerification(false);
     }
   }, [isPaywallVisible]);
 
@@ -143,14 +150,13 @@ export const PaywallModal: React.FC = () => {
     );
   }
 
-  // Right after sign-in, before the promo step — a code redeemed on an
-  // unverified email would just be rejected server-side (see
-  // subscriptionController's EMAIL_NOT_VERIFIED check), so this collects
-  // the code already sent at signup before ever showing that step. "Skip
-  // for now" falls all the way through to real payment, same as declining
-  // the promo step itself — there's no point offering a promo-code entry
-  // that's guaranteed to fail right after someone's declined to verify.
-  if (isPaywallVisible && (!isGuest || justAuthenticated) && !user.emailVerified && !justVerified && !hasDeclinedPromo) {
+  // Right after sign-in, before the promo step. "Skip for now" moves on to
+  // the promo-code step (below), NOT straight to real payment — if the
+  // skipped-verification user actually has a code, redeeming it server-side
+  // still enforces email verification (subscriptionController's
+  // EMAIL_NOT_VERIFIED check) and PromoCodeGate will surface that error
+  // plainly; "No code" from there is what falls through to real payment.
+  if (isPaywallVisible && (!isGuest || justAuthenticated) && !user.emailVerified && !justVerified && !skippedVerification && !hasDeclinedPromo) {
     return (
       <EmailVerificationModal
         visible
@@ -160,16 +166,21 @@ export const PaywallModal: React.FC = () => {
           setJustVerified(true);
           refreshProfile();
         }}
-        onCancel={() => setHasDeclinedPromo(true)}
+        onCancel={() => setSkippedVerification(true)}
       />
     );
   }
 
-  // Right after sign-in (and, if unverified, after that step) — a
-  // judge/tester with a code skips payment entirely; "No code" falls
-  // through to the normal purchase flow exactly as if this card weren't
-  // there.
-  if (isPaywallVisible && (!isGuest || justAuthenticated) && (user.emailVerified || justVerified) && !hasDeclinedPromo) {
+  // Right after sign-in (and, whether verified, skipped, or just verified,
+  // after that step) — a judge/tester with a code skips payment entirely;
+  // "No code" falls through to the normal purchase flow exactly as if this
+  // card weren't there.
+  if (
+    isPaywallVisible &&
+    (!isGuest || justAuthenticated) &&
+    (user.emailVerified || justVerified || skippedVerification) &&
+    !hasDeclinedPromo
+  ) {
     return (
       <PromoCodeGate
         visible
@@ -182,6 +193,11 @@ export const PaywallModal: React.FC = () => {
   if (isPurchasesSupported()) return null;
 
   if (!isPaywallVisible) return null;
+
+  // Someone who already redeemed a promo code had their one free period —
+  // don't pitch a second "free trial" once that's expired and they're back
+  // at this paywall for real.
+  const hasHadFreePeriod = !!user.promoRedeemed;
 
   return (
     <Modal
@@ -204,12 +220,14 @@ export const PaywallModal: React.FC = () => {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             {/* Header Badge */}
-            <View style={styles.badgeRow}>
-              <View style={[styles.trialTag, { backgroundColor: themeColors.primarySubtle, borderColor: themeColors.primary }]}>
-                <Sparkles size={13} color={themeColors.primary} />
-                <Text style={[styles.trialTagText, { color: themeColors.primary }]}>5-DAY UNLIMITED TRIAL</Text>
+            {!hasHadFreePeriod && (
+              <View style={styles.badgeRow}>
+                <View style={[styles.trialTag, { backgroundColor: themeColors.primarySubtle, borderColor: themeColors.primary }]}>
+                  <Sparkles size={13} color={themeColors.primary} />
+                  <Text style={[styles.trialTagText, { color: themeColors.primary }]}>5-DAY UNLIMITED TRIAL</Text>
+                </View>
               </View>
-            </View>
+            )}
 
             <Text style={[styles.title, { color: themeColors.textPrimary }]}>Rehearse with Confidence</Text>
             <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
@@ -267,14 +285,16 @@ export const PaywallModal: React.FC = () => {
               activeOpacity={0.85}
             >
               <Text style={[styles.ctaButtonText, { color: themeColors.textInverse }]}>
-                {isUpgrading ? 'Activating Pass...' : 'Start 5-Day Free Trial'}
+                {isUpgrading ? 'Activating Pass...' : hasHadFreePeriod ? 'Subscribe Now' : 'Start 5-Day Free Trial'}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.footerNote}>
               <ShieldCheck size={14} color={themeColors.textSecondary} />
               <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
-                No charge today. Cancel anytime within 5 days in Settings.
+                {hasHadFreePeriod
+                  ? 'Billed immediately for the plan you select. Cancel anytime in Settings.'
+                  : 'No charge today. Cancel anytime within 5 days in Settings.'}
               </Text>
             </View>
             {/* Loss aversion: framed around what stays vs. what's lost, not a

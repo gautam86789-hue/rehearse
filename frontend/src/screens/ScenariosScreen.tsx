@@ -46,6 +46,17 @@ export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ na
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // If this screen instance is already mounted (e.g. reached once via "See
+  // all"), navigating back into it with a different category param — like
+  // "Practice This Skill" from a skill detail view — only changes
+  // route.params; useState's initial value won't re-run on its own, so the
+  // filter would silently stay on whatever category was selected before.
+  useEffect(() => {
+    if (route?.params?.category && route.params.category !== selectedCategory) {
+      setSelectedCategory(route.params.category);
+    }
+  }, [route?.params?.category]);
+
   useEffect(() => {
     loadScenarios();
   }, [selectedCategory, audience]);

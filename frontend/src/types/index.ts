@@ -269,6 +269,11 @@ export interface UserProfile {
     trialEndsAt?: string;
     planName?: string;
   };
+  // Permanent record that this account has ever redeemed a promo code —
+  // survives subscription.status moving on to 'expired' once the promo
+  // period ends, so PaywallModal can tell "never had a free period" apart
+  // from "already used their free period via a promo code".
+  promoRedeemed?: boolean;
   // Confirmed via a sent code — gates promo code redemption specifically,
   // not general app access (see PaywallModal / EmailVerificationModal).
   emailVerified?: boolean;
