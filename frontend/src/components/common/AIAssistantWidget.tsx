@@ -49,54 +49,33 @@ const OrbitalMark: React.FC<{ size: number }> = ({ size }) => {
 // that never got Android's keyboard resize no matter which of four
 // different approaches it tried (see AICoachScreen's comment for the full
 // list) — a real navigator screen doesn't have that problem at all.
-export const AIAssistantWidget: React.FC = () => {
+const TAB_ROUTES = ['HomeTab', 'PracticeTab', 'ProgressTab', 'ProfileTab', 'HomeTabs'];
+
+export const AIAssistantWidget: React.FC<{ activeRouteName?: string }> = ({ activeRouteName }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-
-  // The floating tab bar only exists while the root stack's active route is
-  // 'HomeTabs' — every other screen (Roleplay, ScenarioDetail, Score,
-  // Settings, etc.) is a plain stack push with no tab bar at all, so
-  // clearing space for a tab bar that isn't there just left the FAB
-  // floating with a dead gap below it and covering more of the screen than
-  // it needed to. Tucking it flush to the true bottom-right on those
-  // screens keeps it out of the way of whatever content/buttons are
-  // actually down there.
-  const [onTabsRoot, setOnTabsRoot] = useState(true);
-  // Hidden entirely on its own destination screen — tapping "open the
-  // coach" while already looking at the coach is meaningless, and it was
-  // rendering on top of that screen's own send button (reported directly:
-  // the FAB sat right over it).
-  const [onCoachScreen, setOnCoachScreen] = useState(false);
-  useEffect(() => {
-    const computeRoute = () => {
-      const state = navigationRef.isReady() ? navigationRef.getRootState() : undefined;
-      const routeName = state?.routes[state.index]?.name;
-      setOnTabsRoot(!state || routeName === 'HomeTabs');
-      setOnCoachScreen(routeName === 'AICoach');
-    };
-    computeRoute();
-    return navigationRef.addListener('state', computeRoute);
-  }, []);
-  // Any screen with its own fixed bottom UI (a chat input dock, a sticky
-  // CTA, or on a tabs-root screen, content that rests where the FAB floats
-  // even without one) claims clearance via useFabClearance — see
-  // FabClearanceContext. That's what keeps this generic across the whole
-  // app instead of this widget needing to know every route name that
-  // happens to have one.
   const screenClearance = useFabClearanceValue();
-  // 68 is the original hand-tuned clearance for sitting just above the
-  // floating tab bar. Additive with screenClearance rather than either/or —
-  // a tabs-root screen (Home/Practice/Progress/Profile) still needs its own
-  // base clearance above the tab bar, but a specific one of those screens
-  // (Practice's horizontal "Talk to..." row, reported directly) can still
-  // need MORE on top of that when its own content rests at the same height
-  // the FAB floats at. 0 tab-bar clearance + whatever's registered on any
-  // other screen. The floor on insets.bottom matters most with neither
-  // applying — on a real Android 10 device insets.bottom under-reported the
-  // on-screen nav bar's true height, leaving the FAB sitting inside it.
-  const fabBottom = Math.max(insets.bottom, 16) + (onTabsRoot ? 68 : 0) + screenClearance;
 
-  if (onCoachScreen) return null;
+  // The floating assistant button is a companion launcher designed for the
+  // main tabs interface (Home, Practice, Progress, Profile). On stack screens
+  // (Roleplay, AICoach, Settings, Score, etc.), full-screen forms, switches,
+  // chat docks, and navigation controls occupy the bottom area — showing the
+  // FAB there obscures actionable buttons. Restricting it to HomeTabs keeps
+  // sub-screens completely clear.
+  const isTabsRoot = activeRouteName
+    ? TAB_ROUTES.includes(activeRouteName)
+    : (() => {
+        if (!navigationRef.isReady()) return true;
+        const currentName = (navigationRef.getCurrentRoute() as any)?.name;
+        return !currentName || TAB_ROUTES.includes(currentName);
+      })();
+
+  if (!isTabsRoot) return null;
+
+  // Sits comfortably above the floating tab bar pill (pill top is ~76-80px).
+  // Math.max(insets.bottom, 16) + 84 gives ~100px clearance, ensuring the
+  // FAB never touches or occludes the Profile tab icon.
+  const fabBottom = Math.max(insets.bottom, 16) + 84 + screenClearance;
 
   return (
     <TouchableOpacity

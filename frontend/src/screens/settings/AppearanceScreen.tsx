@@ -76,6 +76,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           activeOpacity={0.7}
         >
           <ChevronLeft size={20} color={themeColors.textPrimary} />
@@ -107,7 +108,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
               onPress={() => handleSelectTheme('light')}
               activeOpacity={0.85}
             >
-              <View style={styles.previewCardBody}>
+              <View style={styles.previewCardBody} pointerEvents="none">
                 <View style={[styles.miniBar, { backgroundColor: '#ECEBF7' }]}>
                   <View style={[styles.miniDot, { backgroundColor: '#5B5FEF' }]} />
                 </View>
@@ -115,7 +116,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                 <View style={[styles.miniBubble, { backgroundColor: '#ECEBF7', alignSelf: 'flex-end', width: '60%' }]} />
               </View>
 
-              <View style={styles.previewCardFooter}>
+              <View style={styles.previewCardFooter} pointerEvents="none">
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Sun size={14} color="#1A1B25" />
                   <Text style={[styles.previewCardLabel, { color: '#1A1B25' }]}>Light</Text>
@@ -139,7 +140,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
               onPress={() => handleSelectTheme('dark')}
               activeOpacity={0.85}
             >
-              <View style={styles.previewCardBody}>
+              <View style={styles.previewCardBody} pointerEvents="none">
                 <View style={[styles.miniBar, { backgroundColor: '#242438' }]}>
                   <View style={[styles.miniDot, { backgroundColor: '#8B8FF5' }]} />
                 </View>
@@ -147,7 +148,7 @@ export const AppearanceScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                 <View style={[styles.miniBubble, { backgroundColor: '#242438', alignSelf: 'flex-end', width: '60%' }]} />
               </View>
 
-              <View style={styles.previewCardFooter}>
+              <View style={styles.previewCardFooter} pointerEvents="none">
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Moon size={14} color="#F1F1F7" />
                   <Text style={[styles.previewCardLabel, { color: '#F1F1F7' }]}>Dark</Text>

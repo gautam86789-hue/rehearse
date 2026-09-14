@@ -145,7 +145,7 @@ export const AICoachScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={[styles.header, { borderBottomColor: colors.surfaceBorder, paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 16, right: 16, bottom: 16, left: 16 }}>
           <ArrowLeft size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>

@@ -63,11 +63,7 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
   const scrollRef = useRef<ScrollView>(null);
   const fitScroll = useFitScreenScroll();
 
-  useFocusEffect(
-    React.useCallback(() => {
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [])
-  );
+
 
   const handleSelectMode = (mode: PracticeMode) => {
     switch (mode.id) {

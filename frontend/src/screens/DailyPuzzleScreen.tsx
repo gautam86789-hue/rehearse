@@ -110,7 +110,11 @@ export const DailyPuzzleScreen: React.FC<{ route: any; navigation: any }> = ({ r
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Top Header */}
       <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomColor: colors.surfaceBorder, paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerBtn}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+        >
           <ArrowLeft size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[typography.h3, { color: colors.textPrimary }]}>Today's Challenge</Text>

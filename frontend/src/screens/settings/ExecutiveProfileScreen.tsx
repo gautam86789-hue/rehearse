@@ -95,6 +95,7 @@ export const ExecutiveProfileScreen: React.FC<{ navigation: any }> = ({ navigati
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
         >
           <ChevronLeft size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>

@@ -98,6 +98,7 @@ export const AboutRehearseScreen: React.FC<{ navigation: any }> = ({ navigation 
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: themeColors.surfaceElevated, borderColor: themeColors.surfaceBorder }]}
           onPress={() => navigation.goBack()}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           activeOpacity={0.7}
         >
           <ChevronLeft size={20} color={themeColors.textPrimary} />

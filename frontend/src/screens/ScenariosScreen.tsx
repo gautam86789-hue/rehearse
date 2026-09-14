@@ -133,6 +133,7 @@ export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ na
         <TouchableOpacity
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeTabs'))}
           style={styles.headerBtn}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
         >
           <ArrowLeft size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>

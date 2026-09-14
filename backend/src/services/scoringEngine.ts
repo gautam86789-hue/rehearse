@@ -1,13 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
 import { LLMService, llmService } from './llmService.js';
 import { Scenario, MessageTurn, SubstanceRubric, Scorecard, WeakestLineRewrite } from '../types/index.js';
+import { CompetencyProfile, formatCompetencyProfileForPrompt } from './competencyProfileService.js';
 
 export class ScoringEngine {
   constructor(private llm: LLMService = llmService) {}
 
   async evaluateSession(
     scenario: Scenario,
-    turns: MessageTurn[]
+    turns: MessageTurn[],
+    competencyProfile: CompetencyProfile | null = null
   ): Promise<SubstanceRubric> {
     const userTurns = turns.filter((t) => t.speaker === 'user');
     if (userTurns.length === 0) {
@@ -28,6 +30,9 @@ Evaluate the user's performance according to the 4-part COMMUNICATION RUBRIC:
 
 WEAKEST LINE REWRITE:
 Identify the SINGLE WEAKEST sentence spoken by the user (e.g. Most apologetic, most hedged, or most conceding), and rewrite it as a confident, clear alternative.
+
+${formatCompetencyProfileForPrompt(competencyProfile)}
+Use this history to make "strengths" and "growthAreas" feel like a continuation of a real coaching relationship, not a first impression — e.g. call out when a historically weak skill actually held up well this time, or when a recurring growth area from prior sessions showed up again. Don't force this if there isn't a genuine, specific connection to make; a generic mention of the trend adds nothing a rehearsing user hasn't already seen.
 
 You MUST return a JSON object strictly matching this schema:
 {

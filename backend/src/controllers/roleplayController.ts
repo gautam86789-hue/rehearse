@@ -4,6 +4,7 @@ import { memoryDb } from '../db/client.js';
 import { roleplayEngine } from '../services/roleplayEngine.js';
 import { scoringEngine } from '../services/scoringEngine.js';
 import { gamificationService } from '../services/gamificationService.js';
+import { computeCompetencyProfile } from '../services/competencyProfileService.js';
 import { RoleplaySession, MessageTurn, Scorecard } from '../types/index.js';
 import { z } from 'zod';
 
@@ -125,11 +126,17 @@ export class RoleplayController {
       };
       session.turns.push(userTurn);
 
-      // Generate Counterpart Turn
+      // Generate Counterpart Turn — calibrated against the user's rolling
+      // performance profile so the same archetype reads as tougher for a
+      // consistently strong user and slightly more forgiving on a skill
+      // they're still building (see roleplayEngine.getDifficultyCalibration).
+      const priorSessions = await memoryDb.getUserSessions(session.userId);
+      const competencyProfile = computeCompetencyProfile(priorSessions);
       const counterpartResponse = await roleplayEngine.generateCounterpartTurn(
         session.scenario,
         session.turns,
-        userMessage
+        userMessage,
+        competencyProfile
       );
 
       // Attach tactical analysis to user's turn
@@ -165,8 +172,14 @@ export class RoleplayController {
         return;
       }
 
+      // Prior sessions only — this one is still 'in_progress' with no
+      // scorecard yet, so computeCompetencyProfile's own completed+scorecard
+      // filter excludes it naturally without needing to slice it out here.
+      const priorSessions = await memoryDb.getUserSessions(session.userId);
+      const competencyProfile = computeCompetencyProfile(priorSessions);
+
       // Calculate substance rubric
-      const rubric = await scoringEngine.evaluateSession(session.scenario, session.turns);
+      const rubric = await scoringEngine.evaluateSession(session.scenario, session.turns, competencyProfile);
 
       // Update user streak and XP
       const user = await memoryDb.getUser(session.userId);

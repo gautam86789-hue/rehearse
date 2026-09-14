@@ -193,7 +193,7 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header — same pattern as Feedback / Detailed Feedback / Scenario Detail */}
       <View style={[styles.header, { paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={handleHeaderBack} style={styles.headerBtn}>
+        <TouchableOpacity onPress={handleHeaderBack} style={styles.headerBtn} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
           <ArrowLeft size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>
@@ -206,6 +206,7 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.tagPill, { backgroundColor: themeColors.primarySubtle }]}>
             <Sparkles size={12} color={themeColors.primary} />
@@ -229,6 +230,8 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.chipsRow}
             >
               {quickPromptChips.map((chip, idx) => (
@@ -456,6 +459,7 @@ export const DescribeSituationScreen: React.FC<{ navigation: any }> = ({ navigat
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {generatedScenario && (
             <>

@@ -81,7 +81,11 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <View style={[styles.header, { paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerBtn}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+        >
           <ArrowLeft size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Settings</Text>

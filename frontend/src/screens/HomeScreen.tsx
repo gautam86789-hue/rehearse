@@ -119,8 +119,8 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   useFocusEffect(
     React.useCallback(() => {
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [])
+      refreshProfile().catch(() => {});
+    }, [refreshProfile])
   );
 
   const loadHomeData = async () => {

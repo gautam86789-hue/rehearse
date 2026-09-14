@@ -93,7 +93,7 @@ export const ThemedFeatureCard: React.FC<ThemedFeatureCardProps> = ({
   const content = (
     <>
       {size === 'hero' && visual}
-      <View style={size === 'row' ? styles.rowBody : styles.stackBody}>
+      <View pointerEvents="none" style={size === 'row' ? styles.rowBody : styles.stackBody}>
         {size === 'row' && visual}
         <View style={size === 'row' ? styles.rowTextStack : undefined}>
           {size === 'tile' && visual}

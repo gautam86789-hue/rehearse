@@ -52,12 +52,13 @@ export const ScenarioDetailScreen: React.FC<{ route: any; navigation: any }> = (
           <View style={styles.heroOverlay} />
 
           <View style={[styles.heroTopRow, { top: heroTopInset }]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.heroIconBtn}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.heroIconBtn} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
               <ArrowLeft size={18} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.heroIconBtn}
               onPress={() => toggleSavedScenario(scenario.id)}
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
             >
               <Bookmark size={18} color="#FFFFFF" fill={isSaved ? '#FFFFFF' : 'transparent'} />
             </TouchableOpacity>

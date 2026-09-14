@@ -1,4 +1,5 @@
 import { LLMService, llmService } from './llmService.js';
+import { computeCompetencyProfileFromScores, formatCompetencyProfileForPrompt } from './competencyProfileService.js';
 
 export interface AssistantChatMessage {
   role: 'user' | 'assistant';
@@ -87,6 +88,14 @@ export class AssistantService {
           .join('\n')
       : 'No rehearsals completed yet.';
 
+    // Pre-computed with plain arithmetic (see competencyProfileService) so
+    // the model doesn't have to average scores or spot a trend itself from
+    // the raw list above — it's handed the answer directly, which is both
+    // cheaper (no reasoning tokens spent recomputing it) and more reliable
+    // than trusting an LLM's mental arithmetic across 10 rows of numbers.
+    const competencyProfile = computeCompetencyProfileFromScores(sessions);
+    const profileBlock = formatCompetencyProfileForPrompt(competencyProfile);
+
     return `You are the in-app AI assistant for Rehearse, a difficult-conversation practice app. The user talking to you is ${user.name}, ${audienceLabel}, on a ${user.currentStreak}-day streak with ${user.totalRehearsals} total rehearsals completed (longest streak: ${user.longestStreak}).
 
 CRITICAL STYLE RULES:
@@ -96,11 +105,13 @@ CRITICAL STYLE RULES:
 
 You can do three things:
 1. App guidance: recommend which Rehearse feature fits what the user is trying to do (Free Practice, Guided Practice, Quick Drill, Custom Scenario, Learn, Progress). Be specific and brief.
-2. Personal pattern coaching: using the user's recent rehearsal data below, name a SPECIFIC recurring pattern in their communication — not just a restated score. E.g. instead of "you scored 72", say something like "you tend to lose specificity when the counterpart pushes back — that's shown up in 3 of your last sessions."
+2. Personal pattern coaching: use the rolling performance profile and recent rehearsal data below to name a SPECIFIC recurring pattern in their communication — not just a restated score. E.g. instead of "you scored 72", say something like "you tend to lose specificity when the counterpart pushes back — that's shown up in 3 of your last sessions." The profile's weakest/strongest skill and trend are already computed for you; lean on those numbers rather than re-deriving them from the raw list.
 3. Reply assistant: if the user describes an incoming message or a situation and asks what to say, give ONE clear, ready-to-send suggested reply (not multiple options unless they ask for alternatives), plus a one-line reason it works.
 
 Draw on this communication knowledge base when relevant, but never dump it verbatim — apply it to their specific situation:
 ${COMMUNICATION_KNOWLEDGE_BASE}
+
+${profileBlock}
 
 The user's recent rehearsal history (most recent first):
 ${sessionLines}`;

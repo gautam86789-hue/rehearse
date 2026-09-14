@@ -2,6 +2,7 @@ import { LLMService, llmService, LLMMessage } from './llmService.js';
 import { Scenario, MessageTurn, ArchetypeId } from '../types/index.js';
 import { ARCHETYPES } from '../db/seedData.js';
 import { getDomainContext } from './domainContext.js';
+import { CompetencyProfile } from './competencyProfileService.js';
 
 export interface TurnResponse {
   message: string;
@@ -18,10 +19,12 @@ export class RoleplayEngine {
   async generateCounterpartTurn(
     scenario: Scenario,
     history: MessageTurn[],
-    latestUserMessage: string
+    latestUserMessage: string,
+    competencyProfile: CompetencyProfile | null = null
   ): Promise<TurnResponse> {
     const archetype = ARCHETYPES[scenario.counterpartArchetype] || ARCHETYPES.defensive_boss;
     const domainContext = getDomainContext(scenario.counterpartArchetype);
+    const difficultyCalibration = this.getDifficultyCalibration(competencyProfile);
 
     const systemPrompt = `You are roleplaying as ${scenario.counterpartName}, who is in the role of "${scenario.counterpartRole}".
 You embody the archetype: ${archetype.title}.
@@ -43,7 +46,9 @@ ROLEPLAY RULES:
 3. React realistically to how the user speaks:
    - If the user is apologetic, timid, or hedges ("I was just hoping...", "Sorry to bother you..."), push back harder, exploit their hesitation, or dismiss the urgency.
    - If the user uses clear data, specific numbers, and firm boundaries without getting angry, push back once or twice, then begin conceding or exploring a constructive compromise.
-4. Speak directly to the user in the first person ("I", "my department", "we").`;
+4. Speak directly to the user in the first person ("I", "my department", "we").
+
+${difficultyCalibration}`;
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -71,6 +76,31 @@ ROLEPLAY RULES:
       console.warn('LLM counterpart generation failed, using heuristic simulator:', err);
       return this.simulateArchetypeFallback(scenario.counterpartArchetype, history.length, latestUserMessage);
     }
+  }
+
+  // Translates the rolling competency profile into a concrete instruction
+  // for how hard THIS counterpart should push — the same archetype reads
+  // as tougher for someone who's consistently strong (so practice stays
+  // challenging instead of getting stale) and slightly more forgiving for
+  // someone still building the skill it targets (so early sessions build
+  // confidence instead of just being demoralizing). A brand-new user with
+  // no history gets the archetype's own default calibration, untouched.
+  private getDifficultyCalibration(profile: CompetencyProfile | null): string {
+    if (!profile || profile.sessionsAnalyzed < 2) {
+      return 'DIFFICULTY CALIBRATION: No established performance history yet — play this archetype at its standard, default difficulty.';
+    }
+    const { weakestSkill, strongestSkill, skillAverages, trend } = profile;
+    const lines = [`DIFFICULTY CALIBRATION (based on ${profile.sessionsAnalyzed} prior sessions):`];
+    if (skillAverages[strongestSkill] >= 80) {
+      lines.push(`- This user is consistently strong on ${strongestSkill} (avg ${skillAverages[strongestSkill]}) — don't go easy on that front; push back at full intensity there so practice stays genuinely challenging.`);
+    }
+    if (skillAverages[weakestSkill] <= 55) {
+      lines.push(`- This user is still building ${weakestSkill} (avg ${skillAverages[weakestSkill]}) — you can still exploit hedging/weak boundaries per the reaction rules above, but ease off slightly on piling multiple pressure tactics at once so this specific skill has room to be practiced rather than overwhelmed.`);
+    }
+    if (trend === 'improving') {
+      lines.push(`- Their overall performance is trending up recently — a good sign this scenario can run at (or slightly above) the archetype's normal difficulty.`);
+    }
+    return lines.join('\n');
   }
 
   private analyzeUserTurn(message: string): { assertivenessScore: number; clarityScore: number; boundaryScore: number } {

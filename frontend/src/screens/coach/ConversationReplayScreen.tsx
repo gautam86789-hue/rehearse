@@ -134,6 +134,7 @@ export const ConversationReplayScreen: React.FC<{ navigation: any; route?: any }
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
         >
           <ChevronLeft size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>

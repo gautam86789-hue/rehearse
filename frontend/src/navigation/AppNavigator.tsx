@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { enableFreeze } from 'react-native-screens';
@@ -122,6 +122,7 @@ export const AppNavigator: React.FC = () => {
   const { isOnboarded, isLoading: isAppLoading } = useApp();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
+  const [activeRouteName, setActiveRouteName] = useState<string>('HomeTab');
 
   // Pairs with the preventAutoHideAsync() call in App.tsx — releases the
   // native splash only once there's real content to show, rather than the
@@ -156,7 +157,18 @@ export const AppNavigator: React.FC = () => {
   };
 
   return (
-    <NavigationContainer theme={navigationTheme} ref={navigationRef}>
+    <NavigationContainer
+      theme={navigationTheme}
+      ref={navigationRef}
+      onReady={() => {
+        const route = navigationRef.getCurrentRoute() as any;
+        if (route?.name) setActiveRouteName(route.name);
+      }}
+      onStateChange={() => {
+        const route = navigationRef.getCurrentRoute() as any;
+        if (route?.name) setActiveRouteName(route.name);
+      }}
+    >
       <FabClearanceProvider>
       <Stack.Navigator
         id="RootStack"
@@ -246,7 +258,7 @@ export const AppNavigator: React.FC = () => {
       <BadgeUnlockedModal />
 
       {/* Floating AI Assistant — only once there's a real app to assist with */}
-      {isAuthenticated && isOnboarded && <AIAssistantWidget />}
+      {isAuthenticated && isOnboarded && <AIAssistantWidget activeRouteName={activeRouteName} />}
       </FabClearanceProvider>
     </NavigationContainer>
   );
