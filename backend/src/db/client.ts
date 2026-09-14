@@ -827,9 +827,19 @@ class InMemoryDatabase {
     if (supabase) {
       try {
         const patch = userProfileUpdatesToRow(updates);
+        // Temporary diagnostic: the persisted rehearsals_remaining/total_rehearsals
+        // were observed staying at their pre-session values in Supabase despite
+        // this call apparently not throwing — logging the exact patch and the
+        // exact row Supabase reports back settles whether the patch is wrong,
+        // the match is wrong, or something else entirely.
+        console.log('[updateUser] patch for', userId, ':', JSON.stringify(patch));
         const { data, error } = await supabase.from('users').update(patch).eq('id', userId).select('*').maybeSingle();
         if (error) throw error;
-        if (data) return rowToUserProfile(data);
+        if (data) {
+          console.log('[updateUser] Supabase returned updated row, rehearsals_remaining=', data.rehearsals_remaining, 'total_rehearsals=', data.total_rehearsals);
+          return rowToUserProfile(data);
+        }
+        console.log('[updateUser] Supabase update matched no row for', userId, '— falling to insert branch');
 
         // Row didn't exist yet — create it with defaults + the requested patch.
         const insertRow = { ...defaultUserRow(userId), ...patch };

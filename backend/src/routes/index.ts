@@ -24,7 +24,11 @@ router.get('/health', (_req, res) => {
     status: 'healthy',
     service: 'Rehearse API',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '1.0.0',
+    // RENDER_GIT_COMMIT is set automatically by Render to the deployed
+    // commit SHA — used to confirm a push has actually gone live rather
+    // than guessing from deploy-lag timing.
+    deployedCommit: process.env.RENDER_GIT_COMMIT || null
   });
 });
 
