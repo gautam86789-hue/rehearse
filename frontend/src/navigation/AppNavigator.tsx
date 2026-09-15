@@ -222,9 +222,9 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="ScenarioDetail" component={ScenarioDetailScreen} />
             <Stack.Screen name="GuidedPractice" component={GuidedPracticeScreen} />
             <Stack.Screen name="Roleplay" component={RoleplayScreen} />
-            <Stack.Screen name="Score" component={ScoreScreen} />
-            <Stack.Screen name="Feedback" component={FeedbackScreen} />
-            <Stack.Screen name="DetailedFeedback" component={DetailedFeedbackScreen} />
+            <Stack.Screen name="Score" component={ScoreScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="Feedback" component={FeedbackScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="DetailedFeedback" component={DetailedFeedbackScreen} options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="WhatToSay" component={WhatToSayScreen} />
             <Stack.Screen name="FrameworkDetail" component={FrameworkDetailScreen} />
             <Stack.Screen name="Learn" component={JourneyScreen} />

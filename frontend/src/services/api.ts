@@ -963,10 +963,10 @@ class ApiService {
     return this.request(`/subscriptions/cashfree/order/${encodeURIComponent(orderId)}`);
   }
 
-  async sendVerificationCode(userId: string): Promise<{ message: string }> {
+  async sendVerificationCode(userId: string, email?: string): Promise<{ message: string }> {
     return this.request('/auth/send-verification', {
       method: 'POST',
-      body: JSON.stringify({ userId })
+      body: JSON.stringify({ userId, ...(email ? { email } : {}) })
     });
   }
 

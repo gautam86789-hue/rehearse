@@ -163,11 +163,20 @@ Evaluate this transcript and generate the complete Communication Rubric JSON now
     listeningScore = Math.min(95, Math.max(40, listeningScore));
     const overall = Math.round((clarityScore * 0.3) + (assertivenessScore * 0.3) + (empathyScore * 0.2) + (listeningScore * 0.2));
 
+    // Build a scenario-aware rewrite based on what the user actually said and
+    // the scenario context — avoids a misleading salary-negotiation template
+    // appearing for unrelated scenarios (e.g. conflict resolution, feedback).
+    const scenarioContext = scenario?.title || scenario?.situation || 'this conversation';
+    const rawLine = weakestTurn.trim();
+    const dynamicRewrite = rawLine
+      ? `In the context of ${scenarioContext}: Instead of saying "${rawLine.slice(0, 80)}${rawLine.length > 80 ? '...' : ''}", lead with your concrete goal and frame your position around impact rather than permission.`
+      : `In ${scenarioContext}: State your position directly and anchor it on observable facts or agreed outcomes rather than tentative language.`;
+
     const weakestLine: WeakestLineRewrite = {
       originalLine: weakestTurn,
-      suggestedRewrite: `Based on the $2.1M impact delivered this quarter, I am requesting an adjustment to $145k base salary.`,
-      coachingRationale: `Replaces tentative hedging with verified data and an exact compensation anchor.`,
-      techniqueApplied: 'Value-Anchored Assertion'
+      suggestedRewrite: dynamicRewrite,
+      coachingRationale: `Replacing tentative or hedging language with a direct, outcome-focused statement gives you more influence in ${scenarioContext.toLowerCase()}.`,
+      techniqueApplied: 'Direct Assertion'
     };
 
     return {

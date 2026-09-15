@@ -65,7 +65,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     setIsResending(true);
     setError('');
     try {
-      await apiService.sendVerificationCode(userId);
+      await apiService.sendVerificationCode(userId, email);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err: any) {
       setError(err?.message || 'Could not resend — try again in a moment.');

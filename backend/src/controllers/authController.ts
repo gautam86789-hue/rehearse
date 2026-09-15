@@ -14,7 +14,8 @@ export const registerSchema = z.object({
 });
 
 export const sendVerificationSchema = z.object({
-  userId: z.string().min(1)
+  userId: z.string().min(1),
+  email: z.string().email().optional()
 });
 
 export const verifyEmailSchema = z.object({
@@ -89,7 +90,7 @@ export class AuthController {
 
   async sendVerificationCode(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { userId } = req.body;
+      const { userId, email: bodyEmail } = req.body;
       const resolvedUserId = userId || req.userId;
       if (!resolvedUserId) {
         res.status(400).json({ error: 'userId is required.' });
@@ -103,16 +104,31 @@ export class AuthController {
       }
 
       const user = await memoryDb.getUser(resolvedUserId);
-      if (!user.email) {
-        res.status(400).json({ error: 'This account has no email address on file.' });
-        return;
+
+      // Prefer the real email supplied by the client (the Supabase auth email)
+      // over whatever is stored in the DB — auto-vivified rows have a
+      // placeholder ${userId}@rehearse.local that would send to the wrong address.
+      let targetEmail = bodyEmail || user.email;
+      if (!targetEmail || targetEmail.endsWith('@rehearse.local')) {
+        if (bodyEmail) {
+          targetEmail = bodyEmail;
+        } else {
+          res.status(400).json({ error: 'This account has no email address on file.' });
+          return;
+        }
+      }
+
+      // Persist the real email back to the user record so future calls work
+      // without always needing the client to pass it.
+      if (bodyEmail && bodyEmail !== user.email) {
+        await memoryDb.updateUser(resolvedUserId, { email: bodyEmail } as any).catch(() => {});
       }
 
       const code = generateCode();
       const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS).toISOString();
       lastSentAt.set(resolvedUserId, Date.now());
       await memoryDb.setEmailVerificationCode(resolvedUserId, code, expiresAt);
-      await sendVerificationEmail(user.email, code);
+      await sendVerificationEmail(targetEmail, code);
 
       res.json({ message: 'Verification code sent.' });
     } catch (err) {

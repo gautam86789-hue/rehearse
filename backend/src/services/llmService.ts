@@ -24,7 +24,7 @@ export class LLMService {
 
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY;
-    this.geminiModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+    this.geminiModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   }
 
   async generateCompletion(
@@ -56,7 +56,7 @@ export class LLMService {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
       const res = await fetch(endpoint, {
