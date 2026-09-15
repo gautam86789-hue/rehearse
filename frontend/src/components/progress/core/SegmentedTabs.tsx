@@ -80,6 +80,7 @@ export function SegmentedTabs({
     >
       {cellWidth > 0 && (
         <Animated.View
+          pointerEvents="none"
           style={[
             styles.thumb,
             compact && styles.thumbCompact,
@@ -101,8 +102,10 @@ export function SegmentedTabs({
             key={tab.id}
             onPress={() => onChange(tab.id)}
             style={[styles.cell, compact && styles.cellCompact]}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
           >
             <Text
+              pointerEvents="none"
               style={[
                 styles.label,
                 compact && styles.labelCompact,

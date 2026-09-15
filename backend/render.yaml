@@ -38,3 +38,11 @@ services:
         sync: false
       - key: ONESIGNAL_APP_ID
         sync: false
+      - key: CASHFREE_APP_ID
+        sync: false
+      - key: CASHFREE_SECRET_KEY
+        sync: false
+      - key: CASHFREE_ENV
+        value: production
+      - key: RESEND_API_KEY
+        sync: false
