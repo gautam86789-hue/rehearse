@@ -160,7 +160,7 @@ export const TrialEndedLockScreen: React.FC = () => {
               </Text>
             </View>
             <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-              Our payment gateway (Cashfree) is completing regulatory verification for live billing. In the meantime, Rehearse is available exclusively to testers and early reviewers with an access pass code.
+              Payment gateway verification is currently underway for live billing. In the meantime, Rehearse is available exclusively to testers and early reviewers with an access pass code.
             </Text>
             <Text style={[styles.cardBodySub, { color: colors.textMuted }]}>
               Enter a new code provided by your administrator or tester team to unlock your session immediately.
@@ -191,7 +191,7 @@ export const TrialEndedLockScreen: React.FC = () => {
                 style={[styles.input, { color: colors.textPrimary }]}
                 value={code}
                 onChangeText={(t) => setCode(t.toUpperCase())}
-                placeholder="e.g. REHEARSE2026"
+                placeholder="Enter access code"
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="characters"
                 autoCorrect={false}

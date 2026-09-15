@@ -343,6 +343,7 @@ class InMemoryDatabase {
   private words: Map<string, WordOfTheDay> = new Map();
   private puzzleSubmissions: Map<string, { userId: string; puzzleId: string; optionId: string; isOptimal: boolean; score: number }> = new Map();
   private replyLogs: Map<string, ReplyAssistantResult> = new Map();
+  private redeemedPromoCodes: Set<string> = new Set();
 
   constructor() {
     this.seed();
@@ -805,6 +806,47 @@ class InMemoryDatabase {
     const existed = this.userSessions.delete(token);
     this.persistToDisk();
     return existed;
+  }
+
+  // Single-use Promo / Access Code Tracking
+  async isPromoCodeRedeemed(code: string): Promise<boolean> {
+    const normalized = code.trim().toUpperCase();
+    if (this.redeemedPromoCodes.has(normalized)) return true;
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_sessions')
+          .select('id')
+          .eq('token', `promo_code:${normalized}`)
+          .maybeSingle();
+        if (!error && data) {
+          this.redeemedPromoCodes.add(normalized);
+          return true;
+        }
+      } catch (err) {
+        // fallback
+      }
+    }
+    return false;
+  }
+
+  async markPromoCodeRedeemed(code: string, userId: string, expiresAt: string): Promise<void> {
+    const normalized = code.trim().toUpperCase();
+    const now = new Date().toISOString();
+    this.redeemedPromoCodes.add(normalized);
+    if (supabase) {
+      try {
+        await supabase.from('user_sessions').insert({
+          id: crypto.randomUUID(),
+          user_id: userId,
+          token: `promo_code:${normalized}`,
+          expires_at: expiresAt,
+          created_at: now
+        });
+      } catch (err) {
+        console.warn('Failed to record redeemed promo code in user_sessions:', err);
+      }
+    }
   }
 
   // User Operations

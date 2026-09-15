@@ -25,15 +25,49 @@ export const redeemPromoCodeSchema = z.object({
   code: z.string().min(1)
 });
 
-// Shipaton judging-window / tester access — a code-gated week of full access
-// with no payment method required, distinct from the real (store-billed)
-// free trial. See docs at PromoCodeGate.tsx for the frontend flow this backs.
+// Shipaton judging-window / tester access — single-use code-gated access
+// with no payment method required. Each code works ONLY ONCE globally.
 const PROMO_CODES: Record<string, { days: number; label: string }> = {
+  // Master tester codes
   KGY2026: { days: 7, label: 'Early Bird — 7 Day Pass' },
   REHEARSE2026: { days: 7, label: 'Early Access — 7 Day Pass' },
   BETA7: { days: 7, label: 'Beta Tester — 7 Day Pass' },
   TESTER2026: { days: 14, label: 'Extended Tester — 14 Day Pass' },
-  LAUNCHVIP: { days: 30, label: 'Launch VIP — 30 Day Pass' }
+  LAUNCHVIP: { days: 30, label: 'Launch VIP — 30 Day Pass' },
+
+  // Individual 7-Day Single-Use Tester Passes
+  'PASS-7D-01': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-02': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-03': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-04': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-05': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-06': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-07': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-08': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-09': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-10': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-11': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-12': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-13': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-14': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-15': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-16': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-17': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-18': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-19': { days: 7, label: 'Tester Pass — 7 Days' },
+  'PASS-7D-20': { days: 7, label: 'Tester Pass — 7 Days' },
+
+  // Individual 14-Day Single-Use Passes
+  'PASS-14D-01': { days: 14, label: 'Tester Pass — 14 Days' },
+  'PASS-14D-02': { days: 14, label: 'Tester Pass — 14 Days' },
+  'PASS-14D-03': { days: 14, label: 'Tester Pass — 14 Days' },
+  'PASS-14D-04': { days: 14, label: 'Tester Pass — 14 Days' },
+  'PASS-14D-05': { days: 14, label: 'Tester Pass — 14 Days' },
+
+  // VIP 30-Day Passes
+  'VIP-30D-01': { days: 30, label: 'VIP Pass — 30 Days' },
+  'VIP-30D-02': { days: 30, label: 'VIP Pass — 30 Days' },
+  'VIP-30D-03': { days: 30, label: 'VIP Pass — 30 Days' }
 };
 const PROMO_DURATION_MS = (days: number) => days * 24 * 60 * 60 * 1000;
 
@@ -181,6 +215,13 @@ export class SubscriptionController {
         return;
       }
 
+      // Check if this access code has ALREADY been redeemed (single-use code rule)
+      const isAlreadyUsed = await memoryDb.isPromoCodeRedeemed(normalizedCode);
+      if (isAlreadyUsed) {
+        res.status(400).json({ error: 'This access code has already been used. Please request a new code.' });
+        return;
+      }
+
       const trialEndsAt = new Date(Date.now() + PROMO_DURATION_MS(promo.days)).toISOString();
       const updated = await memoryDb.updateUser(user.id, {
         subscription: {
@@ -192,6 +233,9 @@ export class SubscriptionController {
         promoRedeemed: true,
         emailVerified: true
       });
+
+      // Mark code as consumed so it cannot be used again
+      await memoryDb.markPromoCodeRedeemed(normalizedCode, user.id, trialEndsAt);
 
       res.json({
         message: 'Promo code redeemed',
