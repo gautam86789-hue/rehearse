@@ -126,7 +126,7 @@ export const CashfreeCheckoutScreen: React.FC<Props> = ({ navigation, route }) =
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={[styles.backBtn, { backgroundColor: themeColors.surfaceElevated }]}
-          hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+          hitSlop={{ top: 16, right: 16, bottom: 16, left: 16 }}
         >
           <ArrowLeft size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>
