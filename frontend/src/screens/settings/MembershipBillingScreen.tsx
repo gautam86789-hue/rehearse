@@ -258,7 +258,7 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
             <Text style={[styles.upgradeButtonText, { color: themeColors.textInverse }]}>Upgrade to Plus</Text>
           </TouchableOpacity>
 
-          {!isPlus && (
+          {__DEV__ && !isPlus && (
             <TouchableOpacity
               style={[styles.testPurchaseButton, { borderColor: themeColors.surfaceBorder }]}
               onPress={handleSimulatePurchase}

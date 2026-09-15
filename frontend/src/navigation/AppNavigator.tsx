@@ -76,6 +76,7 @@ import { useTheme } from '../context/ThemeContext';
 import { PaywallModal } from '../components/common/PaywallModal';
 import { BadgeUnlockedModal } from '../components/common/BadgeUnlockedModal';
 import { AIAssistantWidget } from '../components/common/AIAssistantWidget';
+import { TrialEndedLockScreen } from '../components/common/TrialEndedLockScreen';
 import { FabClearanceProvider } from '../context/FabClearanceContext';
 
 import { CustomTabBar } from '../components/common/CustomTabBar';
@@ -258,6 +259,7 @@ export const AppNavigator: React.FC = () => {
       {/* Global Modals */}
       <PaywallModal />
       <BadgeUnlockedModal />
+      <TrialEndedLockScreen />
 
       {/* Floating AI Assistant — only once there's a real app to assist with */}
       {isAuthenticated && isOnboarded && <AIAssistantWidget activeRouteName={activeRouteName} />}
