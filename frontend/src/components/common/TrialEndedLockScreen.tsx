@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -30,44 +30,49 @@ export const TrialEndedLockScreen: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Lock out Android hardware back button so the lock screen cannot be bypassed
+  // Determine locked state
+  const isLocked = useMemo(() => {
+    if (!isAuthenticated || !isOnboarded || !user || !user.id) {
+      return false;
+    }
+
+    const hasActivePaidPlan =
+      isPro ||
+      user.subscription?.status === 'active_annual' ||
+      user.subscription?.status === 'active_three_month' ||
+      user.subscription?.status === 'active_monthly';
+
+    if (hasActivePaidPlan) {
+      return false;
+    }
+
+    if (user.subscription?.status === 'active_promo') {
+      const trialEndsAt = user.subscription?.trialEndsAt;
+      const isPromoValid = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+      return !isPromoValid;
+    }
+
+    if (user.subscription?.status === 'free_trial') {
+      const remaining = user.subscription?.rehearsalsRemaining ?? 0;
+      return remaining <= 0;
+    }
+
+    // Any other status (e.g. expired, inactive) -> locked
+    return true;
+  }, [isAuthenticated, isOnboarded, user, isPro]);
+
+  // Intercept hardware back button ONLY when locked so user cannot bypass
   useEffect(() => {
+    if (!isLocked) return;
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => backHandler.remove();
-  }, []);
+  }, [isLocked]);
 
-  // Not authenticated or not finished onboarding yet -> do not lock
-  if (!isAuthenticated || !isOnboarded || !user || !user.id) {
+  if (!isLocked) {
     return null;
   }
 
-  // Active paid plan check
-  const hasActivePaidPlan =
-    isPro ||
-    user.subscription?.status === 'active_annual' ||
-    user.subscription?.status === 'active_three_month' ||
-    user.subscription?.status === 'active_monthly';
-
-  if (hasActivePaidPlan) {
-    return null;
-  }
-
-  // Active promo pass check (7-day pass or tester pass)
-  if (user.subscription?.status === 'active_promo') {
-    const trialEndsAt = user.subscription?.trialEndsAt;
-    const isPromoValid = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
-    if (isPromoValid) {
-      return null;
-    }
-  } else if (user.subscription?.status === 'free_trial') {
-    // Free trial rehearsal allowance check
-    const remaining = user.subscription?.rehearsalsRemaining ?? 0;
-    if (remaining > 0) {
-      return null;
-    }
-  }
-
-  // Locked! Handle code redemption
+  // Handle code redemption
   const handleRedeem = async () => {
     const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) {
