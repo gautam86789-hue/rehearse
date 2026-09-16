@@ -66,15 +66,15 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {rehearsalsRemaining > 10 || rehearsalsRemaining === 999999
-              ? 'Enter an access code (7DAYSPASS, 14DAYSPASS, 30DAYSPASS) to extend your Pro access.'
+              ? 'Enter an access code to extend your Pro access.'
               : canSkip
-              ? `Enter an access code (7DAYSPASS, 14DAYSPASS, 30DAYSPASS) to unlock Pro access, or try your ${rehearsalsRemaining} free rehearsals.`
+              ? `Enter an access code to unlock Pro access, or try your ${rehearsalsRemaining} free rehearsals.`
               : 'You have used all 3 free rehearsals. Enter an access code to unlock full access.'}
           </Text>
 
           <TextInput
             style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceElevated }]}
-            placeholder="Enter code (e.g. 7DAYSPASS, 14DAYSPASS, 30DAYSPASS)"
+            placeholder="ENTER ACCESS CODE"
             placeholderTextColor={colors.textMuted}
             value={code}
             onChangeText={setCode}
