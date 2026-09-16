@@ -809,19 +809,20 @@ class InMemoryDatabase {
     return existed;
   }
 
-  // Single-use Promo / Access Code Tracking
-  async isPromoCodeRedeemed(code: string): Promise<boolean> {
+  // Promo / Access Code Tracking (Single-use per user/email, reusable globally across users)
+  async isPromoCodeRedeemed(code: string, userId: string): Promise<boolean> {
     const normalized = code.trim().toUpperCase();
-    if (this.redeemedPromoCodes.has(normalized)) return true;
+    const userCodeKey = `${userId}:${normalized}`;
+    if (this.redeemedPromoCodes.has(userCodeKey)) return true;
     if (supabase) {
       try {
         const { data, error } = await supabase
           .from('user_sessions')
           .select('id')
-          .eq('token', `promo_code:${normalized}`)
+          .eq('token', `promo_code:${userId}:${normalized}`)
           .maybeSingle();
         if (!error && data) {
-          this.redeemedPromoCodes.add(normalized);
+          this.redeemedPromoCodes.add(userCodeKey);
           return true;
         }
       } catch (err) {
@@ -833,14 +834,15 @@ class InMemoryDatabase {
 
   async markPromoCodeRedeemed(code: string, userId: string, expiresAt: string): Promise<void> {
     const normalized = code.trim().toUpperCase();
+    const userCodeKey = `${userId}:${normalized}`;
     const now = new Date().toISOString();
-    this.redeemedPromoCodes.add(normalized);
+    this.redeemedPromoCodes.add(userCodeKey);
     if (supabase) {
       try {
         await supabase.from('user_sessions').insert({
           id: crypto.randomUUID(),
           user_id: userId,
-          token: `promo_code:${normalized}`,
+          token: `promo_code:${userId}:${normalized}`,
           expires_at: expiresAt,
           created_at: now
         });
