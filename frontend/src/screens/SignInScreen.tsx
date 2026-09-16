@@ -3,7 +3,6 @@ import {
   StyleSheet,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -11,7 +10,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck, X } from 'lucide-react-native';
+import { AlertCircle, ShieldCheck, X } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { useTheme, RADII } from '../context/ThemeContext';
@@ -29,17 +28,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, accentColor, isDark, elevation } = useTheme();
   const {
-    signInWithEmail,
     signInWithOAuth,
     authError,
     clearError
   } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emailError, setEmailError] = useState('');
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'azure' | 'facebook' | null>(null);
 
   const [toast, setToast] = useState<{
@@ -48,48 +41,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
     type: NotificationType;
   }>({ visible: false, message: '', type: 'info' });
 
-  // Email format validation regex
-  const isValidEmail = (str: string) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(str.trim());
-
-  const handleSignIn = async () => {
-    setEmailError('');
-    if (!email.trim() || !password) {
-      setToast({
-        visible: true,
-        message: 'Please enter both your email address and password.',
-        type: 'error'
-      });
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setEmailError('Please enter a valid email address format (e.g. name@company.com).');
-      setToast({
-        visible: true,
-        message: 'Invalid email address format (e.g. name@company.com).',
-        type: 'error'
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    const { error } = await signInWithEmail(email, password);
-    setIsSubmitting(false);
-    if (error) {
-      setToast({
-        visible: true,
-        message: error.message || 'Unable to sign in. Please verify your credentials.',
-        type: 'error'
-      });
-    }
-  };
-
   const handleOAuth = async (provider: 'google' | 'azure' | 'facebook') => {
     setLoadingProvider(provider);
-    // Don't also toast here: signInWithOAuth already sets `authError` on
-    // failure (see AuthContext.tsx), which renders as the inline banner
-    // above — toasting the same message too was showing the identical error
-    // twice on screen at once.
     await signInWithOAuth(provider);
     setLoadingProvider(null);
   };
@@ -106,7 +59,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop: Math.max(insets.top, 24) + 16,
+              paddingTop: Math.max(insets.top, 24) + 24,
               paddingBottom: Math.max(insets.bottom, 24) + 20
             }
           ]}
@@ -115,7 +68,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
         >
           {/* 1. Header Identity */}
           <View style={styles.header}>
-            <RehearseEmblem size={52} />
+            <RehearseEmblem size={56} />
             <View style={styles.brandTitleRow}>
               <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>REHEARSE</Text>
               <Text style={[styles.periodDot, { color: accentColor }]}>.</Text>
@@ -125,18 +78,12 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             </Text>
           </View>
 
-          {/* 2. Segmented Pill Tab Switcher */}
-          <View style={[styles.tabContainer, elevation.sm, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
-            <View style={[styles.tabActive, { backgroundColor: colors.primarySubtle, borderColor: accentColor + '40' }]}>
-              <Text style={[styles.tabActiveText, { color: colors.primary }]}>Sign In</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.tabInactive}
-              onPress={() => navigation.navigate('SignUp')}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabInactiveText, { color: colors.textSecondary }]}>Create Account</Text>
-            </TouchableOpacity>
+          {/* 2. Main Title */}
+          <View style={styles.titleBlock}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account / Sign In</Text>
+            <Text style={[styles.subTitleText, { color: colors.textSecondary }]}>
+              Select your provider below to sign in or create an account.
+            </Text>
           </View>
 
           {/* Error Banner */}
@@ -150,118 +97,21 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             </View>
           ) : null}
 
-          {/* 3. Form Inputs */}
-          <View style={styles.formContainer}>
-            {/* Email Field */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Work or Personal Email</Text>
-              <View style={[
-                styles.inputWrapper,
-                elevation.sm,
-                { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder },
-                emailError ? { borderColor: colors.danger } : null
-              ]}>
-                <Mail size={16} color={emailError ? colors.danger : colors.textMuted} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.textInput, { color: colors.textPrimary }]}
-                  placeholder="name@company.com"
-                  placeholderTextColor={colors.textMuted}
-                  value={email}
-                  onChangeText={(val) => {
-                    setEmail(val);
-                    if (emailError) setEmailError('');
-                    if (authError) clearError();
-                  }}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-              </View>
-              {emailError ? (
-                <Text style={{ color: colors.danger, fontSize: 11, marginTop: 4, fontFamily: typography.caption.fontFamily }}>
-                  {emailError}
-                </Text>
-              ) : null}
-            </View>
-
-            {/* Password Field */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
-              <View style={[styles.inputWrapper, elevation.sm, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
-                <Lock size={16} color={colors.textMuted} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.textInput, { paddingRight: 40, color: colors.textPrimary }]}
-                  placeholder="Enter your password"
-                  placeholderTextColor={colors.textMuted}
-                  value={password}
-                  onChangeText={(val) => {
-                    setPassword(val);
-                    if (authError) clearError();
-                  }}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff size={16} color={colors.textSecondary} />
-                  ) : (
-                    <Eye size={16} color={colors.textSecondary} />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Forgot Password Link */}
-              <TouchableOpacity
-                style={styles.forgotLinkContainer}
-                onPress={() => navigation.navigate('ForgotPassword')}
-              >
-                <Text style={[styles.forgotLinkText, { color: colors.textSecondary }]}>Forgot password?</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Primary Solid Champagne Button */}
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                elevation.md,
-                { backgroundColor: accentColor, shadowColor: accentColor },
-                isSubmitting && styles.buttonDisabled
-              ]}
-              onPress={handleSignIn}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={colors.textInverse} />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>Sign In</Text>
-                  <ArrowRight size={16} color={colors.textInverse} />
-                </View>
-              )}
-            </TouchableOpacity>
+          {/* 3. 3 Primary Social OAuth Buttons (Google, Microsoft, Facebook) */}
+          <View style={styles.authBox}>
+            <SocialAuthButtons
+              mode="signin"
+              onSelectProvider={handleOAuth}
+              loadingProvider={loadingProvider}
+            />
           </View>
 
-          {/* 4. Divider */}
-          <View style={styles.dividerRow}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textMuted }]}>OR CONTINUE WITH</Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          </View>
-
-          {/* 5. Social OAuth Buttons - Directly invokes real provider */}
-          <SocialAuthButtons
-            mode="signin"
-            onSelectProvider={handleOAuth}
-            loadingProvider={loadingProvider}
-          />
-
-          {/* 6. Bottom Trust Badge */}
+          {/* 4. Bottom Trust Badge */}
           <View style={styles.trustBadge}>
-            <ShieldCheck size={13} color={colors.textMuted} style={{ marginRight: 6 }} />
-            <Text style={[styles.trustBadgeText, { color: colors.textMuted }]}>Your data is private and secure.</Text>
+            <ShieldCheck size={14} color={colors.textMuted} style={{ marginRight: 6 }} />
+            <Text style={[styles.trustBadgeText, { color: colors.textMuted }]}>
+              100% Private & Enterprise Encrypted
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -286,11 +136,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     maxWidth: 420,
     width: '100%',
-    alignSelf: 'center'
+    alignSelf: 'center',
+    justifyContent: 'center',
+    flexGrow: 1
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 28
   },
   brandTitleRow: {
     flexDirection: 'row',
@@ -298,138 +150,58 @@ const styles = StyleSheet.create({
     marginTop: 12
   },
   brandTitle: {
-    ...typography.brandWordmark
+    ...typography.h2,
+    fontSize: 26,
+    letterSpacing: 2.5,
+    fontWeight: '900'
   },
   periodDot: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginLeft: 1
+    fontSize: 28,
+    fontWeight: '900'
   },
   subtitle: {
-    ...typography.subtitle,
+    ...typography.body2,
     marginTop: 6,
     textAlign: 'center',
-    maxWidth: 280
+    maxWidth: 300
   },
-  tabContainer: {
-    flexDirection: 'row',
-    width: '100%',
-    height: 46,
-    borderRadius: RADII.lg,
-    padding: 3,
-    borderWidth: 1,
-    marginBottom: 20
-  },
-  tabActive: {
-    flex: 1,
-    borderRadius: RADII.md,
-    justifyContent: 'center',
+  titleBlock: {
     alignItems: 'center',
-    borderWidth: 1
+    marginBottom: 24
   },
-  tabActiveText: {
-    ...typography.buttonSmall,
-    fontWeight: '600'
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 6,
+    textAlign: 'center'
   },
-  tabInactive: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  tabInactiveText: {
-    ...typography.buttonSmall,
-    fontWeight: '500'
+  subTitleText: {
+    fontSize: 13,
+    textAlign: 'center'
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    padding: 12,
     borderRadius: RADII.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    width: '100%',
-    marginBottom: 14
-  },
-  errorText: {
-    flex: 1,
-    ...typography.caption
-  },
-  formContainer: {
+    borderWidth: 1,
+    marginBottom: 20,
     width: '100%'
   },
-  inputGroup: {
-    marginBottom: 14
+  errorText: {
+    fontSize: 13,
+    flex: 1
   },
-  inputLabel: {
-    ...typography.caption,
-    fontWeight: '500',
-    marginBottom: 6
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: RADII.lg,
-    paddingHorizontal: 12,
-    height: 50
-  },
-  inputIcon: {
-    marginRight: 10
-  },
-  textInput: {
-    flex: 1,
-    ...typography.body,
-    height: '100%'
-  },
-  eyeButton: {
-    padding: 6
-  },
-  forgotLinkContainer: {
-    alignSelf: 'flex-end',
-    marginTop: 6
-  },
-  forgotLinkText: {
-    ...typography.footnote
-  },
-  primaryButton: {
-    borderRadius: RADII.lg,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8
-  },
-  buttonDisabled: {
-    opacity: 0.6
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
-  },
-  primaryButtonText: {
-    ...typography.buttonLarge,
-    fontWeight: '700'
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  authBox: {
     width: '100%',
-    marginVertical: 18
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1
-  },
-  dividerText: {
-    ...typography.overline,
-    marginHorizontal: 12
+    marginBottom: 32
   },
   trustBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14
+    marginTop: 12
   },
   trustBadgeText: {
-    ...typography.footnote
+    fontSize: 12
   }
 });

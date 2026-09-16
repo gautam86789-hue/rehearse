@@ -47,7 +47,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const offsetY = (screenHeight - renderedHeight) / 2;
 
   const handleGetStarted = () => {
-    navigation?.navigate?.('Onboarding');
+    navigation?.navigate?.('SignIn');
   };
 
   const handleSignIn = () => {

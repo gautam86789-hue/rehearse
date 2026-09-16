@@ -58,9 +58,10 @@ interface AppContextType {
   upgradeSubscription: (plan: 'monthly' | 'three_month' | 'annual') => Promise<void>;
 }
 
-const createDynamicProfile = (userId: string, role = 'Executive Leader'): UserProfile => ({
+const createDynamicProfile = (userId: string, role = 'Executive Leader', email?: string): UserProfile => ({
   id: userId,
-  name: 'Professional',
+  name: email || 'Professional',
+  email: email,
   avatarUri: undefined,
   role,
   experienceLevel: 'Mid-Senior',
@@ -91,7 +92,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentUserId = authUser?.id || (isGuest && guestId ? guestId : 'user-session');
 
   const [user, setUserState] = useState<UserProfile>(() =>
-    createDynamicProfile(currentUserId, authUser?.user_metadata?.role || 'Executive Leader')
+    createDynamicProfile(currentUserId, authUser?.user_metadata?.role || 'Executive Leader', authUser?.email)
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isOnboarded, setIsOnboarded] = useState(true);
@@ -153,7 +154,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       let activeProfile: UserProfile = createDynamicProfile(
         userId,
-        authUser?.user_metadata?.role || 'Executive Leader'
+        authUser?.user_metadata?.role || 'Executive Leader',
+        authUser?.email
       );
 
       const storedUser = await AsyncStorage.getItem(userKey);
