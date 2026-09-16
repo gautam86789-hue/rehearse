@@ -137,12 +137,12 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
-async function cancelStored(key: string) {
-  const id = await AsyncStorage.getItem(key);
-  if (id) {
-    await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
-    await AsyncStorage.removeItem(key);
-  }
+async function clearAllScheduledNotifications(userId: string) {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (e) {}
+  await AsyncStorage.removeItem(dailyReminderKey(userId));
+  await AsyncStorage.removeItem(trialReminderKey(userId));
 }
 
 function nextOccurrenceOf(hour: number): Date {
@@ -179,15 +179,13 @@ async function pickCopy(
 
 /**
  * Re-derives and schedules today's single reminder from current user state.
- * Call after anything that changes streak/practice state. Always cancels its
- * own previous reminder first — calling it repeatedly can never produce more
- * than one pending notification.
+ * Call after anything that changes streak/practice state. Strictly clears all
+ * previous scheduled notifications first — maximum 1 pending notification total.
  */
 export async function syncDailyReminder(user: UserProfile, enabled: boolean): Promise<void> {
   syncUserTags(user);
 
-  const key = dailyReminderKey(user.id);
-  await cancelStored(key);
+  await clearAllScheduledNotifications(user.id);
   if (!enabled) return;
 
   const today = new Date().toISOString().slice(0, 10);
@@ -218,15 +216,16 @@ export async function syncDailyReminder(user: UserProfile, enabled: boolean): Pr
       channelId: CHANNEL_ID
     }
   });
-  await AsyncStorage.setItem(key, id);
+  await AsyncStorage.setItem(dailyReminderKey(user.id), id);
 }
 
-/** Schedules a post-session motivational push based on the session score. */
+/** Schedules a post-session motivational push based on the session score. Strictly clears prior scheduled notifications first. */
 export async function schedulePostSessionReminder(
   user: UserProfile,
   score: number,
   enabled: boolean
 ): Promise<void> {
+  await clearAllScheduledNotifications(user.id);
   if (!enabled) return;
   const granted = await requestNotificationPermission();
   if (!granted) return;
@@ -246,7 +245,7 @@ export async function schedulePostSessionReminder(
     }
   }
 
-  await Notifications.scheduleNotificationAsync({
+  const id = await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
@@ -259,12 +258,12 @@ export async function schedulePostSessionReminder(
       channelId: CHANNEL_ID
     }
   });
+  await AsyncStorage.setItem(dailyReminderKey(user.id), id);
 }
 
-/** One-time, fires the day before a free trial ends. Never repeats. */
+/** One-time, fires the day before a free trial ends. Strictly clears prior scheduled notifications first. */
 export async function syncTrialEndingReminder(user: UserProfile, enabled: boolean): Promise<void> {
-  const key = trialReminderKey(user.id);
-  await cancelStored(key);
+  await clearAllScheduledNotifications(user.id);
   if (!enabled) return;
   if (user.subscription?.status !== 'free_trial' || !user.subscription.trialEndsAt) return;
 
@@ -292,13 +291,12 @@ export async function syncTrialEndingReminder(user: UserProfile, enabled: boolea
       channelId: CHANNEL_ID
     }
   });
-  await AsyncStorage.setItem(key, id);
+  await AsyncStorage.setItem(trialReminderKey(user.id), id);
 }
 
 /** Cancels every reminder this service has scheduled for a user. */
 export async function cancelAllReminders(userId: string): Promise<void> {
-  await cancelStored(dailyReminderKey(userId));
-  await cancelStored(trialReminderKey(userId));
+  await clearAllScheduledNotifications(userId);
 }
 
 /**
