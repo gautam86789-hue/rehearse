@@ -104,6 +104,7 @@ export function getLastUpdateUserError() {
 
 function planNameForStatus(status: UserProfile['subscription']['status']): string | undefined {
   switch (status) {
+    case 'free_rehearsals':
     case 'free_trial':
       return '3 Free Rehearsals';
     case 'active_monthly':
@@ -113,7 +114,7 @@ function planNameForStatus(status: UserProfile['subscription']['status']): strin
     case 'active_annual':
       return 'Annual Masterclass Pass';
     case 'active_promo':
-      return 'Early Bird — 7 Day Pass';
+      return 'Early Bird Pass';
     default:
       return undefined;
   }
@@ -162,7 +163,7 @@ function defaultUserRow(userId: string): Record<string, any> {
     total_xp: 0,
     current_streak: 0,
     longest_streak: 0,
-    subscription_status: 'free_trial',
+    subscription_status: 'free_rehearsals',
     rehearsals_remaining: 3,
     trial_ends_at: null,
     created_at: new Date().toISOString()
@@ -439,7 +440,7 @@ class InMemoryDatabase {
       currentStreak: 0,
       longestStreak: 0,
       subscription: {
-        status: 'free_trial',
+        status: 'free_rehearsals',
         rehearsalsRemaining: 3,
         trialEndsAt: undefined,
         planName: '3 Free Rehearsals'
@@ -469,7 +470,7 @@ class InMemoryDatabase {
         currentStreak: 0,
         longestStreak: 0,
         subscription: {
-          status: 'free_trial',
+          status: 'free_rehearsals',
           rehearsalsRemaining: 3,
           trialEndsAt: undefined,
           planName: '3 Free Rehearsals'
@@ -678,7 +679,7 @@ class InMemoryDatabase {
       currentStreak: 0,
       longestStreak: 0,
       subscription: {
-        status: 'free_trial',
+        status: 'free_rehearsals',
         rehearsalsRemaining: 3,
         trialEndsAt: undefined,
         planName: '3 Free Rehearsals'
@@ -701,7 +702,7 @@ class InMemoryDatabase {
           experience_level: profile.experienceLevel,
           audience: profile.audience,
           primary_dread_category: profile.primaryDreadCategory,
-          subscription_status: 'free_trial',
+          subscription_status: 'free_rehearsals',
           rehearsals_remaining: 3,
           trial_ends_at: null,
           created_at: now

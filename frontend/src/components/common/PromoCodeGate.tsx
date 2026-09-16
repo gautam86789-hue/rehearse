@@ -6,24 +6,20 @@ import { useTheme, RADII } from '../../context/ThemeContext';
 interface PromoCodeGateProps {
   visible: boolean;
   onRedeem: (code: string) => Promise<{ error?: string }>;
-  // Called both by the header X and the "No code" link — same outcome
-  // either way (fall through to the real payment step), just two familiar
-  // affordances for it.
   onNoCode: () => void;
+  rehearsalsRemaining?: number;
 }
 
-// Sits between sign-in and the real payment step of "going Pro" — not a
-// standalone screen reachable on its own. Someone with a code redeems it
-// right here and skips payment entirely; everyone else taps "No code" (or
-// the X) and continues straight to the plan/payment screen, exactly as if
-// this card weren't there at all.
-export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem, onNoCode }) => {
+export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem, onNoCode, rehearsalsRemaining = 3 }) => {
   const { colors, elevation } = useTheme();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const canSkip = rehearsalsRemaining > 0;
+
   const handleClose = () => {
+    if (!canSkip) return;
     setCode('');
     setError('');
     onNoCode();
@@ -31,7 +27,7 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
 
   const handleRedeem = async () => {
     if (!code.trim()) {
-      setError('Enter a code first.');
+      setError('Please enter an access code.');
       return;
     }
     setError('');
@@ -47,33 +43,36 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      {/* Same Android keyboard-overlap fix as AuthGateModal — without it the
-          screen behind bleeds into the gap when the keyboard opens instead
-          of the card repositioning above it. */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
         <View style={[styles.card, elevation.md, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={handleClose}
-            hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
-          >
-            <X size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
+          {canSkip && (
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={handleClose}
+              hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+            >
+              <X size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
 
           <View style={[styles.iconCircle, { backgroundColor: colors.primarySubtle }]}>
             <Ticket size={22} color={colors.primary} />
           </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Have a code?</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            {canSkip ? 'Unlock Rehearse Access' : 'Access Locked'}
+          </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Redeem it for free access — no card required.
+            {canSkip
+              ? `Enter your access code to unlock full Pro access, or try your ${rehearsalsRemaining} free rehearsals.`
+              : 'You have used all 3 free rehearsals. Enter an access code to unlock access.'}
           </Text>
 
           <TextInput
             style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceElevated }]}
-            placeholder="Enter code"
+            placeholder="Enter promo or pass code"
             placeholderTextColor={colors.textMuted}
             value={code}
             onChangeText={setCode}
@@ -89,12 +88,16 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
             disabled={isSubmitting}
             activeOpacity={0.85}
           >
-            {isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.redeemBtnText}>Redeem</Text>}
+            {isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.redeemBtnText}>Redeem Code</Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleClose} style={styles.noCodeBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-            <Text style={[styles.noCodeText, { color: colors.textSecondary }]}>No code</Text>
-          </TouchableOpacity>
+          {canSkip && (
+            <TouchableOpacity onPress={handleClose} style={styles.noCodeBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+              <Text style={[styles.noCodeText, { color: colors.textSecondary }]}>
+                {`Try ${rehearsalsRemaining} Free Rehearsal${rehearsalsRemaining > 1 ? 's' : ''}`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>

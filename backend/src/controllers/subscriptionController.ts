@@ -200,29 +200,18 @@ export class SubscriptionController {
 
       const user = await memoryDb.getUser(resolvedUserId);
 
-      // Check if user already has an active, unexpired plan or pass.
-      // If their previous promo pass has expired, allow redeeming a new tester code.
-
-      const hasActivePlan =
-        (user.subscription.status === 'active_monthly' ||
-          user.subscription.status === 'active_three_month' ||
-          user.subscription.status === 'active_annual' ||
-          user.subscription.status === 'active_promo') &&
-        (!user.subscription.trialEndsAt || new Date(user.subscription.trialEndsAt) > new Date());
-
-      if (hasActivePlan) {
-        res.status(400).json({ error: 'You already have an active plan — no code needed.' });
-        return;
-      }
-
-      // Check if this access code has ALREADY been redeemed (single-use code rule)
+      // Check if this specific access code has ALREADY been redeemed (single-use code rule)
       const isAlreadyUsed = await memoryDb.isPromoCodeRedeemed(normalizedCode);
       if (isAlreadyUsed) {
         res.status(400).json({ error: 'This access code has already been used. Please request a new code.' });
         return;
       }
 
-      const trialEndsAt = new Date(Date.now() + PROMO_DURATION_MS(promo.days)).toISOString();
+      // Compute new expiration: extend if active, or calculate from now
+      const existingEndsAt = user.subscription?.trialEndsAt ? new Date(user.subscription.trialEndsAt).getTime() : 0;
+      const baseTime = Math.max(Date.now(), existingEndsAt);
+      const trialEndsAt = new Date(baseTime + PROMO_DURATION_MS(promo.days)).toISOString();
+
       const updated = await memoryDb.updateUser(user.id, {
         subscription: {
           status: 'active_promo',
@@ -234,7 +223,7 @@ export class SubscriptionController {
         emailVerified: true
       });
 
-      // Mark code as consumed so it cannot be used again
+      // Mark code as consumed globally so it cannot be reused
       await memoryDb.markPromoCodeRedeemed(normalizedCode, user.id, trialEndsAt);
 
       res.json({

@@ -71,7 +71,7 @@ const createDynamicProfile = (userId: string, role = 'Executive Leader'): UserPr
   longestStreak: 0,
   lastPracticeDate: undefined,
   subscription: {
-    status: 'free_trial',
+    status: 'free_rehearsals',
     rehearsalsRemaining: 3,
     trialEndsAt: undefined,
     planName: '3 Free Rehearsals'

@@ -21,7 +21,8 @@ import {
   UserCog,
   Bell,
   ChevronRight,
-  Share2
+  Share2,
+  Ticket
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../context/AppContext';
@@ -36,7 +37,7 @@ import { SPACING } from '../theme/spacing';
 import { formatDate } from '../utils/formatDate';
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user, setUser, unlockMilestone, history } = useApp();
+  const { user, setUser, unlockMilestone, history, setIsPaywallVisible } = useApp();
   const { colors, elevation } = useTheme();
   const insets = useSafeAreaInsets();
   const { viewShotRef: streakShotRef, isSharing: isSharingStreak, share: shareStreak } = useShareCard();
@@ -231,19 +232,19 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           />
         </View>
 
-        {/* Pro badge */}
+        {/* Pro badge / Access Code banner */}
         {isPro ? (
           <TouchableOpacity
             style={[styles.proBadgeRow, { backgroundColor: colors.champagneSubtle, borderColor: colors.champagne }]}
-            onPress={() => navigation.navigate('MembershipBilling')}
+            onPress={() => setIsPaywallVisible(true)}
             activeOpacity={0.85}
           >
             <Crown size={16} color={colors.champagneDark} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.proBadgeTitle, { color: colors.champagneDark }]}>Pro Member</Text>
+              <Text style={[styles.proBadgeTitle, { color: colors.champagneDark }]}>Pro Pass Unlocked</Text>
               {user.subscription?.trialEndsAt ? (
                 <Text style={[styles.proBadgeSub, { color: colors.textSecondary }]}>
-                  Valid until {formatDate(user.subscription.trialEndsAt)}
+                  Valid until {formatDate(user.subscription.trialEndsAt)} • Tap to extend code
                 </Text>
               ) : null}
             </View>
@@ -251,11 +252,11 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         ) : (
           <TouchableOpacity
             style={[styles.proBadgeRow, { backgroundColor: colors.primarySubtle, borderColor: colors.primaryLight }]}
-            onPress={() => navigation.navigate('MembershipBilling')}
+            onPress={() => setIsPaywallVisible(true)}
             activeOpacity={0.85}
           >
-            <Crown size={16} color={colors.primary} />
-            <Text style={[styles.proBadgeTitle, { color: colors.primary, flex: 1 }]}>Go Pro for unlimited practice</Text>
+            <Ticket size={16} color={colors.primary} />
+            <Text style={[styles.proBadgeTitle, { color: colors.primary, flex: 1 }]}>Redeem Access Code</Text>
             <ChevronRight size={15} color={colors.primary} />
           </TouchableOpacity>
         )}

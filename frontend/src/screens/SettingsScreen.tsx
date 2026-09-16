@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Ticket
 } from 'lucide-react-native';
 
 import { useApp } from '../context/AppContext';
@@ -21,7 +22,7 @@ import { InAppNotification, NotificationType } from '../components/common/InAppN
 import { DeveloperToolsSection } from './settings/DeveloperToolsSection';
 
 export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user } = useApp();
+  const { user, setIsPaywallVisible } = useApp();
   const { signOut } = useAuth();
   const { themeMode, colors: themeColors, elevation } = useTheme();
   // Custom header had a flat paddingTop:20 with no safe-area handling — on
@@ -73,7 +74,10 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   };
 
   const formatPlanName = () => {
-    if (user.subscription?.status === 'free_trial') return 'Free Trial';
+    if (user.subscription?.status === 'free_rehearsals' || user.subscription?.status === 'free_trial') {
+      return `${user.subscription?.rehearsalsRemaining ?? 3} Free Rehearsals Left`;
+    }
+    if (user.subscription?.status === 'active_promo') return 'Promo Pass Active';
     if (user.subscription?.status === 'active_annual' || user.subscription?.status === 'active_monthly') return 'Plus';
     return user.subscription?.planName || 'Free';
   };
@@ -140,16 +144,19 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           </View>
         </View>
 
-        {/* 3. PLAN */}
+        {/* 3. ACCESS CODE */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>PLAN</Text>
+          <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>ACCESS CODE</Text>
           <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomWidth: 0 }]}
-              onPress={() => navigation.navigate('MembershipBilling')}
+              onPress={() => setIsPaywallVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]}>Membership & Billing</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ticket size={16} color={themeColors.primary} />
+                <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]}>Redeem Access Code</Text>
+              </View>
               <View style={styles.rowRight}>
                 <Text style={[styles.rowValueText, { color: themeColors.textSecondary }]}>
                   {formatPlanName()}

@@ -42,9 +42,10 @@ export class RoleplayController {
       const resolvedUserId = userId || req.userId || 'demo-user-1';
       const user = await memoryDb.getUser(resolvedUserId);
 
-      // Check remaining quota if on free trial
+      // Check remaining quota if on free rehearsals/trial
       const freeTrialExhausted =
-        user.subscription.status === 'free_trial' && user.subscription.rehearsalsRemaining <= 0;
+        (user.subscription.status === 'free_rehearsals' || user.subscription.status === 'free_trial') &&
+        user.subscription.rehearsalsRemaining <= 0;
 
       // Promo-code access (see subscriptionController.redeemPromoCode) isn't
       // a real store subscription, so nothing else expires it automatically
@@ -58,11 +59,11 @@ export class RoleplayController {
 
       if (freeTrialExhausted || promoExpired) {
         res.status(403).json({
-          error: freeTrialExhausted ? 'Free trial limit reached' : 'Promo access has ended',
+          error: freeTrialExhausted ? 'Rehearsal limit reached' : 'Promo access has ended',
           code: 'PAYWALL_TRIGGERED',
           message: freeTrialExhausted
-            ? 'You have used your free rehearsals. Unlock unlimited high-stakes rehearsals with a 5-day trial.'
-            : 'Your 7-day Early Bird access has ended. Unlock unlimited high-stakes rehearsals with a plan.'
+            ? 'You have used your 3 free rehearsals. Redeem an access code to unlock unlimited practice.'
+            : 'Your promo access code has expired. Redeem a new access code to continue.'
         });
         return;
       }

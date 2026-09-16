@@ -264,7 +264,7 @@ export interface UserProfile {
   longestStreak: number;
   lastPracticeDate?: string;
   subscription: {
-    status: 'free_trial' | 'active_monthly' | 'active_three_month' | 'active_annual' | 'active_promo' | 'expired';
+    status: 'free_rehearsals' | 'free_trial' | 'active_monthly' | 'active_three_month' | 'active_annual' | 'active_promo' | 'expired';
     rehearsalsRemaining: number;
     trialEndsAt?: string;
     planName?: string;

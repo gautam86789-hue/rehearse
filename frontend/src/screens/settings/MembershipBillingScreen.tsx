@@ -167,13 +167,13 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
                 <Crown size={18} color={themeColors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.planTitle, { color: themeColors.textPrimary }]}>{planName}</Text>
+                <Text style={[styles.planTitle, { color: themeColors.textPrimary }]}>
+                  {isPlus ? 'Pro Access Pass' : '3 Free Rehearsals'}
+                </Text>
                 <Text style={[styles.planStatusSub, { color: themeColors.textSecondary }]}>
-                  {isFreeTrial
-                    ? `${user.subscription?.rehearsalsRemaining ?? 3} free rehearsals remaining`
-                    : isPlus
-                    ? 'Active subscription'
-                    : 'Standard access'}
+                  {isPlus
+                    ? 'Full Pro Access Active'
+                    : `${user.subscription?.rehearsalsRemaining ?? 3} free rehearsals remaining`}
                 </Text>
               </View>
             </View>
@@ -182,61 +182,35 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
 
             <View style={styles.planMetaRow}>
               <Text style={[styles.metaLabel, { color: themeColors.textSecondary }]}>
-                {isFreeTrial ? 'After that:' : 'Next billing:'}
+                {isPlus ? 'Access duration:' : 'Status:'}
               </Text>
               <Text style={[styles.metaValue, { color: themeColors.textPrimary }]}>
-                {isFreeTrial ? 'Pay to start a 5-day free trial' : renewalText}
+                {isPlus && user.subscription?.trialEndsAt
+                  ? `Valid until ${new Date(user.subscription.trialEndsAt).toLocaleDateString()}`
+                  : isPlus
+                  ? 'Unlimited Access'
+                  : 'Redeem an access code to unlock unlimited rehearsals'}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Section 2: Plans Comparison */}
+        {/* Section 2: Redeem Code CTA */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>AVAILABLE PLANS</Text>
-
-          {SUBSCRIPTION_PLANS.map((plan, index) => (
-            <TouchableOpacity
-              key={plan.id}
-              style={[
-                styles.tierOptionCard,
-                elevation.sm,
-                { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder, marginTop: index === 0 ? 0 : 10 },
-                selectedPlan === plan.id && { borderColor: themeColors.primary, borderWidth: 2 }
-              ]}
-              onPress={() => setSelectedPlan(plan.id)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.tierTop}>
-                <View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={[styles.tierTitle, { color: themeColors.textPrimary }]}>{plan.name}</Text>
-                    {plan.badge && (
-                      <View style={[styles.savePill, { backgroundColor: themeColors.success }]}>
-                        <Text style={styles.savePillText}>{plan.badge}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={[styles.tierPrice, { color: themeColors.textPrimary }]}>
-                    {plan.price} <Text style={[styles.tierUnit, { color: themeColors.textSecondary }]}>{plan.period}</Text>
-                  </Text>
-                </View>
-
-                <View style={[
-                  styles.radioCircle,
-                  { borderColor: themeColors.surfaceBorder },
-                  selectedPlan === plan.id && { borderColor: themeColors.primary, backgroundColor: themeColors.primary }
-                ]}>
-                  {selectedPlan === plan.id && <Check size={11} color={themeColors.textInverse} strokeWidth={3} />}
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+          <Text style={[styles.sectionHeading, { color: themeColors.textSecondary }]}>REDEEM ACCESS CODE</Text>
+          
+          <TouchableOpacity
+            style={[styles.upgradeButton, { backgroundColor: themeColors.primary, marginTop: 4 }]}
+            onPress={() => setIsPaywallVisible(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.upgradeButtonText, { color: themeColors.textInverse }]}>Enter / Extend Access Code</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Section 3: Feature Summary */}
         <View style={styles.section}>
-          <Text style={[styles.featureListHeader, { color: themeColors.textPrimary }]}>Rehearse Plus includes:</Text>
+          <Text style={[styles.featureListHeader, { color: themeColors.textPrimary }]}>Rehearse Pro includes:</Text>
           <View style={styles.featureList}>
             {SUBSCRIPTION_FEATURES.map((feature, index) => (
               <View key={index} style={styles.featureItem}>
@@ -245,31 +219,6 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
               </View>
             ))}
           </View>
-
-          {/* Primary CTA */}
-          <TouchableOpacity
-            style={[styles.upgradeButton, { backgroundColor: themeColors.primary }]}
-            onPress={() => {
-              setPaywallPreferredPlan(selectedPlan);
-              setIsPaywallVisible(true);
-            }}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.upgradeButtonText, { color: themeColors.textInverse }]}>Upgrade to Plus</Text>
-          </TouchableOpacity>
-
-          {__DEV__ && !isPlus && (
-            <TouchableOpacity
-              style={[styles.testPurchaseButton, { borderColor: themeColors.surfaceBorder }]}
-              onPress={handleSimulatePurchase}
-              disabled={isSimulating}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.testPurchaseText, { color: themeColors.textSecondary }]}>
-                {isSimulating ? 'Simulating…' : 'Simulate Purchase (Test Mode — no real billing yet)'}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Section 4: Secondary Actions */}
