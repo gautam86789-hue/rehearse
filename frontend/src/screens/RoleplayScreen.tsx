@@ -263,35 +263,11 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
     setCoachingHint(randomHint);
   };
 
-  const [showVoiceModal, setShowVoiceModal] = useState(false);
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {/* Voice Upcoming Modal */}
-      {showVoiceModal && (
-        <View style={styles.upcomingModalOverlay}>
-          <View style={[styles.upcomingModalCard, elevation.md, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
-            <View style={[styles.upcomingIconCircle, { backgroundColor: colors.primarySubtle }]}>
-              <Mic size={24} color={colors.primary} />
-            </View>
-            <Text style={[styles.upcomingTitle, { color: colors.textPrimary }]}>Upcoming Premium Feature</Text>
-            <Text style={[styles.upcomingSubtitle, { color: colors.textSecondary }]}>
-              Real-time Conversational Voice Rehearsals with live AI voice simulation and tone analysis are currently in development for our next major update!
-            </Text>
-            <TouchableOpacity
-              style={[styles.upcomingCloseBtn, { backgroundColor: colors.primary }]}
-              onPress={() => setShowVoiceModal(false)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.upcomingCloseBtnText}>Got It</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       {/* Top Rehearsal Header */}
       <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomColor: colors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
