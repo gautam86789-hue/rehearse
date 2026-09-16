@@ -12,12 +12,6 @@ export interface LLMGenerateOptions {
   responseFormat?: 'json' | 'text';
 }
 
-// Single-provider setup: Gemini Flash-Lite handles every AI call site in the
-// app (roleplay turns, scoring, story generation, coach chat, reply
-// assistant, scenario briefs) — cheap enough that the high-volume roleplay
-// calls stay inexpensive, and simple enough to run on one API key with no
-// fallback-chain complexity. If a call fails or no key is configured, the
-// non-LLM heuristic simulation below keeps every feature functional.
 export class LLMService {
   private geminiApiKey: string | undefined;
   private geminiModel: string;
@@ -31,12 +25,12 @@ export class LLMService {
     messages: LLMMessage[],
     options: LLMGenerateOptions = {}
   ): Promise<string> {
-    const { temperature = 0.7, responseFormat = 'text', maxTokens } = options;
+    const { temperature = 0.75, responseFormat = 'text', maxTokens } = options;
 
     if (this.geminiApiKey) {
       try {
         const response = await this.callGemini(messages, temperature, responseFormat, maxTokens);
-        if (response) return response;
+        if (response && response.trim().length > 0) return response;
       } catch (err) {
         console.warn('Gemini API call failed, falling back to simulated response...', err);
       }
@@ -52,11 +46,27 @@ export class LLMService {
     responseFormat: string,
     maxTokens?: number
   ): Promise<string> {
-    const prompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`;
 
+    // Extract system message for Gemini systemInstruction
+    const systemMsg = messages.find((m) => m.role === 'system')?.content;
+    const conversationMessages = messages.filter((m) => m.role !== 'system');
+
+    const systemInstruction = systemMsg ? { parts: [{ text: systemMsg }] } : undefined;
+    const contents = conversationMessages.length > 0
+      ? conversationMessages.map((m) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }))
+      : [{ role: 'user', parts: [{ text: 'Hello' }] }];
+
+    // Gemini 3.6 Flash uses internal thinking tokens before emitting final text.
+    // Setting maxOutputTokens below 1000 causes MAX_TOKENS truncation after 2-10 words.
+    // Ensure effectiveMaxTokens is at least 1500 so responses are complete and fully formed.
+    const effectiveMaxTokens = Math.max(maxTokens || 1800, 1500);
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     try {
       const res = await fetch(endpoint, {
@@ -64,11 +74,12 @@ export class LLMService {
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
+          ...(systemInstruction ? { systemInstruction } : {}),
+          contents,
           generationConfig: {
             temperature,
             responseMimeType: responseFormat === 'json' ? 'application/json' : 'text/plain',
-            ...(maxTokens ? { maxOutputTokens: maxTokens } : {})
+            maxOutputTokens: effectiveMaxTokens
           }
         })
       });
@@ -78,7 +89,14 @@ export class LLMService {
       }
 
       const data = await res.json() as any;
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const candidate = data.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text || '';
+      
+      if (!text && candidate?.finishReason === 'MAX_TOKENS') {
+        console.warn('Gemini response hit MAX_TOKENS limit before text output');
+      }
+
+      return text;
     } finally {
       clearTimeout(timeoutId);
     }
@@ -88,9 +106,7 @@ export class LLMService {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
     const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
 
-    // AI Assistant chat — plain text, not JSON, so it must be checked before
-    // the JSON branch below or it falls through to the unrelated roleplay
-    // default line at the bottom of this method.
+    // AI Assistant chat — plain text
     if (systemMsg.includes('in-app AI assistant for Rehearse')) {
       return this.simulateAssistantReply(lastUserMsg);
     }
@@ -174,8 +190,8 @@ export class LLMService {
       }
     }
 
-    // Default conversational response
-    return "I hear your point, but given our current roadmap and bandwidth, I need to understand why this cannot wait until next quarter.";
+    // Default conversational fallback (complete 3-sentence response)
+    return "I hear the points you're bringing forward, but our department is operating under strict quarterly resource allocations right now. I need to see a clear, data-backed business case before I can consider an exception to this policy. Bring me specific ROI figures by Friday, and we can discuss a potential conditional path forward.";
   }
 
   private simulateAssistantReply(userMessage: string): string {
