@@ -85,17 +85,18 @@ export const TrialEndedLockScreen: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await apiService.redeemPromoCode(user.id, cleanCode);
+      const res = await apiService.redeemPromoCode(user.id, cleanCode);
       await refreshProfile();
-      setSuccessMessage('Code activated! Access restored.');
+      const days = res?.days || (cleanCode.includes('30D') || cleanCode.includes('VIP') ? 30 : cleanCode.includes('14D') || cleanCode.includes('TESTER') ? 14 : 7);
+      setSuccessMessage(`${days}-Day Code Activated! Access restored.`);
       unlockMilestone(
         'promo_early_bird',
-        'Access Restored!',
-        'You have unlocked early access rehearsals. Make it count!',
+        `${days}-Day Pass Unlocked! 🎉`,
+        `You have unlocked ${days} days of full Pro access — no card required. Make it count!`,
         'sparkles'
       );
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Invalid or expired code. Please verify and try again.');
+      setErrorMessage(err?.message || 'That code isn\'t valid — double check and try again.');
     } finally {
       setIsSubmitting(false);
     }

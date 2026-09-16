@@ -239,6 +239,7 @@ export class SubscriptionController {
 
       res.json({
         message: 'Promo code redeemed',
+        days: promo.days,
         subscription: updated.subscription
       });
     } catch (err) {

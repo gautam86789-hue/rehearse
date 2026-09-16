@@ -14,7 +14,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_FEATURES, SubscriptionPlanId } from '../../data/subscriptionPlans';
 import { AuthGateModal } from './AuthGateModal';
-import { EmailVerificationModal } from './EmailVerificationModal';
 import { PromoCodeGate } from './PromoCodeGate';
 import { apiService } from '../../services/api';
 import { navigationRef } from '../../navigation/navigationRef';
@@ -65,25 +64,23 @@ export const PaywallModal: React.FC = () => {
 
   const handleRedeemPromoCode = async (code: string): Promise<{ error?: string }> => {
     try {
-      await apiService.redeemPromoCode(user.id, code);
+      const res = await apiService.redeemPromoCode(user.id, code);
       await refreshProfile();
       setIsPaywallVisible(false);
-      // Land back on Home underneath the congratulations modal — whatever
-      // locked feature triggered this paywall (a scenario, a chat, etc.)
-      // isn't where a just-unlocked user wants to land; Home is the natural
-      // "start using it" surface, matching a real purchase's flow.
       if (navigationRef.isReady()) {
         navigationRef.navigate('HomeTabs' as never);
       }
+      const upperCode = code.toUpperCase();
+      const days = res?.days || (upperCode.includes('30D') || upperCode.includes('VIP') ? 30 : upperCode.includes('14D') || upperCode.includes('TESTER') ? 14 : 7);
       unlockMilestone(
         'promo_early_bird',
-        'Early Bird Unlocked!',
-        "You've got 7 days of full Pro access — no card required. Make it count.",
+        `${days}-Day Pass Unlocked! 🎉`,
+        `You have unlocked ${days} days of full Pro access — no card required. Make it count!`,
         'sparkles'
       );
       return {};
     } catch (err: any) {
-      return { error: err?.message || 'Something went wrong — please try again.' };
+      return { error: err?.message || 'That code isn\'t valid — double check and try again.' };
     }
   };
 
@@ -129,37 +126,9 @@ export const PaywallModal: React.FC = () => {
     );
   }
 
-  // Right after sign-in, before the promo step. "Skip for now" moves on to
-  // the promo-code step (below), NOT straight to real payment — if the
-  // skipped-verification user actually has a code, redeeming it server-side
-  // still enforces email verification (subscriptionController's
-  // EMAIL_NOT_VERIFIED check) and PromoCodeGate will surface that error
-  // plainly; "No code" from there is what falls through to real payment.
-  if (isPaywallVisible && (!isGuest || justAuthenticated) && !user.emailVerified && !justVerified && !skippedVerification && !hasDeclinedPromo) {
-    return (
-      <EmailVerificationModal
-        visible
-        email={authUser?.email || user.email || ''}
-        userId={user.id}
-        onVerified={() => {
-          setJustVerified(true);
-          refreshProfile();
-        }}
-        onCancel={() => setSkippedVerification(true)}
-      />
-    );
-  }
-
-  // Right after sign-in (and, whether verified, skipped, or just verified,
-  // after that step) — a judge/tester with a code skips payment entirely;
-  // "No code" falls through to the normal purchase flow exactly as if this
-  // card weren't there.
-  if (
-    isPaywallVisible &&
-    (!isGuest || justAuthenticated) &&
-    (user.emailVerified || justVerified || skippedVerification) &&
-    !hasDeclinedPromo
-  ) {
+  // Right after sign-in — promo code layer. Redeeming a valid code unlocks full access.
+  // "No code" falls through to Cashfree payment.
+  if (isPaywallVisible && (!isGuest || justAuthenticated) && !hasDeclinedPromo) {
     return (
       <PromoCodeGate
         visible

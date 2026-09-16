@@ -53,7 +53,7 @@ USER'S COMMUNICATION QUALITY THIS TURN: ${userSentiment}
 
 RESPONSE GUIDELINES — FOLLOW THESE CAREFULLY:
 1. DIRECT RESPONSE: Address what the user literally typed in their message. Directly reference their specific numbers, deadlines, percentages, claims, or questions.
-2. COMPLETE & REALISTIC DIALOGUE: Provide a complete, natural, multi-sentence response of 2 to 4 full sentences (approx 45 to 85 words). Do not cut off mid-thought, do not monologue, and NEVER output truncated 1-line or 2-word replies.
+2. PRECISE & REALISTIC DIALOGUE (50-90 WORDS): Provide a sharp, natural, multi-sentence response of 2 to 4 complete sentences, strictly between 50 and 90 words. Never output under 40 words, and NEVER exceed 100 words.
 3. EMOTIONAL REALISM: Speak with authentic authority and professional tension as ${scenario.counterpartName} (${scenario.counterpartRole}). Express your pushbacks, operational constraints, or conditional next steps clearly.
 4. BANNED PHRASES: Never say "I understand your concern", "I appreciate you bringing this up", "as an AI", "fair point", or "I hear you". Speak like a real person in a real workplace scenario.
 5. EVOLUTION: Adapt your posture turn-by-turn based on how the user speaks (firm vs hedging). Stay 100% in character.
@@ -72,8 +72,8 @@ ${difficultyCalibration}`;
 
     try {
       const responseText = await this.llm.generateCompletion(messages, {
-        temperature: 0.75,
-        maxTokens: 1800
+        temperature: 0.7,
+        maxTokens: 1200
       });
 
       const metrics = this.analyzeUserTurn(cleanUserMessage);
