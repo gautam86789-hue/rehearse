@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Image
+  Image,
+  Modal
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -54,6 +55,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
   const [isEnding, setIsEnding] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [coachingHint, setCoachingHint] = useState<string | null>(null);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -261,16 +263,35 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
     setCoachingHint(randomHint);
   };
 
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+
   return (
     <KeyboardAvoidingView
-      // 'padding' does nothing meaningful on Android; leaving it `undefined`
-      // there meant the keyboard just covered the bottom of the screen with
-      // no adjustment at all — the input dock and latest messages sat behind
-      // it instead of resizing above it. 'height' is the standard Android
-      // fix (paired with the default adjustResize windowSoftInputMode).
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
+      {/* Voice Upcoming Modal */}
+      {showVoiceModal && (
+        <View style={styles.upcomingModalOverlay}>
+          <View style={[styles.upcomingModalCard, elevation.md, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
+            <View style={[styles.upcomingIconCircle, { backgroundColor: colors.primarySubtle }]}>
+              <Mic size={24} color={colors.primary} />
+            </View>
+            <Text style={[styles.upcomingTitle, { color: colors.textPrimary }]}>Upcoming Premium Feature</Text>
+            <Text style={[styles.upcomingSubtitle, { color: colors.textSecondary }]}>
+              Real-time Conversational Voice Rehearsals with live AI voice simulation and tone analysis are currently in development for our next major update!
+            </Text>
+            <TouchableOpacity
+              style={[styles.upcomingCloseBtn, { backgroundColor: colors.primary }]}
+              onPress={() => setShowVoiceModal(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.upcomingCloseBtnText}>Got It</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Top Rehearsal Header */}
       <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomColor: colors.surfaceBorder, paddingTop: topPadding }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
@@ -417,7 +438,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
       >
         <TouchableOpacity
           style={[styles.micButton, { backgroundColor: colors.surfaceHighlight }]}
-          onPress={() => setIsPaywallVisible(true)}
+          onPress={() => setShowVoiceModal(true)}
           activeOpacity={0.75}
         >
           <Mic size={17} color={colors.textMuted} />
@@ -444,6 +465,40 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
           <Send size={18} color={colors.textInverse} />
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={showVoiceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowVoiceModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.upcomingModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowVoiceModal(false)}
+        >
+          <View style={[styles.upcomingModalCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
+            <View style={[styles.upcomingIconCircle, { backgroundColor: colors.surfaceHighlight }]}>
+              <Mic size={28} color={colors.primary} />
+            </View>
+            <Text style={[typography.h3, styles.upcomingTitle, { color: colors.textPrimary }]}>
+              Upcoming Premium Feature
+            </Text>
+            <Text style={[typography.bodySmall, styles.upcomingSubtitle, { color: colors.textSecondary }]}>
+              Real-time voice rehearsal and AI speech analysis is an upcoming feature. Stay tuned!
+            </Text>
+            <TouchableOpacity
+              style={[styles.upcomingCloseBtn, { backgroundColor: colors.primary }]}
+              onPress={() => setShowVoiceModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={[typography.button, styles.upcomingCloseBtnText, { color: colors.textInverse }]}>
+                Got it
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -596,5 +651,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#FFFFFF'
+  },
+  upcomingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24
+  },
+  upcomingModalCard: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8
+  },
+  upcomingIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  upcomingTitle: {
+    textAlign: 'center',
+    marginBottom: 8
+  },
+  upcomingSubtitle: {
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20
+  },
+  upcomingCloseBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  upcomingCloseBtnText: {
+    fontWeight: '600'
   }
 });

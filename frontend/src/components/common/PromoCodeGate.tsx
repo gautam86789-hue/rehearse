@@ -16,10 +16,10 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canSkip = rehearsalsRemaining > 0;
+  const canSkip = rehearsalsRemaining > 0 || rehearsalsRemaining === 999999;
 
   const handleClose = () => {
-    if (!canSkip) return;
+    if (!canSkip && rehearsalsRemaining <= 0) return;
     setCode('');
     setError('');
     onNoCode();
@@ -65,14 +65,16 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
             {canSkip ? 'Unlock Rehearse Access' : 'Access Locked'}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {canSkip
-              ? `Enter your access code to unlock full Pro access, or try your ${rehearsalsRemaining} free rehearsals.`
-              : 'You have used all 3 free rehearsals. Enter an access code to unlock access.'}
+            {rehearsalsRemaining > 10 || rehearsalsRemaining === 999999
+              ? 'Enter an access code (7DAYSPASS, 14DAYSPASS, 30DAYSPASS) to extend your Pro access.'
+              : canSkip
+              ? `Enter an access code (7DAYSPASS, 14DAYSPASS, 30DAYSPASS) to unlock Pro access, or try your ${rehearsalsRemaining} free rehearsals.`
+              : 'You have used all 3 free rehearsals. Enter an access code to unlock full access.'}
           </Text>
 
           <TextInput
             style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceElevated }]}
-            placeholder="Enter promo or pass code"
+            placeholder="Enter code (e.g. 7DAYSPASS, 14DAYSPASS, 30DAYSPASS)"
             placeholderTextColor={colors.textMuted}
             value={code}
             onChangeText={setCode}
@@ -91,13 +93,15 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
             {isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.redeemBtnText}>Redeem Code</Text>}
           </TouchableOpacity>
 
-          {canSkip && (
-            <TouchableOpacity onPress={handleClose} style={styles.noCodeBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-              <Text style={[styles.noCodeText, { color: colors.textSecondary }]}>
-                {`Try ${rehearsalsRemaining} Free Rehearsal${rehearsalsRemaining > 1 ? 's' : ''}`}
-              </Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={handleClose} style={styles.noCodeBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+            <Text style={[styles.noCodeText, { color: colors.textSecondary }]}>
+              {rehearsalsRemaining > 10 || rehearsalsRemaining === 999999
+                ? 'Close'
+                : canSkip
+                ? `Try ${rehearsalsRemaining} Free Rehearsal${rehearsalsRemaining > 1 ? 's' : ''}`
+                : 'Close'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </Modal>

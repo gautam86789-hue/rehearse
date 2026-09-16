@@ -25,49 +25,20 @@ export const redeemPromoCodeSchema = z.object({
   code: z.string().min(1)
 });
 
-// Shipaton judging-window / tester access — single-use code-gated access
-// with no payment method required. Each code works ONLY ONCE globally.
+// Standard Rehearse access codes: 7DAYSPASS, 14DAYSPASS, 30DAYSPASS.
+// Can be used globally across users, but only ONCE per user account / email.
 const PROMO_CODES: Record<string, { days: number; label: string }> = {
-  // Master tester codes
-  KGY2026: { days: 7, label: 'Early Bird — 7 Day Pass' },
-  REHEARSE2026: { days: 7, label: 'Early Access — 7 Day Pass' },
-  BETA7: { days: 7, label: 'Beta Tester — 7 Day Pass' },
-  TESTER2026: { days: 14, label: 'Extended Tester — 14 Day Pass' },
-  LAUNCHVIP: { days: 30, label: 'Launch VIP — 30 Day Pass' },
+  '7DAYSPASS': { days: 7, label: '7-Day Pass Unlocked! 🎉' },
+  '7-DAYS-PASS': { days: 7, label: '7-Day Pass Unlocked! 🎉' },
+  '7DAYS': { days: 7, label: '7-Day Pass Unlocked! 🎉' },
 
-  // Individual 7-Day Single-Use Tester Passes
-  'PASS-7D-01': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-02': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-03': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-04': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-05': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-06': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-07': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-08': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-09': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-10': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-11': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-12': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-13': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-14': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-15': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-16': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-17': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-18': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-19': { days: 7, label: 'Tester Pass — 7 Days' },
-  'PASS-7D-20': { days: 7, label: 'Tester Pass — 7 Days' },
+  '14DAYSPASS': { days: 14, label: '14-Day Pass Unlocked! 🎉' },
+  '14-DAYS-PASS': { days: 14, label: '14-Day Pass Unlocked! 🎉' },
+  '14DAYS': { days: 14, label: '14-Day Pass Unlocked! 🎉' },
 
-  // Individual 14-Day Single-Use Passes
-  'PASS-14D-01': { days: 14, label: 'Tester Pass — 14 Days' },
-  'PASS-14D-02': { days: 14, label: 'Tester Pass — 14 Days' },
-  'PASS-14D-03': { days: 14, label: 'Tester Pass — 14 Days' },
-  'PASS-14D-04': { days: 14, label: 'Tester Pass — 14 Days' },
-  'PASS-14D-05': { days: 14, label: 'Tester Pass — 14 Days' },
-
-  // VIP 30-Day Passes
-  'VIP-30D-01': { days: 30, label: 'VIP Pass — 30 Days' },
-  'VIP-30D-02': { days: 30, label: 'VIP Pass — 30 Days' },
-  'VIP-30D-03': { days: 30, label: 'VIP Pass — 30 Days' }
+  '30DAYSPASS': { days: 30, label: '30-Day Pass Unlocked! 🎉' },
+  '30-DAYS-PASS': { days: 30, label: '30-Day Pass Unlocked! 🎉' },
+  '30DAYS': { days: 30, label: '30-Day Pass Unlocked! 🎉' }
 };
 const PROMO_DURATION_MS = (days: number) => days * 24 * 60 * 60 * 1000;
 
@@ -200,10 +171,10 @@ export class SubscriptionController {
 
       const user = await memoryDb.getUser(resolvedUserId);
 
-      // Check if this specific access code has ALREADY been redeemed (single-use code rule)
-      const isAlreadyUsed = await memoryDb.isPromoCodeRedeemed(normalizedCode);
+      // Check if this specific access code has ALREADY been redeemed by THIS user
+      const isAlreadyUsed = await memoryDb.isPromoCodeRedeemed(normalizedCode, user.id);
       if (isAlreadyUsed) {
-        res.status(400).json({ error: 'This access code has already been used. Please request a new code.' });
+        res.status(400).json({ error: `You have already redeemed ${normalizedCode} on this account. Try another pass code like 14DAYSPASS or 30DAYSPASS!` });
         return;
       }
 
