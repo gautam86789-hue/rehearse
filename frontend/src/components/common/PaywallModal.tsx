@@ -27,7 +27,7 @@ import { navigationRef } from '../../navigation/navigationRef';
 // Play Store distribution later needs it back.
 export const PaywallModal: React.FC = () => {
   const { isPaywallVisible, setIsPaywallVisible, paywallPreferredPlan, refreshProfile, user, unlockMilestone } = useApp();
-  const { isGuest, authUser } = useAuth();
+  const { isGuest, user: authUser } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanId>('annual');
 

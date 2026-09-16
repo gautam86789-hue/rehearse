@@ -33,6 +33,7 @@ import { typography } from '../theme/typography';
 import { apiService } from '../services/api';
 import { Scenario, MessageTurn, RoleplaySession, Scorecard } from '../types';
 import { useFabClearance } from '../context/FabClearanceContext';
+import { schedulePostSessionReminder, getRemindersEnabled } from '../services/notificationService';
 
 export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
   const { scenario } = route.params as { scenario: Scenario };
@@ -153,30 +154,55 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
       if (res?.scorecard) {
         setLastScorecard(res.scorecard);
         addHistoryEntry(scenario, res.scorecard);
+
+        const score = res.scorecard.overallScore;
+
         if (res.scorecard.badgeUnlocked) {
           setUnlockedBadge(res.scorecard.badgeUnlocked);
           addNotification({
-            title: 'Milestone unlocked',
-            body: `${res.scorecard.badgeUnlocked.title} — ${res.scorecard.badgeUnlocked.description}`,
+            title: `🏆 ${res.scorecard.badgeUnlocked.title}`,
+            body: res.scorecard.badgeUnlocked.description,
             icon: (res.scorecard.badgeUnlocked.icon as any) || 'award'
           });
         }
 
-        // Pick up the post-session rehearsal count and nudge toward Pro once
-        // it's running low, mirroring the "Go Pro" footnote already on Home.
+        // Creative score-based in-app notification
+        let scoreNotifTitle = '';
+        let scoreNotifBody = '';
+        if (score >= 90) {
+          scoreNotifTitle = 'Elite performance 🎯';
+          scoreNotifBody = `${score}/100 — you held your ground and moved the conversation. That's what it feels like in real life.`;
+        } else if (score >= 75) {
+          scoreNotifTitle = 'Strong session 💪';
+          scoreNotifBody = `${score}/100. You stayed on point. One more rep and this becomes muscle memory.`;
+        } else if (score >= 60) {
+          scoreNotifTitle = 'Solid start. Now sharpen it.';
+          scoreNotifBody = `${score}/100 — check the feedback. The gap between good and great is one specific thing.`;
+        } else {
+          scoreNotifTitle = 'Hard sessions build real skill.';
+          scoreNotifBody = `${score}/100 today. The AI coach flagged exactly what to fix — that's the whole point.`;
+        }
+        addNotification({ title: scoreNotifTitle, body: scoreNotifBody, icon: 'award' });
+
+        // Schedule a personalized follow-up push for next morning
         const refreshed = await refreshProfile();
+        const remindersOn = await getRemindersEnabled(user.id);
+        if (remindersOn && refreshed) {
+          schedulePostSessionReminder(refreshed, score, true).catch(() => {});
+        }
+
         const remaining = refreshed?.subscription?.rehearsalsRemaining;
         const isFree = refreshed?.subscription?.status === 'free_trial';
         if (isFree && remaining === 1) {
           addNotification({
-            title: 'One free rehearsal left',
-            body: "You're almost through your free rehearsals — go Pro for unlimited practice.",
+            title: 'Last free rehearsal remaining',
+            body: "You've used almost all your free sessions. Go Pro to keep the momentum going.",
             icon: 'sparkles'
           });
         } else if (isFree && remaining === 0) {
           addNotification({
-            title: 'Free rehearsals used up',
-            body: 'Go Pro to keep rehearsing without limits.',
+            title: 'Free sessions used up',
+            body: "You've maxed out free rehearsals. Go Pro — your sessions are just getting good.",
             icon: 'sparkles'
           });
         }

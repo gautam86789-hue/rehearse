@@ -78,8 +78,43 @@ import { BadgeUnlockedModal } from '../components/common/BadgeUnlockedModal';
 import { AIAssistantWidget } from '../components/common/AIAssistantWidget';
 import { TrialEndedLockScreen } from '../components/common/TrialEndedLockScreen';
 import { FabClearanceProvider } from '../context/FabClearanceContext';
+import { InAppNotification, QueuedNotification } from '../components/common/InAppNotification';
 
 import { CustomTabBar } from '../components/common/CustomTabBar';
+
+/**
+ * Reads the AppContext notification queue and shows them one at a time,
+ * globally overlaid above every screen. Handles dismissal via AppContext
+ * so the notification bell stays in sync.
+ */
+const GlobalNotificationBanner: React.FC = () => {
+  const { notifications, dismissNotification } = useApp();
+  // Only show unread notifications, newest-first, max 5 queued at once
+  const unread = notifications.filter((n) => !n.read);
+
+  const queue: QueuedNotification[] = unread.slice(0, 5).map((n) => {
+    const icon = n.icon as string;
+    const titleLc = n.title?.toLowerCase() ?? '';
+    const notifType: QueuedNotification['type'] =
+      (icon === 'award' || icon === 'star' || titleLc.includes('milestone') || titleLc.includes('🏆'))
+        ? 'achievement'
+        : (icon === 'sparkles' || titleLc.includes('rehearsal') || titleLc.includes('free'))
+        ? 'info'
+        : (icon === 'alert-circle' || titleLc.includes('error'))
+        ? 'error'
+        : 'success';
+    return {
+      id: n.id,
+      title: n.title,
+      message: n.body || n.title,
+      type: notifType,
+      duration: 5000
+    };
+  });
+
+  if (queue.length === 0) return null;
+  return <InAppNotification queue={queue} onDismiss={dismissNotification} />;
+};
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -260,6 +295,9 @@ export const AppNavigator: React.FC = () => {
       <PaywallModal />
       <BadgeUnlockedModal />
       <TrialEndedLockScreen />
+
+      {/* Global 1-at-a-time notification banner — overlays every screen */}
+      {isAuthenticated && isOnboarded && <GlobalNotificationBanner />}
 
       {/* Floating AI Assistant — only once there's a real app to assist with */}
       {isAuthenticated && isOnboarded && <AIAssistantWidget activeRouteName={activeRouteName} />}

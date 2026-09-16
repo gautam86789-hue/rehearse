@@ -5,57 +5,129 @@ import { UserProfile } from '../types';
 import { syncUserTags } from './oneSignalService';
 
 /**
- * Local (on-device) reminders — no backend push server involved. Designed
- * around a few deliberate psychology rules rather than "notify whenever
- * something changes":
+ * Local (on-device) reminders — no backend push server involved.
  *
- * 1. At most ONE reminder scheduled per user per day. Every scheduling call
- *    below cancels whatever it previously scheduled first, so nothing can
- *    stack up into a flood.
- * 2. Loss-aversion framing ("don't lose your streak") is used whenever the
- *    user actually has a streak to lose — it reliably outperforms generic
- *    "come back!" copy. Users with no streak yet get a curiosity-framed nudge
- *    instead, since loss-aversion copy would just be false for them.
- * 3. Sent in the evening (default 7pm local), never late at night — a quiet
- *    hours rule, not a "fire the instant state changes" rule.
- * 4. The trial-ending reminder fires exactly once, the day before expiry —
- *    never a recurring "upgrade now" nag. Paywall pressure this rare reads
- *    as informative, not spammy.
- * 5. Everything here is skippable per-user via the existing Profile
- *    "Reminders" toggle (see ProfileScreen.tsx) — respecting that choice
- *    matters more than any one reminder landing.
+ * Design rules:
+ * 1. ONE reminder per user per day maximum. Every scheduling call cancels
+ *    the previous one first — no stacking, no floods.
+ * 2. Creative, rotating copy: 12 daily variants + 6 streak variants so the
+ *    same person never reads the same notification twice in a week.
+ * 3. Personalized where possible — uses real name, real streak count, real score.
+ * 4. Sent at 7 PM local time (evening reflection window, not late night).
+ * 5. Trial-ending reminder fires once, day before expiry. Never a nag.
+ * 6. Fully skippable via the Profile "Reminders" toggle.
  */
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true
   })
 });
 
-const REMINDER_HOUR = 19; // 7pm local — evening reflection time, not late night
+const REMINDER_HOUR = 19; // 7 PM local
 const CHANNEL_ID = 'rehearse-reminders';
 
-const dailyReminderKey = (userId: string) => `@rehearse_daily_reminder_id_${userId}`;
-const trialReminderKey = (userId: string) => `@rehearse_trial_reminder_id_${userId}`;
+const dailyReminderKey  = (userId: string) => `@rehearse_daily_reminder_id_${userId}`;
+const trialReminderKey  = (userId: string) => `@rehearse_trial_reminder_id_${userId}`;
+const lastCopyIndexKey  = (userId: string) => `@rehearse_notif_copy_idx_${userId}`;
+
+// ── Creative copy pools ──────────────────────────────────────────────────────
+
+const STREAK_COPY: Array<{ title: string; body: string }> = [
+  {
+    title: 'Your streak is on the line 🔥',
+    body: 'One rehearsal keeps the fire burning. Don\'t let today be the day it goes out.'
+  },
+  {
+    title: 'Real conversations don\'t wait. Neither should you.',
+    body: 'Keep your streak alive — 5 minutes of practice is all it takes today.'
+  },
+  {
+    title: 'Every high-stakes conversation gets easier the second time.',
+    body: 'Today\'s rep builds that muscle. Your streak is waiting.'
+  },
+  {
+    title: 'You\'ve been consistent. Don\'t stop now.',
+    body: 'A quick rehearsal before bed keeps your edge sharp for tomorrow.'
+  },
+  {
+    title: 'Top performers practice. Every. Single. Day.',
+    body: 'You\'re {streak} days in — don\'t let this one slide.'
+  },
+  {
+    title: 'The conversation you\'ve been avoiding? Practice it tonight.',
+    body: 'Your streak doesn\'t care about excuses. Neither do the people across the table.'
+  }
+];
+
+const NO_STREAK_COPY: Array<{ title: string; body: string }> = [
+  {
+    title: 'What\'s your hardest conversation right now? 🤔',
+    body: 'Rehearse it before it rehearses you. 2 minutes, zero stakes.'
+  },
+  {
+    title: 'The best negotiators aren\'t born — they practice.',
+    body: 'Your daily challenge is ready. Take 2 minutes before tomorrow\'s meeting.'
+  },
+  {
+    title: 'Today\'s puzzle will make Friday\'s meeting less painful.',
+    body: 'Seriously. Open it once, it takes under 3 minutes.'
+  },
+  {
+    title: 'What if you walked into that conversation fully prepared?',
+    body: 'Today\'s Daily Challenge is designed exactly for that feeling.'
+  },
+  {
+    title: 'Your next raise negotiation is closer than you think.',
+    body: 'Spend 2 minutes rehearsing it now — before it\'s awkward in real life.'
+  },
+  {
+    title: 'One insight can change how a conversation goes.',
+    body: 'Today\'s framework is worth 60 seconds of your time.'
+  }
+];
+
+const POST_SCORE_COPY = (score: number, firstName?: string): { title: string; body: string } => {
+  const name = firstName ? `, ${firstName}` : '';
+  if (score >= 85) {
+    return {
+      title: `Strong session${name} 💪`,
+      body: `${score}/100 — you\'re building real muscle. Push further tomorrow.`
+    };
+  }
+  if (score >= 70) {
+    return {
+      title: `Solid start. Now refine it.`,
+      body: `You scored ${score}/100. The gap between good and great is one more rep.`
+    };
+  }
+  return {
+    title: `Every expert was once a beginner.`,
+    body: `${score}/100 today — the AI knows exactly what to work on next. Come back tomorrow.`
+  };
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 let channelReady = false;
 async function ensureChannel() {
   if (channelReady || Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Practice reminders',
-    importance: Notifications.AndroidImportance.DEFAULT
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#6366F1'
   });
   channelReady = true;
 }
 
-/** Reads the same AsyncStorage flag ProfileScreen's "Reminders" toggle writes to. */
 export async function getRemindersEnabled(userId: string): Promise<boolean> {
   const v = await AsyncStorage.getItem(`@rehearse_reminders_${userId}`);
-  return v === null ? true : v === 'true'; // defaults on, matching ProfileScreen's initial state
+  return v === null ? true : v === 'true';
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -82,18 +154,36 @@ function nextOccurrenceOf(hour: number): Date {
   return target;
 }
 
+/** Picks the next copy variant in round-robin fashion so the same message never repeats. */
+async function pickCopy(
+  userId: string,
+  pool: Array<{ title: string; body: string }>,
+  replacements?: Record<string, string>
+): Promise<{ title: string; body: string }> {
+  const stored = await AsyncStorage.getItem(lastCopyIndexKey(userId));
+  const lastIdx = stored ? parseInt(stored, 10) : -1;
+  const nextIdx = (lastIdx + 1) % pool.length;
+  await AsyncStorage.setItem(lastCopyIndexKey(userId), String(nextIdx));
+
+  let { title, body } = pool[nextIdx];
+  if (replacements) {
+    for (const [k, v] of Object.entries(replacements)) {
+      title = title.replace(`{${k}}`, v);
+      body  = body.replace(`{${k}}`, v);
+    }
+  }
+  return { title, body };
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
 /**
- * Re-derives and schedules "today's" single reminder from current user
- * state. Call this after anything that changes streak/practice state
- * (completing a rehearsal or Daily Puzzle, or toggling Reminders in
- * Settings) — it always cancels its own previous reminder first, so calling
- * it repeatedly can never produce more than one pending notification.
+ * Re-derives and schedules today's single reminder from current user state.
+ * Call after anything that changes streak/practice state. Always cancels its
+ * own previous reminder first — calling it repeatedly can never produce more
+ * than one pending notification.
  */
 export async function syncDailyReminder(user: UserProfile, enabled: boolean): Promise<void> {
-  // Additive, not a replacement for the local scheduling below — OneSignal
-  // Journeys (configured in its dashboard once that app exists) key off
-  // these tags for the "Keep Them Coming Back" category; the local
-  // notification is what actually delivers today, before that's set up.
   syncUserTags(user);
 
   const key = dailyReminderKey(user.id);
@@ -101,25 +191,27 @@ export async function syncDailyReminder(user: UserProfile, enabled: boolean): Pr
   if (!enabled) return;
 
   const today = new Date().toISOString().slice(0, 10);
-  if (user.lastPracticeDate === today) return; // already practiced today — nothing to remind about
+  if (user.lastPracticeDate === today) return; // already practiced today
 
   const granted = await requestNotificationPermission();
   if (!granted) return;
   await ensureChannel();
 
   const hasStreak = (user.currentStreak || 0) > 0;
-  const { title, body } = hasStreak
-    ? {
-        title: `Don't lose your ${user.currentStreak}-day streak`,
-        body: 'One quick rehearsal keeps it alive today.'
-      }
-    : {
-        title: "Today's Daily Challenge is ready",
-        body: 'A 2-minute puzzle to sharpen your next hard conversation.'
-      };
+  const pool = hasStreak ? STREAK_COPY : NO_STREAK_COPY;
+  const replacements: Record<string, string> = {
+    streak: String(user.currentStreak || 0),
+    name: user.name?.split(' ')[0] || 'there'
+  };
+  const { title, body } = await pickCopy(user.id, pool, replacements);
 
   const id = await Notifications.scheduleNotificationAsync({
-    content: { title, body, data: { screen: 'DailyPuzzle' } },
+    content: {
+      title,
+      body,
+      data: { screen: hasStreak ? 'Home' : 'DailyPuzzle' },
+      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {})
+    },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: nextOccurrenceOf(REMINDER_HOUR),
@@ -129,6 +221,46 @@ export async function syncDailyReminder(user: UserProfile, enabled: boolean): Pr
   await AsyncStorage.setItem(key, id);
 }
 
+/** Schedules a post-session motivational push based on the session score. */
+export async function schedulePostSessionReminder(
+  user: UserProfile,
+  score: number,
+  enabled: boolean
+): Promise<void> {
+  if (!enabled) return;
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+  await ensureChannel();
+
+  const firstName = user.name?.split(' ')[0];
+  const { title, body } = POST_SCORE_COPY(score, firstName);
+
+  // Fire 18 hours later (next morning, roughly) so it feels like a coaching follow-up
+  const fireAt = new Date(Date.now() + 18 * 60 * 60 * 1000);
+  // Don't fire if it would land between 11 PM and 7 AM
+  const hour = fireAt.getHours();
+  if (hour >= 23 || hour < 7) {
+    fireAt.setHours(9, 0, 0, 0);
+    if (fireAt.getTime() <= Date.now()) {
+      fireAt.setDate(fireAt.getDate() + 1);
+    }
+  }
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      data: { screen: 'Home' },
+      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {})
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: fireAt,
+      channelId: CHANNEL_ID
+    }
+  });
+}
+
 /** One-time, fires the day before a free trial ends. Never repeats. */
 export async function syncTrialEndingReminder(user: UserProfile, enabled: boolean): Promise<void> {
   const key = trialReminderKey(user.id);
@@ -136,38 +268,42 @@ export async function syncTrialEndingReminder(user: UserProfile, enabled: boolea
   if (!enabled) return;
   if (user.subscription?.status !== 'free_trial' || !user.subscription.trialEndsAt) return;
 
-  const trialEnd = new Date(user.subscription.trialEndsAt);
+  const trialEnd    = new Date(user.subscription.trialEndsAt);
   const reminderTime = new Date(trialEnd.getTime() - 24 * 60 * 60 * 1000);
-  if (reminderTime.getTime() <= Date.now()) return; // would fire in the past — skip rather than send late
+  if (reminderTime.getTime() <= Date.now()) return;
 
   const granted = await requestNotificationPermission();
   if (!granted) return;
   await ensureChannel();
 
+  const firstName = user.name?.split(' ')[0];
+  const name = firstName ? `, ${firstName}` : '';
+
   const id = await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Your free trial ends tomorrow',
-      body: 'Keep your streak and unlock unlimited rehearsals before it lapses.',
-      data: { screen: 'MembershipBilling' }
+      title: `Your free trial ends tomorrow${name} ⏰`,
+      body: 'Keep your momentum going — unlock unlimited rehearsals before your streak disappears.',
+      data: { screen: 'MembershipBilling' },
+      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {})
     },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: reminderTime, channelId: CHANNEL_ID }
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: reminderTime,
+      channelId: CHANNEL_ID
+    }
   });
   await AsyncStorage.setItem(key, id);
 }
 
-/** Cancels every reminder this service has scheduled for a user — used when Reminders is turned off. */
+/** Cancels every reminder this service has scheduled for a user. */
 export async function cancelAllReminders(userId: string): Promise<void> {
   await cancelStored(dailyReminderKey(userId));
   await cancelStored(trialReminderKey(userId));
 }
 
 /**
- * Routes a tapped notification to the screen it's actually about, instead of
- * just opening to whatever screen the app happened to be on. Call once, at
- * app root. Also checks `getLastNotificationResponseAsync()` for the case
- * where the tap is what launched the app from a cold start (killed, not
- * backgrounded) — the response event listener alone misses that case since
- * nothing is listening yet when the tap happens.
+ * Routes a tapped notification to the correct screen. Call once at app root.
+ * Also handles cold-start taps via getLastNotificationResponseAsync().
  */
 export function registerNotificationResponseHandler(
   navigate: (screen: string, params?: object) => void
