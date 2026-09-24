@@ -63,7 +63,7 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
     }
   };
 
-  const isFreeTrial = user.subscription?.status === 'free_trial';
+  const isFreeTrial = user.subscription?.status === 'free_trial' || user.subscription?.status === 'free_rehearsals';
   const isPlus =
     isPro ||
     user.subscription?.status === 'active_annual' ||

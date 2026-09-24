@@ -52,7 +52,7 @@ export const TrialEndedLockScreen: React.FC = () => {
       return !isPromoValid;
     }
 
-    if (user.subscription?.status === 'free_trial') {
+    if (user.subscription?.status === 'free_trial' || user.subscription?.status === 'free_rehearsals') {
       const remaining = user.subscription?.rehearsalsRemaining ?? 0;
       return remaining <= 0;
     }

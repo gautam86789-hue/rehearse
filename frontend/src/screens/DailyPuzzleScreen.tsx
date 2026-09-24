@@ -36,7 +36,7 @@ export const DailyPuzzleScreen: React.FC<{ route: any; navigation: any }> = ({ r
   useEffect(() => {
     if (!puzzle) {
       apiService
-        .getDailyPuzzle()
+        .getDailyPuzzle(user.audience || 'professionals')
         .then((res) => setPuzzle(res.puzzle))
         .finally(() => setIsLoadingPuzzle(false));
     }

@@ -425,7 +425,7 @@ export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ na
               <View style={styles.sectionHeaderLeft}>
                 <Sparkles size={14} color={themeColors.primary} />
                 <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>
-                  FEATURED HIGH-STAKES DRILL
+                  {featuredScenario.difficulty === 'High Stakes' ? 'FEATURED HIGH-STAKES DRILL' : 'RECOMMENDED FOR YOU'}
                 </Text>
               </View>
               <View style={[styles.featuredTag, { backgroundColor: themeColors.primary }]}>
