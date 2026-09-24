@@ -11,8 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  Play,
-  Zap,
+  Check,
   MessageCircleHeart,
   Ban,
   Users,
@@ -33,6 +32,8 @@ import { getDailyQuote } from '../data/dailyQuotes';
 import { getFeatureIllustration } from '../data/generatedImages';
 import { CATEGORY_COLORS } from '../data/categoryColors';
 import { JOURNEYS } from '../data/journeys';
+import { localDateKey } from '../utils/dates';
+import { hasSeenTutorial } from '../utils/tutorial';
 import { Scenario, Audience, WordOfTheDay, FrameworkOfTheDay } from '../types';
 import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
@@ -104,6 +105,17 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const dailyQuote = getDailyQuote();
   const unreadNotifications = notifications.filter((n) => !n.read).length;
 
+  // First time on Home: show the short "how it works" walkthrough once.
+  useEffect(() => {
+    let cancelled = false;
+    hasSeenTutorial(user.id).then((seen) => {
+      if (!seen && !cancelled) navigation.navigate('Tutorial');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user.id]);
+
   useEffect(() => {
     loadHomeData();
     apiService.getDailyPuzzle(audience).then((res) => {
@@ -141,7 +153,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const firstName = (user.name || 'there').split(' ')[0];
-  const isFreeTrial = user.subscription?.status === 'free_trial';
+  const isFreeTrial = user.subscription?.status === 'free_trial' || user.subscription?.status === 'free_rehearsals';
   const remainingRehearsals = user.subscription?.rehearsalsRemaining ?? 3;
   // Promo access (and a real store-billed trial once RevenueCat sets
   // trialEndsAt) is time-boxed rather than count-based, so it needs its own
@@ -153,6 +165,9 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     (user.subscription?.status === 'active_promo' || user.subscription?.status === 'active_monthly' || user.subscription?.status === 'active_three_month' || user.subscription?.status === 'active_annual') &&
     trialDaysLeft !== undefined;
   const streak = user.currentStreak || 0;
+  const todayKey = localDateKey();
+  const challengeDone = (user.completedPuzzleDates || []).includes(todayKey);
+  const pickedLabel: string | undefined = user.puzzleResults?.[todayKey]?.result?.strategyLabel || undefined;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -170,14 +185,22 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         onLayout={fitScroll.onLayout}
         onContentSizeChange={fitScroll.onContentSizeChange}
       >
-        {/* 1. GREETING HEADER */}
+        {/* GREETING + streak + notifications — kept to one quiet row */}
         <View style={styles.greetingRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={[styles.greetingHello, { color: colors.textSecondary }]}>{greeting},</Text>
-            <Text style={[styles.greetingName, { color: colors.textPrimary }]}>
-              {firstName} <Text>👋</Text>
+            <Text style={[styles.greetingName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {firstName}
             </Text>
           </View>
+          <TouchableOpacity
+            style={[styles.streakPill, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+            onPress={() => navigation.navigate('ProgressTab')}
+            activeOpacity={0.85}
+          >
+            <MilestoneIcon icon="flame" size={18} />
+            <Text style={[styles.streakPillText, { color: colors.textPrimary }]}>{streak}</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.bellButton, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
             onPress={() => navigation.navigate('Notifications')}
@@ -190,31 +213,40 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.quoteCard, { backgroundColor: colors.primarySubtle }]}>
-          <Text style={[styles.dailyQuote, { color: colors.primary }]}>"{dailyQuote}"</Text>
-        </View>
-
-        {/* 2. STREAK CARD */}
+        {/* TODAY'S CHALLENGE — the one thing to do today. Once done, it stays
+            marked done (with what you picked) until tomorrow. */}
         <TouchableOpacity
-          style={[styles.streakCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-          onPress={() => navigation.navigate('ProgressTab')}
-          activeOpacity={0.85}
+          style={[
+            styles.heroCard,
+            { backgroundColor: challengeDone ? colors.surfaceCard : colors.primary, borderColor: challengeDone ? colors.sage : colors.primary }
+          ]}
+          onPress={() => navigation.navigate('DailyPuzzle')}
+          activeOpacity={0.88}
         >
-          <View style={[styles.streakIconCircle, { backgroundColor: colors.flameGlow }]}>
-            <MilestoneIcon icon="flame" size={26} />
-          </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.streakTitle, { color: colors.textPrimary }]}>
-              {streak > 0 ? 'Keep going' : 'Start your streak'}
+            <Text style={[styles.heroEyebrow, { color: challengeDone ? colors.sage : 'rgba(255,255,255,0.8)' }]}>
+              {challengeDone ? "TODAY'S CHALLENGE · DONE" : "TODAY'S CHALLENGE"}
             </Text>
-            <Text style={[styles.streakSubtitle, { color: colors.textSecondary }]}>
-              {streak > 0 ? `${streak} day streak` : 'Complete a rehearsal today'}
+            <Text
+              style={[styles.heroTitle, { color: challengeDone ? colors.textPrimary : '#FFFFFF' }]}
+              numberOfLines={2}
+            >
+              {puzzleTitle || "Loading today's challenge..."}
+            </Text>
+            <Text style={[styles.heroSub, { color: challengeDone ? colors.textSecondary : 'rgba(255,255,255,0.85)' }]}>
+              {challengeDone
+                ? pickedLabel
+                  ? `You chose: ${pickedLabel} · Tap to review`
+                  : 'Tap to review your answer'
+                : '2 minutes · pick the best response'}
             </Text>
           </View>
-          <ChevronRight size={18} color={colors.textMuted} />
+          <View style={[styles.heroArrow, { backgroundColor: challengeDone ? colors.sage : 'rgba(255,255,255,0.2)' }]}>
+            {challengeDone ? <Check size={18} color="#FFFFFF" /> : <ChevronRight size={20} color="#FFFFFF" />}
+          </View>
         </TouchableOpacity>
 
-        {/* 3. PRACTICE A CONVERSATION — 2x2 grid */}
+        {/* PRACTICE A CONVERSATION */}
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Practice a conversation</Text>
           <TouchableOpacity
@@ -241,95 +273,59 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ))}
         </View>
 
-        {/* 4. DAILY LEARNING FLOW — Word introduces a concept, Framework
-            teaches it, the Scenario/Puzzle lets you apply it. Same theme
-            where content coverage allows (see backend db/client.ts's
-            memoryGetTodaysFramework/Puzzle), so the three cards read as one
-            narrative instead of three unrelated rotations. */}
-        {wordOfDay && (
-          <TouchableOpacity
-            style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-            onPress={() => setShowWordModal(true)}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.teal.subtle }]}>
-              <BookOpen size={18} color={colors.cardCategories.teal.solid} />
+        {/* LEARN — the daily term, framework and the roadmap grouped into one
+            quiet card instead of three separate ones. */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 12 }]}>Learn</Text>
+        <View style={[styles.learnCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
+          {wordOfDay && (
+            <TouchableOpacity style={styles.learnRow} onPress={() => setShowWordModal(true)} activeOpacity={0.7}>
+              <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.teal.subtle }]}>
+                <BookOpen size={18} color={colors.cardCategories.teal.solid} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>TERM OF THE DAY</Text>
+                <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {wordOfDay.term}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+          {wordOfDay && frameworkOfDay && <View style={[styles.learnDivider, { backgroundColor: colors.surfaceBorder }]} />}
+          {frameworkOfDay && (
+            <TouchableOpacity
+              style={styles.learnRow}
+              onPress={() => navigation.navigate('FrameworkDetail', { framework: frameworkOfDay })}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.purple.subtle }]}>
+                <GraduationCap size={18} color={colors.cardCategories.purple.solid} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>FRAMEWORK OF THE DAY</Text>
+                <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {frameworkOfDay.title}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+          {(wordOfDay || frameworkOfDay) && <View style={[styles.learnDivider, { backgroundColor: colors.surfaceBorder }]} />}
+          <TouchableOpacity style={styles.learnRow} onPress={() => navigation.navigate('Learn')} activeOpacity={0.7}>
+            <View style={[styles.dailyIconSquare, { backgroundColor: colors.primarySubtle }]}>
+              <Sparkles size={18} color={colors.primary} />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>1 · TERM OF THE DAY</Text>
+              <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>
+                {journey.title.toUpperCase()} · {journeyCompletedCount}/{journey.nodes.length}
+              </Text>
               <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
-                {wordOfDay.term}
+                {journeyCompletedCount === 0 ? journey.tagline : 'Continue where you left off'}
               </Text>
             </View>
-            <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
-              <Play size={13} color={colors.cardCategories.teal.solid} fill={colors.cardCategories.teal.solid} />
-            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
           </TouchableOpacity>
-        )}
-
-        {frameworkOfDay && (
-          <TouchableOpacity
-            style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-            onPress={() => navigation.navigate('FrameworkDetail', { framework: frameworkOfDay })}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.purple.subtle }]}>
-              <GraduationCap size={18} color={colors.cardCategories.purple.solid} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>2 · FRAMEWORK OF THE DAY</Text>
-              <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
-                {frameworkOfDay.title}
-              </Text>
-            </View>
-            <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
-              <Play size={13} color={colors.cardCategories.purple.solid} fill={colors.cardCategories.purple.solid} />
-            </View>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-          onPress={() => navigation.navigate('DailyPuzzle')}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.dailyIconSquare, { backgroundColor: colors.primarySubtle }]}>
-            <Zap size={18} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>3 · PUT IT INTO PRACTICE</Text>
-            <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
-              {puzzleTitle || 'Loading today\'s scenario...'}
-            </Text>
-          </View>
-          <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
-            <Play size={13} color={colors.primary} fill={colors.primary} />
-          </View>
-        </TouchableOpacity>
-
-        {/* 4b. YOUR JOURNEY — the unified animated roadmap of lessons + story
-            scenes; separate from the daily trio above since it's ongoing
-            progress, not a daily rotation. */}
-        <TouchableOpacity
-          style={[styles.dailyCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-          onPress={() => navigation.navigate('Learn')}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.dailyIconSquare, { backgroundColor: colors.cardCategories.purple.subtle }]}>
-            <Sparkles size={18} color={colors.cardCategories.purple.solid} />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.dailyPretitle, { color: colors.textSecondary }]}>
-              {journey.title.toUpperCase()} · {journeyCompletedCount}/{journey.nodes.length}
-            </Text>
-            <Text style={[styles.dailyHeadline, { color: colors.textPrimary }]} numberOfLines={1}>
-              {journeyCompletedCount === 0 ? journey.tagline : 'Continue where you left off'}
-            </Text>
-          </View>
-          <View style={[styles.dailyArrow, { backgroundColor: colors.surfaceHighlight }]}>
-            <Play size={13} color={colors.cardCategories.purple.solid} fill={colors.cardCategories.purple.solid} />
-          </View>
-        </TouchableOpacity>
+        </View>
 
         {/* 6. TRIAL FOOTNOTE — free tier reads by rehearsal count (no time
             pressure on those 3), an active promo/trial reads by days left
@@ -389,6 +385,67 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5
+  },
+  streakPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 44,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    marginRight: 10
+  },
+  streakPillText: {
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  heroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    padding: 18,
+    marginBottom: 28,
+    gap: 12
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 6
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    lineHeight: 24
+  },
+  heroSub: {
+    fontSize: 12.5,
+    marginTop: 6
+  },
+  heroArrow: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  learnCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 20,
+    overflow: 'hidden'
+  },
+  learnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14
+  },
+  learnDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 66
   },
   bellButton: {
     width: 44,

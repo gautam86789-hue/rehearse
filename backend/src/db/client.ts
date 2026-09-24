@@ -45,9 +45,22 @@ export function verifyPassword(password: string, hash: string, salt: string): bo
 // to strip them before the object reaches res.json, or the hash+salt pair
 // (everything needed to offline-brute-force the password) ships to the
 // client in plain JSON.
+// A profile named after nothing but the placeholder falls back to the part of
+// the sign-in email before the @ — that's the name people expect to see after
+// signing up, and it keeps the name stable across logins and devices.
+export function displayNameFor(name: string | undefined | null, email: string | undefined | null): string {
+  const trimmed = (name || '').trim();
+  const isPlaceholder = !trimmed || trimmed === 'Professional';
+  if (isPlaceholder && email && !email.endsWith('@rehearse.local') && email.includes('@')) {
+    return email.split('@')[0];
+  }
+  return trimmed || 'Professional';
+}
+
 function stripSensitive(account: UserAccount): UserProfile {
   const { passwordHash, passwordSalt, isActive, emailVerificationCode, emailVerificationExpiresAt, ...profile } = account;
-  return profile;
+  const name = displayNameFor(profile.name, profile.email);
+  return { ...profile, name, fullName: name };
 }
 
 
@@ -124,8 +137,8 @@ function rowToUserProfile(row: any): UserProfile {
   return {
     id: row.id,
     email: row.email,
-    name: row.full_name,
-    fullName: row.full_name,
+    name: displayNameFor(row.full_name, row.email),
+    fullName: displayNameFor(row.full_name, row.email),
     avatarUrl: row.avatar_url,
     role: row.role,
     experienceLevel: row.experience_level,
@@ -668,8 +681,8 @@ class InMemoryDatabase {
     const profile: UserAccount = {
       id: userId,
       email: cleanEmail,
-      name: params.fullName || 'Professional',
-      fullName: params.fullName || 'Professional',
+      name: displayNameFor(params.fullName, cleanEmail),
+      fullName: displayNameFor(params.fullName, cleanEmail),
       role: params.role || 'Manager',
       experienceLevel: params.experienceLevel || 'Mid-Level',
       audience: params.audience || 'professionals',

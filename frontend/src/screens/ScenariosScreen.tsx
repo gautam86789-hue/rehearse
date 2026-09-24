@@ -30,7 +30,7 @@ import { Scenario } from '../types';
 
 export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ navigation, route }) => {
   const { colors: themeColors, elevation } = useTheme();
-  const { user } = useApp();
+  const { user, history } = useApp();
   // Custom header had a flat paddingTop:20 with no safe-area handling — on
   // edge-to-edge Android that put the title/back-button under the status bar.
   const insets = useSafeAreaInsets();
@@ -100,8 +100,19 @@ export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ na
     { id: 'difficult_decisions', label: 'Difficult Decisions' }
   ];
 
+  // Beginner-first: someone new sees the gentle scenarios at the top, and the
+  // list drifts toward Intermediate and High Stakes as they complete more
+  // rehearsals. Scenarios closest to the user's current level come first.
+  const levelTarget = history.length < 3 ? 0 : history.length < 8 ? 1 : 2;
+  const rankOf = (d: string) => (d === 'Beginner' ? 0 : d === 'Intermediate' ? 1 : 2);
+  const byLevel = (list: Scenario[]) =>
+    list
+      .map((sc, i) => ({ sc, i }))
+      .sort((a, b) => Math.abs(rankOf(a.sc.difficulty) - levelTarget) - Math.abs(rankOf(b.sc.difficulty) - levelTarget) || a.i - b.i)
+      .map((x) => x.sc);
+
   const filteredScenarios = useMemo(() => {
-    return scenarios.filter((s) => {
+    return byLevel(scenarios).filter((s) => {
       // "Saved" pseudo-category: bookmarked scenarios, regardless of category
       if (selectedCategory === 'saved') {
         return !!user.savedScenarioIds?.includes(s.id);
@@ -125,9 +136,9 @@ export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ na
         s.userGoal.toLowerCase().includes(q)
       );
     });
-  }, [scenarios, selectedCategory, selectedDifficulty, searchQuery, user.savedScenarioIds]);
+  }, [scenarios, selectedCategory, selectedDifficulty, searchQuery, user.savedScenarioIds, levelTarget]);
 
-  const featuredScenario = allScenarios[0];
+  const featuredScenario = byLevel(allScenarios)[0];
 
   const handleOpenBrief = (scenario: Scenario) => {
     navigation.navigate('ScenarioDetail', { scenario });

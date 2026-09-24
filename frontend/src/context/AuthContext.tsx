@@ -381,38 +381,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('OAuth flow warning, executing provider fallback:', err);
     }
 
-    // Direct provider sign-in fallback (for dev / testing / unconfigured OAuth keys)
-    const providerEmail = `${provider}.user@rehearse.ai`;
-    const mockUser = {
-      id: `user-${provider}-${Date.now().toString(36)}`,
-      email: providerEmail,
-      name: providerEmail,
-      role: 'Executive Leader',
-      createdAt: new Date().toISOString()
-    };
-
-    await AsyncStorage.setItem('@rehearse_auth_token', `token-${mockUser.id}`);
-    await AsyncStorage.setItem('@rehearse_auth_user', JSON.stringify(mockUser));
-    await AsyncStorage.removeItem(GUEST_KEY);
-    apiService.setAuthToken(`token-${mockUser.id}`);
-
-    const adaptedUser: User = {
-      id: mockUser.id,
-      email: mockUser.email,
-      user_metadata: {
-        fullName: mockUser.email,
-        name: mockUser.email,
-        role: mockUser.role
-      },
-      app_metadata: {},
-      aud: 'authenticated',
-      created_at: mockUser.createdAt
-    } as User;
-
-    setUser(adaptedUser);
-    setSession({ access_token: `token-${mockUser.id}`, user: adaptedUser } as any);
-    setIsGuest(false);
-    return { error: null, url: null };
+    // The provider flow didn't complete (cancelled, or this project has no
+    // OAuth keys configured). Never fabricate an account here — a made-up
+    // identity isn't in the database, so nothing would sync and every attempt
+    // would start from scratch. Email sign-in is the path that's always real.
+    const msg = 'That sign-in option isn\'t available right now. Please continue with your email instead.';
+    setAuthError(msg);
+    return { error: new Error(msg), url: null };
   };
 
   const signOut = async () => {

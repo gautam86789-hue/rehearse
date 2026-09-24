@@ -7,10 +7,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  TextInput
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AlertCircle, ShieldCheck, X } from 'lucide-react-native';
+import { AlertCircle, ShieldCheck, X, Mail, Lock } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { useTheme, RADII } from '../context/ThemeContext';
@@ -29,9 +30,41 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   const { colors, accentColor, isDark, elevation } = useTheme();
   const {
     signInWithOAuth,
+    signInWithEmail,
+    signUpWithEmail,
     authError,
     clearError
   } = useAuth();
+
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const handleEmailSubmit = async () => {
+    setFormError('');
+    clearError();
+    const cleanEmail = email.trim();
+    if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
+      setFormError('Enter a valid email address.');
+      return;
+    }
+    if (password.length < 6) {
+      setFormError('Your password needs at least 6 characters.');
+      return;
+    }
+    setSubmitting(true);
+    // The email's local part becomes the display name (see AppContext's
+    // withRealName + the backend's displayNameFor), so nobody is left as
+    // "Professional".
+    const res =
+      mode === 'signup'
+        ? await signUpWithEmail(cleanEmail, password, { fullName: cleanEmail.split('@')[0] })
+        : await signInWithEmail(cleanEmail, password);
+    setSubmitting(false);
+    if (res?.error) setFormError(res.error.message || 'Something went wrong. Please try again.');
+  };
 
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'azure' | 'facebook' | null>(null);
 
@@ -80,27 +113,87 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
 
           {/* 2. Main Title */}
           <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account / Sign In</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+            </Text>
             <Text style={[styles.subTitleText, { color: colors.textSecondary }]}>
-              Select your provider below to sign in or create an account.
+              {mode === 'signin'
+                ? 'Sign in to pick up right where you left off.'
+                : 'Your progress and streak will follow you to any device.'}
             </Text>
           </View>
 
           {/* Error Banner */}
-          {authError ? (
+          {formError || authError ? (
             <View style={[styles.errorBanner, { backgroundColor: colors.danger + '20', borderColor: colors.danger + '50' }]}>
               <AlertCircle size={15} color={colors.danger} style={{ marginRight: 8 }} />
-              <Text style={[styles.errorText, { color: colors.danger }]}>{authError}</Text>
-              <TouchableOpacity onPress={clearError}>
+              <Text style={[styles.errorText, { color: colors.danger }]}>{formError || authError}</Text>
+              <TouchableOpacity onPress={() => { setFormError(''); clearError(); }}>
                 <X size={14} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
           ) : null}
 
-          {/* 3. 3 Primary Social OAuth Buttons (Google, Microsoft, Facebook) */}
+          {/* 3. Email + password — always backed by the real account database */}
           <View style={styles.authBox}>
+            <View style={[styles.inputRow, { backgroundColor: colors.surfaceElevated, borderColor: colors.surfaceBorder }]}>
+              <Mail size={16} color={colors.textMuted} />
+              <TextInput
+                style={[styles.input, { color: colors.textPrimary }]}
+                placeholder="Email"
+                placeholderTextColor={colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+              />
+            </View>
+            <View style={[styles.inputRow, { backgroundColor: colors.surfaceElevated, borderColor: colors.surfaceBorder }]}>
+              <Lock size={16} color={colors.textMuted} />
+              <TextInput
+                style={[styles.input, { color: colors.textPrimary }]}
+                placeholder="Password"
+                placeholderTextColor={colors.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                onSubmitEditing={handleEmailSubmit}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: colors.primary }]}
+              onPress={handleEmailSubmit}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitBtnText}>{mode === 'signin' ? 'Sign in' : 'Create account'}</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setFormError(''); clearError(); }}
+              style={styles.switchModeBtn}
+            >
+              <Text style={[styles.switchModeText, { color: colors.textSecondary }]}>
+                {mode === 'signin' ? 'New here? ' : 'Already have an account? '}
+                <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                  {mode === 'signin' ? 'Create an account' : 'Sign in'}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: colors.surfaceBorder }]} />
+              <Text style={[styles.dividerText, { color: colors.textMuted }]}>or</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.surfaceBorder }]} />
+            </View>
+
             <SocialAuthButtons
-              mode="signin"
+              mode={mode}
               onSelectProvider={handleOAuth}
               loadingProvider={loadingProvider}
             />
@@ -160,7 +253,7 @@ const styles = StyleSheet.create({
     fontWeight: '900'
   },
   subtitle: {
-    ...typography.body2,
+    ...typography.body,
     marginTop: 6,
     textAlign: 'center',
     maxWidth: 300
@@ -196,6 +289,35 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 32
   },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: RADII.md,
+    paddingHorizontal: 14,
+    height: 50,
+    marginBottom: 10
+  },
+  input: { flex: 1, fontSize: 14.5 },
+  submitBtn: {
+    height: 50,
+    borderRadius: RADII.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4
+  },
+  submitBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  switchModeBtn: { marginTop: 14, alignItems: 'center' },
+  switchModeText: { fontSize: 13 },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 20
+  },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: 12, fontWeight: '600' },
   trustBadge: {
     flexDirection: 'row',
     alignItems: 'center',

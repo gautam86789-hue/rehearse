@@ -1,3 +1,4 @@
+import { localDateKey } from '../../utils/dates';
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, Pressable } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
@@ -25,7 +26,7 @@ interface PracticeRhythmProps {
 }
 
 const DAY_MS = 86400000;
-const toKey = (d: Date) => d.toISOString().slice(0, 10);
+const toKey = (d: Date) => localDateKey(d);
 
 /**
  * Practice consistency as a real calendar surface.

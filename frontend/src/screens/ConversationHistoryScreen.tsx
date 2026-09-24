@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { ArrowLeft, History, MessageCircle } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ArrowLeft, History, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, RADII } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
 import { categoryColorFor } from '../data/categoryColors';
+import { Scenario, MessageTurn } from '../types';
 
 const CATEGORY_LABEL: Record<string, string> = {
   negotiation: 'Negotiation',
@@ -30,11 +33,49 @@ function scoreColor(score: number, colors: any): string {
   return colors.ruby;
 }
 
+interface InProgressItem {
+  scenario: Scenario;
+  turns: MessageTurn[];
+}
+
 export const ConversationHistoryScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors, elevation } = useTheme();
-  const { history } = useApp();
+  const { history, user } = useApp();
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 8;
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [inProgress, setInProgress] = useState<InProgressItem[]>([]);
+
+  // Unfinished rehearsals (started, not yet scored) are saved under their own
+  // storage keys by RoleplayScreen — list them here so they can be picked
+  // back up.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(`@rehearse_inprogress_${user.id}_`));
+          const items: InProgressItem[] = [];
+          for (const key of keys) {
+            const raw = await AsyncStorage.getItem(key);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            if (parsed?.session?.scenario && parsed.turns?.length > 1) {
+              items.push({ scenario: parsed.session.scenario, turns: parsed.turns });
+            }
+          }
+          if (!cancelled) setInProgress(items);
+        } catch {
+          if (!cancelled) setInProgress([]);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [user.id])
+  );
+
+  const isEmpty = history.length === 0 && inProgress.length === 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -50,7 +91,7 @@ export const ConversationHistoryScreen: React.FC<{ navigation: any }> = ({ navig
         <View style={{ width: 32 }} />
       </View>
 
-      {history.length === 0 ? (
+      {isEmpty ? (
         <View style={styles.emptyState}>
           <View style={[styles.emptyIconCircle, { backgroundColor: colors.primarySubtle }]}>
             <History size={26} color={colors.primary} />
@@ -62,30 +103,116 @@ export const ConversationHistoryScreen: React.FC<{ navigation: any }> = ({ navig
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {inProgress.map((item) => (
+            <TouchableOpacity
+              key={`ip-${item.scenario.id}`}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Roleplay', { scenario: item.scenario })}
+              style={[styles.card, elevation.sm, { backgroundColor: colors.surfaceCard, borderColor: colors.primary }]}
+            >
+              <View style={styles.rowInner}>
+                <View style={[styles.iconSquare, { backgroundColor: colors.primarySubtle }]}>
+                  <MessageCircle size={18} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {item.scenario.title}
+                  </Text>
+                  <Text style={[styles.rowSub, { color: colors.primary }]} numberOfLines={1}>
+                    In progress · Tap to continue
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+
           {history.map((entry) => {
             const palette = colors.cardCategories[categoryColorFor(entry.category)];
+            const isOpen = expandedId === entry.id;
+            const hasTranscript = !!entry.turns && entry.turns.length > 0;
             return (
-            <View
-              key={entry.id}
-              style={[styles.row, elevation.sm, { backgroundColor: palette.subtle, borderColor: palette.border }]}
-            >
-              <View style={[styles.iconSquare, { backgroundColor: colors.surfaceCard }]}>
-                <MessageCircle size={18} color={palette.solid} />
+              <View
+                key={entry.id}
+                style={[styles.card, elevation.sm, { backgroundColor: palette.subtle, borderColor: palette.border }]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={!hasTranscript}
+                  onPress={() => setExpandedId(isOpen ? null : entry.id)}
+                  style={styles.rowInner}
+                >
+                  <View style={[styles.iconSquare, { backgroundColor: colors.surfaceCard }]}>
+                    <MessageCircle size={18} color={palette.solid} />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+                    <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {entry.scenarioTitle}
+                    </Text>
+                    <Text style={[styles.rowSub, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {CATEGORY_LABEL[entry.category] || entry.category} • {formatRelativeDate(entry.completedAt)}
+                    </Text>
+                  </View>
+                  <View style={[styles.scoreBadge, { backgroundColor: scoreColor(entry.overallScore, colors) + '1A' }]}>
+                    <Text style={[styles.scoreBadgeText, { color: scoreColor(entry.overallScore, colors) }]}>
+                      {entry.overallScore}
+                    </Text>
+                  </View>
+                  {hasTranscript &&
+                    (isOpen ? (
+                      <ChevronUp size={16} color={colors.textMuted} style={{ marginLeft: 6 }} />
+                    ) : (
+                      <ChevronDown size={16} color={colors.textMuted} style={{ marginLeft: 6 }} />
+                    ))}
+                </TouchableOpacity>
+
+                {isOpen && entry.turns && (
+                  <View style={styles.transcript}>
+                    {entry.turns.map((t, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.bubble,
+                          t.speaker === 'user'
+                            ? { alignSelf: 'flex-end', backgroundColor: colors.primary }
+                            : {
+                                alignSelf: 'flex-start',
+                                backgroundColor: colors.surfaceCard,
+                                borderColor: colors.surfaceBorder,
+                                borderWidth: 1
+                              }
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            lineHeight: 18,
+                            color: t.speaker === 'user' ? colors.textInverse : colors.textPrimary
+                          }}
+                        >
+                          {t.message}
+                        </Text>
+                      </View>
+                    ))}
+                    {entry.scorecard && (
+                      <TouchableOpacity
+                        onPress={() =>
+                          navigation.navigate('Feedback', {
+                            scorecard: entry.scorecard,
+                            scenario: {
+                              title: entry.scenarioTitle,
+                              counterpartName: entry.counterpartName,
+                              category: entry.category
+                            }
+                          })
+                        }
+                        style={[styles.feedbackBtn, { borderColor: colors.primary }]}
+                      >
+                        <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>View feedback</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
-              <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
-                <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-                  {entry.scenarioTitle}
-                </Text>
-                <Text style={[styles.rowSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {CATEGORY_LABEL[entry.category] || entry.category} • {formatRelativeDate(entry.completedAt)}
-                </Text>
-              </View>
-              <View style={[styles.scoreBadge, { backgroundColor: scoreColor(entry.overallScore, colors) + '1A' }]}>
-                <Text style={[styles.scoreBadgeText, { color: scoreColor(entry.overallScore, colors) }]}>
-                  {entry.overallScore}
-                </Text>
-              </View>
-            </View>
             );
           })}
         </ScrollView>
@@ -120,11 +247,14 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 10
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  card: {
     borderRadius: RADII.lg,
     borderWidth: 1,
+    overflow: 'hidden'
+  },
+  rowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 14
   },
   iconSquare: {
@@ -152,6 +282,25 @@ const styles = StyleSheet.create({
   scoreBadgeText: {
     fontSize: 13,
     fontWeight: '800'
+  },
+  transcript: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 8
+  },
+  bubble: {
+    maxWidth: '86%',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  feedbackBtn: {
+    alignSelf: 'center',
+    marginTop: 6,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 8
   },
   emptyState: {
     flex: 1,

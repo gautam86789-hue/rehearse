@@ -4,6 +4,7 @@ import { X, Mail, Lock } from 'lucide-react-native';
 import { useTheme, RADII } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { SocialAuthButtons } from '../auth/SocialAuthButtons';
+import { RehearseEmblem } from '../brand/RehearseEmblem';
 
 interface AuthGateModalProps {
   visible: boolean;
@@ -92,6 +93,7 @@ export const AuthGateModal: React.FC<AuthGateModalProps> = ({ visible, onAuthent
             <X size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
+          <RehearseEmblem size={44} style={{ marginBottom: 12 }} />
           <Text style={[styles.title, { color: colors.textPrimary }]}>
             {mode === 'signup' ? 'Create your account' : 'Welcome back'}
           </Text>

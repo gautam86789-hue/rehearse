@@ -10,6 +10,10 @@ export interface LLMGenerateOptions {
   temperature?: number;
   maxTokens?: number;
   responseFormat?: 'json' | 'text';
+  // When a real Gemini key is configured and every attempt fails, throw
+  // instead of returning the canned simulator text — used where a scripted
+  // stand-in would be passed off as a genuine AI reply or a real score.
+  strict?: boolean;
 }
 
 export class LLMService {
@@ -25,15 +29,23 @@ export class LLMService {
     messages: LLMMessage[],
     options: LLMGenerateOptions = {}
   ): Promise<string> {
-    const { temperature = 0.75, responseFormat = 'text', maxTokens } = options;
+    const { temperature = 0.75, responseFormat = 'text', maxTokens, strict = false } = options;
 
     if (this.geminiApiKey) {
-      try {
-        const response = await this.callGemini(messages, temperature, responseFormat, maxTokens);
-        if (response && response.trim().length > 0) return response;
-      } catch (err) {
-        console.warn('Gemini API call failed, falling back to simulated response...', err);
+      // Two attempts: one transient timeout or empty completion shouldn't be
+      // what decides whether someone gets a real reply.
+      let lastErr: unknown = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const response = await this.callGemini(messages, temperature, responseFormat, maxTokens);
+          if (response && response.trim().length > 0) return response;
+          lastErr = new Error('Gemini returned an empty completion');
+        } catch (err) {
+          lastErr = err;
+        }
+        console.warn(`Gemini attempt ${attempt} failed:`, lastErr);
       }
+      if (strict) throw lastErr instanceof Error ? lastErr : new Error('AI generation failed');
     }
 
     // Fallback: Intelligent Simulated Engine (no key configured, or the call above failed)
@@ -66,7 +78,7 @@ export class LLMService {
     const effectiveMaxTokens = Math.max(maxTokens || 1800, 1500);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), 14000);
 
     try {
       const res = await fetch(endpoint, {

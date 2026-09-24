@@ -1,3 +1,4 @@
+import { RehearseEmblem } from '../components/brand/RehearseEmblem';
 import React, { useState } from 'react';
 import {
   StyleSheet,
@@ -143,6 +144,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
 
             <View style={styles.topBrandRow}>
+              <RehearseEmblem size={26} style={{ marginRight: 8, alignSelf: 'center' }} />
               <Text style={[styles.topBrandText, { color: colors.textPrimary }]}>REHEARSE</Text>
               <Text style={[styles.topBrandDot, { color: accentColor }]}>.</Text>
             </View>

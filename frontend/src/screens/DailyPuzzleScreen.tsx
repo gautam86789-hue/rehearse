@@ -12,11 +12,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getPuzzleHeroImage } from '../data/generatedImages';
 import { useShareCard } from '../components/share/useShareCard';
 import { DailyPuzzleShareCard } from '../components/share/DailyPuzzleShareCard';
+import { localDateKey } from '../utils/dates';
 
 const WEEK_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function todayIso(): string {
-  return new Date().toISOString().split('T')[0];
+  return localDateKey();
 }
 
 export const DailyPuzzleScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
@@ -41,15 +42,32 @@ export const DailyPuzzleScreen: React.FC<{ route: any; navigation: any }> = ({ r
     }
   }, []);
 
+  // Already done today? Show exactly what was picked and the result again —
+  // the challenge doesn't reset until tomorrow.
+  useEffect(() => {
+    const saved = user.puzzleResults?.[todayIso()];
+    if (saved && !submissionResult) {
+      setSelectedOptionId(saved.selectedOptionId);
+      setSubmissionResult(saved.result);
+    }
+  }, [user.puzzleResults, puzzle?.id]);
+
   // Marks today complete on the week row for real, regardless of whether the
   // score-based `refreshProfile` call below succeeds — this is the one thing
   // that must always persist the instant a choice is submitted.
-  const markTodayCompleted = () => {
+  const markTodayCompleted = (optionId: string, result: any) => {
     const today = todayIso();
     setUser((prev) => {
       const existing = prev.completedPuzzleDates || [];
-      if (existing.includes(today)) return prev;
-      return { ...prev, completedPuzzleDates: [...existing, today].slice(-90) };
+      const results = { ...(prev.puzzleResults || {}) };
+      if (!results[today] && puzzle) {
+        results[today] = { puzzleId: puzzle.id, selectedOptionId: optionId, result };
+      }
+      return {
+        ...prev,
+        completedPuzzleDates: existing.includes(today) ? existing : [...existing, today].slice(-90),
+        puzzleResults: results
+      };
     });
   };
 
@@ -66,20 +84,21 @@ export const DailyPuzzleScreen: React.FC<{ route: any; navigation: any }> = ({ r
       });
       if (res?.result) {
         setSubmissionResult(res.result);
-        markTodayCompleted();
+        markTodayCompleted(optionId, res.result);
         refreshProfile();
       }
     } catch (e) {
       const chosen = puzzle.options.find((o) => o.id === optionId);
-      setSubmissionResult({
+      const fallbackResult = {
         isOptimal: chosen?.isOptimal || false,
         score: chosen?.score || 50,
         explanation: chosen?.explanation || 'Evaluation completed.',
         strategyLabel: chosen?.strategyLabel || 'Strategy',
         xpAwarded: chosen?.isOptimal ? 25 : 10,
         communityDistribution: puzzle.communityDistribution
-      });
-      markTodayCompleted();
+      };
+      setSubmissionResult(fallbackResult);
+      markTodayCompleted(optionId, fallbackResult);
     } finally {
       setIsSubmitting(false);
     }
@@ -103,7 +122,7 @@ export const DailyPuzzleScreen: React.FC<{ route: any; navigation: any }> = ({ r
   const weekDates = Array.from({ length: 7 }, (_, idx) => {
     const d = new Date();
     d.setDate(d.getDate() - todayIndex + idx);
-    return d.toISOString().split('T')[0];
+    return localDateKey(d);
   });
 
   return (

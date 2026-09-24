@@ -31,6 +31,8 @@ Evaluate the user's performance according to the 4-part COMMUNICATION RUBRIC:
 WEAKEST LINE REWRITE:
 Identify the SINGLE WEAKEST sentence spoken by the user (e.g. Most apologetic, most hedged, or most conceding), and rewrite it as a confident, clear alternative.
 
+GRADING TONE: ${competencyProfile && competencyProfile.sessionsAnalyzed >= 3 ? 'This user has some practice behind them — grade to a normal standard.' : 'This user is a BEGINNER (fewer than 3 scored sessions). Grade encouragingly: a short, honest, reasonably clear attempt deserves 60+ overall. Name what they did well first, give at most 2 simple growth areas in plain everyday language, and avoid jargon.'}
+
 ${formatCompetencyProfileForPrompt(competencyProfile)}
 Use this history to make "strengths" and "growthAreas" feel like a continuation of a real coaching relationship, not a first impression — e.g. call out when a historically weak skill actually held up well this time, or when a recurring growth area from prior sessions showed up again. Don't force this if there isn't a genuine, specific connection to make; a generic mention of the trend adds nothing a rehearsing user hasn't already seen.
 
@@ -71,13 +73,17 @@ Evaluate this transcript and generate the complete Communication Rubric JSON now
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        { temperature: 0.4, responseFormat: 'json' }
+        { temperature: 0.4, responseFormat: 'json', strict: true }
       );
 
       const parsed = this.cleanAndParseJSON(rawResponse);
       return this.validateAndNormalizeRubric(parsed, userTurns);
     } catch (err) {
-      console.warn('LLM scoring failed, using heuristic rubric calculation:', err);
+      // With a real AI key configured, a failed evaluation is an error, not a
+      // reason to hand back an invented score that would be saved as real XP,
+      // history and streak. The heuristic only stands in when no key exists.
+      if (process.env.GEMINI_API_KEY) throw err;
+      console.warn('LLM scoring unavailable, using heuristic rubric calculation:', err);
       return this.heuristicScoring(scenario, userTurns);
     }
   }

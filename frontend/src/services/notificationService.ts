@@ -1,3 +1,4 @@
+import { localDateKey } from '../utils/dates';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -188,7 +189,7 @@ export async function syncDailyReminder(user: UserProfile, enabled: boolean): Pr
   await clearAllScheduledNotifications(user.id);
   if (!enabled) return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   if (user.lastPracticeDate === today) return; // already practiced today
 
   const granted = await requestNotificationPermission();

@@ -1,3 +1,4 @@
+import { localDateKey } from '../utils/dates';
 import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Animated } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -94,7 +95,7 @@ export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const practiceDays: PracticeDay[] = useMemo(() => {
     const byDate = new Map<string, number>();
     history.forEach((h) => {
-      const key = h.completedAt.slice(0, 10);
+      const key = localDateKey(new Date(h.completedAt));
       byDate.set(key, (byDate.get(key) || 0) + 1);
     });
     (user.completedPuzzleDates || []).forEach((key) => {

@@ -1,26 +1,18 @@
 import React from 'react';
-import { ViewStyle } from 'react-native';
-import { AcousticLoopLogo } from './AcousticLoopLogo';
-import { useTheme } from '../../context/ThemeContext';
+import { Image, StyleProp, ImageStyle } from 'react-native';
 
 interface RehearseEmblemProps {
   size?: number;
-  style?: ViewStyle;
+  style?: StyleProp<ImageStyle>;
 }
 
-export const RehearseEmblem: React.FC<RehearseEmblemProps> = ({
-  size = 56,
-  style
-}) => {
-  const { colors } = useTheme();
-
-  return (
-    <AcousticLoopLogo
-      size={size}
-      backgroundColor={colors.primary}
-      loopColor="#FFFFFF"
-      waveColor={colors.gold}
-      style={style}
-    />
-  );
-};
+// The one app logo — the same artwork as the launcher icon and the share
+// cards — so it looks identical on the splash, welcome, sign-in, login,
+// paywall and everywhere else it appears.
+export const RehearseEmblem: React.FC<RehearseEmblemProps> = ({ size = 56, style }) => (
+  <Image
+    source={require('../../../assets/icon.png')}
+    style={[{ width: size, height: size, borderRadius: size * 0.22 }, style]}
+    resizeMode="cover"
+  />
+);

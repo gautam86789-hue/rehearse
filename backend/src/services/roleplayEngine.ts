@@ -57,6 +57,8 @@ RESPONSE GUIDELINES — FOLLOW THESE CAREFULLY:
 3. EMOTIONAL REALISM: Speak with authentic authority and professional tension as ${scenario.counterpartName} (${scenario.counterpartRole}). Express your pushbacks, operational constraints, or conditional next steps clearly.
 4. BANNED PHRASES: Never say "I understand your concern", "I appreciate you bringing this up", "as an AI", "fair point", or "I hear you". Speak like a real person in a real workplace scenario.
 5. EVOLUTION: Adapt your posture turn-by-turn based on how the user speaks (firm vs hedging). Stay 100% in character.
+6. CASUAL FIRST: Talk like a normal person chatting, not like a memo — everyday words, contractions, the occasional short sentence. Don't open with heavy corporate detail or policy; let the substance come out naturally as the conversation goes on.
+7. NEVER REPEAT YOURSELF: Don't reuse a phrase, objection or sentence structure from your earlier turns in this conversation. Each reply should move things forward.
 
 ${difficultyCalibration}`;
 
@@ -73,7 +75,8 @@ ${difficultyCalibration}`;
     try {
       const responseText = await this.llm.generateCompletion(messages, {
         temperature: 0.7,
-        maxTokens: 1200
+        maxTokens: 1200,
+        strict: true
       });
 
       const metrics = this.analyzeUserTurn(cleanUserMessage);
@@ -82,7 +85,11 @@ ${difficultyCalibration}`;
         tacticalAnalysis: metrics
       };
     } catch (err) {
-      console.warn('LLM counterpart generation failed, using heuristic simulator:', err);
+      // With a real AI key configured, surface the failure (the app shows a
+      // retry) instead of pasting in a scripted line that reads as if the
+      // counterpart replied. The scripted simulator is only for keyless runs.
+      if (process.env.GEMINI_API_KEY) throw err;
+      console.warn('LLM unavailable, using heuristic simulator:', err);
       return this.simulateArchetypeFallback(scenario.counterpartArchetype, history.length, cleanUserMessage);
     }
   }
@@ -141,11 +148,16 @@ ${difficultyCalibration}`;
   }
 
   private getDifficultyCalibration(profile: CompetencyProfile | null): string {
-    if (!profile || profile.sessionsAnalyzed < 2) {
-      return 'DIFFICULTY: No performance history yet — play this archetype at its standard default difficulty.';
+    if (!profile || profile.sessionsAnalyzed < 3) {
+      return `DIFFICULTY: BEGINNER MODE — this user is new to this. Keep it friendly and easy to follow: push back gently and only one point at a time, keep the stakes low, use simple everyday language, and be willing to meet them halfway once they make a reasonable, clear point. Never pile on multiple objections or throw in complicated context. The challenge grows with them over time, not up front.`;
     }
     const { weakestSkill, strongestSkill, skillAverages, trend } = profile;
     const lines = [`DIFFICULTY CALIBRATION (based on ${profile.sessionsAnalyzed} prior sessions):`];
+    lines.push(
+      profile.sessionsAnalyzed >= 8
+        ? '- LEVEL: ADVANCED — this user has real practice. Bring realistic complexity: layered objections, a counter-offer, some pressure.'
+        : '- LEVEL: INTERMEDIATE — they have the basics down. Give normal, realistic resistance, one or two objections at a time.'
+    );
     if (skillAverages[strongestSkill] >= 80) {
       lines.push(`- Strong on ${strongestSkill} (avg ${skillAverages[strongestSkill]}) — push hard on this dimension; don't go easy.`);
     }

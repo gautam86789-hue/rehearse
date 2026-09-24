@@ -372,7 +372,7 @@ class ApiService {
     // or unavailable. 15s was aborting client-side before the server ever
     // reached its own fallback response (confirmed via Story Mode timing out
     // at ~16s server-side against this same 15s client limit).
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), 40000);
 
     try {
       const headers: Record<string, string> = {
@@ -400,6 +400,7 @@ class ApiService {
         // machine-readable code alongside the message so a caller can
         // switch to the right follow-up UI instead of just showing text.
         if (errData.code) (error as any).code = errData.code;
+        (error as any).status = res.status;
         throw error;
       }
 
@@ -606,38 +607,19 @@ class ApiService {
 
   // Roleplay Session
   async startSession(userId: string, scenarioId: string): Promise<{ session: RoleplaySession }> {
-    try {
-      return await this.request('/roleplay/start', {
-        method: 'POST',
-        body: JSON.stringify({ userId, scenarioId })
-      });
-    } catch (err: any) {
-      // PAYWALL_TRIGGERED must reach RoleplayScreen's catch so it can show
-      // the paywall — swallowing it here and silently handing back a fake
-      // local session (the fallback below, meant for real network/server
-      // outages) was why the paywall never appeared after the free trial
-      // ran out: the app just kept generating disconnected local sessions
-      // instead of ever surfacing the limit.
-      if (err?.code === 'PAYWALL_TRIGGERED') throw err;
-      const scenario = CURATED_SCENARIOS.find((s) => s.id === scenarioId) || CURATED_SCENARIOS[0];
-      return {
-        session: {
-          id: `session-${Date.now()}`,
-          userId,
-          scenario,
-          turns: [
-            {
-              id: 'turn-1',
-              speaker: 'counterpart',
-              message: `Thanks for meeting. I understand you wanted to discuss ${scenario.title}. What is your proposal?`,
-              timestamp: new Date().toISOString()
-            }
-          ],
-          status: 'in_progress',
-          startedAt: new Date().toISOString()
-        }
-      };
-    }
+    // No fake local session on failure: a made-up opener that isn't backed by
+    // a real server session can't be continued or scored, so the screen shows
+    // a retry instead (RoleplayScreen handles the thrown error).
+    return this.request('/roleplay/start', {
+      method: 'POST',
+      body: JSON.stringify({ userId, scenarioId })
+    });
+  }
+
+  // Wakes a sleeping backend (Render's free tier can take up to ~50s) so the
+  // first real request doesn't pay that cost while the user is watching.
+  warmUp(): void {
+    fetch(`${getApiBaseUrl()}/health`).catch(() => {});
   }
 
   async sendTurn(sessionId: string, userMessage: string): Promise<{
@@ -645,29 +627,13 @@ class ApiService {
     counterpartTurn: any;
     totalTurns: number;
   }> {
-    try {
-      return await this.request('/roleplay/turn', {
-        method: 'POST',
-        body: JSON.stringify({ sessionId, userMessage })
-      });
-    } catch {
-      return {
-        userTurn: {
-          id: `user-${Date.now()}`,
-          speaker: 'user',
-          message: userMessage,
-          timestamp: new Date().toISOString()
-        },
-        counterpartTurn: {
-          id: `counterpart-${Date.now()}`,
-          speaker: 'counterpart',
-          message:
-            "I hear what you're saying, but given the current constraints, we need to look at the concrete business tradeoffs. How do you propose we balance this against our existing commitments?",
-          timestamp: new Date().toISOString()
-        },
-        totalTurns: 2
-      };
-    }
+    // Real errors propagate: a canned "I hear what you're saying..." reply
+    // pasted in when the network hiccups is exactly the repeated, non-AI text
+    // people were seeing — better to say the reply failed and let them retry.
+    return this.request('/roleplay/turn', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, userMessage })
+    });
   }
 
   async scoreSession(sessionId: string): Promise<{
@@ -675,57 +641,12 @@ class ApiService {
     session: RoleplaySession;
     updatedUser: UserProfile;
   }> {
-    try {
-      return await this.request('/roleplay/score', {
-        method: 'POST',
-        body: JSON.stringify({ sessionId })
-      });
-    } catch {
-      const fallbackScore: Scorecard = {
-        id: `score-${Date.now()}`,
-        sessionId,
-        overallScore: 84,
-        clarity: 88,
-        empathy: 76,
-        assertiveness: 82,
-        listening: 80,
-        strengths: [
-          'Anchored firmly on deliverables and business impact',
-          'Held frame without defensive reaction'
-        ],
-        growthAreas: [
-          'Avoid pause when counterpart raises headcount tradeoffs',
-          'Lock in next review date earlier in conversation'
-        ],
-        weakestLineRewrite: {
-          originalLine: 'I will try to make this work if we have to.',
-          suggestedRewrite: 'I can deliver this scope if we adjust our Q3 milestone timing.',
-          coachingRationale: 'Avoid passive acquiescence; state the trade-off condition clearly.',
-          techniqueApplied: 'Conditional Agreement'
-        },
-        keyTakeaways: [
-          'Clear conviction on core goals',
-          'Protect boundaries under pressure'
-        ],
-        xpEarned: 120,
-        newStreak: 4,
-        streakExtended: true,
-        generatedAt: new Date().toISOString()
-      };
-      return {
-        scorecard: fallbackScore,
-        session: {
-          id: sessionId,
-          userId: 'user-1',
-          scenario: CURATED_SCENARIOS[0],
-          turns: [],
-          status: 'completed',
-          startedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString()
-        },
-        updatedUser: DEFAULT_PROFILE('user-1')
-      };
-    }
+    // No invented scorecard on failure — a fake 84 would land in history,
+    // XP, and the streak as if it were real.
+    return this.request('/roleplay/score', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId })
+    });
   }
 
   // Daily Habits

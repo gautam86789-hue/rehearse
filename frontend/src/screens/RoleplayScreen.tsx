@@ -28,6 +28,7 @@ import {
 import { PersonaAvatar } from '../components/common/PersonaAvatar';
 import { Button } from '../components/common/Button';
 import { getArchetypeAvatarImage } from '../data/generatedImages';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -59,13 +60,41 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
 
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  // A rehearsal that's been started but not scored is saved locally per
+  // user+scenario, so backing out by mistake and coming back picks up exactly
+  // where it stopped. It's only cleared once a scorecard is produced.
+  const progressKey = `@rehearse_inprogress_${user.id}_${scenario.id}`;
+
   useEffect(() => {
     initSession();
     unlockMilestone('badge_first_session_started', 'Stepped Up', 'Started your very first rehearsal.', 'flame');
   }, []);
 
+  // Persist every change to the conversation while it's in progress.
+  useEffect(() => {
+    if (!session || turns.length === 0) return;
+    AsyncStorage.setItem(progressKey, JSON.stringify({ session, turns })).catch(() => {});
+  }, [session, turns]);
+
   const initSession = async () => {
+    setLoadError(null);
     try {
+      const saved = await AsyncStorage.getItem(progressKey);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as { session: RoleplaySession; turns: MessageTurn[] };
+          if (parsed?.session?.id && Array.isArray(parsed.turns) && parsed.turns.length > 0) {
+            setSession(parsed.session);
+            setTurns(parsed.turns);
+            setActiveSession(parsed.session);
+            setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: false }), 150);
+            return;
+          }
+        } catch {}
+      }
       const res = await apiService.startSession(user.id, scenario.id);
       if (res?.session) {
         setSession(res.session);
@@ -86,24 +115,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
         setIsPaywallVisible(true);
         navigation.goBack();
       } else {
-        // Fallback local session initialization
-        const localSession: RoleplaySession = {
-          id: `local-session-${Date.now()}`,
-          userId: user.id,
-          scenario,
-          turns: [
-            {
-              id: 'init-1',
-              speaker: 'counterpart',
-              message: `Thanks for meeting with me. What did you want to discuss regarding ${scenario.title}?`,
-              timestamp: new Date().toISOString()
-            }
-          ],
-          status: 'in_progress',
-          startedAt: new Date().toISOString()
-        };
-        setSession(localSession);
-        setTurns(localSession.turns);
+        setLoadError("Couldn't start the conversation. Check your connection and try again.");
       }
     }
   };
@@ -113,6 +125,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
 
     const userMsg = inputText.trim();
     setInputText('');
+    setSendError(null);
     setIsSending(true);
 
     const optimisticUserTurn: MessageTurn = {
@@ -126,21 +139,32 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
     setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      const res = await apiService.sendTurn(session.id, userMsg);
+      let activeSessionId = session.id;
+      let res;
+      try {
+        res = await apiService.sendTurn(activeSessionId, userMsg);
+      } catch (err: any) {
+        // A restored conversation whose server-side session no longer exists
+        // (e.g. the backend restarted): open a fresh server session for this
+        // scenario and send the same line there. The on-screen history stays.
+        if (err?.status === 404) {
+          const fresh = await apiService.startSession(user.id, scenario.id);
+          activeSessionId = fresh.session.id;
+          setSession((prev) => (prev ? { ...prev, id: activeSessionId } : fresh.session));
+          res = await apiService.sendTurn(activeSessionId, userMsg);
+        } else {
+          throw err;
+        }
+      }
       if (res?.counterpartTurn) {
         setTurns((prev) => [...prev, res.counterpartTurn]);
       }
     } catch (err) {
-      // Intelligent local simulation fallback
-      setTimeout(() => {
-        const simulatedTurn: MessageTurn = {
-          id: `sim-${Date.now()}`,
-          speaker: 'counterpart',
-          message: `I hear what you are saying, but our leadership constraints are tight right now. How do you propose we address the team capacity trade-offs?`,
-          timestamp: new Date().toISOString()
-        };
-        setTurns((prev) => [...prev, simulatedTurn]);
-      }, 700);
+      // Drop the unsent line back into the input so nothing is lost, and say
+      // so plainly — no made-up reply standing in for the counterpart.
+      setTurns((prev) => prev.filter((t) => t.id !== optimisticUserTurn.id));
+      setInputText(userMsg);
+      setSendError("Couldn't get a reply. Tap send to try again.");
     } finally {
       setIsSending(false);
       setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
@@ -155,7 +179,7 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
       const res = await apiService.scoreSession(session.id);
       if (res?.scorecard) {
         setLastScorecard(res.scorecard);
-        addHistoryEntry(scenario, res.scorecard);
+        addHistoryEntry(scenario, res.scorecard, turns);
 
         const score = res.scorecard.overallScore;
 
@@ -194,7 +218,8 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
         }
 
         const remaining = refreshed?.subscription?.rehearsalsRemaining;
-        const isFree = refreshed?.subscription?.status === 'free_trial';
+        const isFree =
+          refreshed?.subscription?.status === 'free_trial' || refreshed?.subscription?.status === 'free_rehearsals';
         if (isFree && remaining === 1) {
           addNotification({
             title: 'Last free rehearsal remaining',
@@ -209,45 +234,15 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
           });
         }
 
+        // Scored: this conversation is finished, so the next visit to this
+        // scenario starts fresh instead of resuming it.
+        await AsyncStorage.removeItem(progressKey).catch(() => {});
         navigation.replace('Score', { scorecard: res.scorecard, scenario });
       }
     } catch (err) {
-      // Local fallback scorecard — matches the real Scorecard shape exactly
-      // so ScoreScreen/FeedbackScreen render correctly even if the network
-      // call to /roleplay/score fails.
-      const weakestLine = turns.find((t) => t.speaker === 'user')?.message || 'I think we need to rethink this timeline.';
-      const fallbackScorecard: Scorecard = {
-        id: `score-${Date.now()}`,
-        sessionId: session.id,
-        clarity: 85,
-        empathy: 74,
-        assertiveness: 82,
-        listening: 78,
-        overallScore: 80,
-        strengths: [
-          'Stayed composed under counterpart resistance',
-          'Clearly established the objective early in the conversation',
-          'Did not concede key ground when challenged'
-        ],
-        growthAreas: [
-          'Acknowledge the counterpart\'s perspective before pressing your point',
-          'Use more calibrated "How/What" open questions before giving direct responses'
-        ],
-        weakestLineRewrite: {
-          originalLine: weakestLine,
-          suggestedRewrite: 'Help me understand the key priority: if we push for Friday, which deliverables should we de-scope to maintain quality?',
-          coachingRationale: 'Forces the counterpart to solve the resource constraint with you instead of pushing back.',
-          techniqueApplied: 'Calibrated "How" Anchor'
-        },
-        keyTakeaways: ['Strong presence and boundary holding throughout the rehearsal dialogue.'],
-        newStreak: user.currentStreak || 1,
-        streakExtended: false,
-        xpEarned: 50,
-        generatedAt: new Date().toISOString()
-      };
-      setLastScorecard(fallbackScorecard);
-      addHistoryEntry(scenario, fallbackScorecard);
-      navigation.replace('Score', { scorecard: fallbackScorecard, scenario });
+      // No made-up scorecard — the conversation stays saved, so retrying
+      // later scores the same conversation.
+      setSendError("Couldn't score this yet. Check your connection and tap End & Score again.");
     } finally {
       setIsEnding(false);
     }
@@ -370,21 +365,34 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
                   {turn.message}
                 </Text>
 
-                {/* Tactical indicator if available */}
-                {turn.tacticalAnalysis && (
-                  <View style={[styles.metricsRow, { borderTopColor: isUser ? 'rgba(0,0,0,0.15)' : colors.surfaceBorder }]}>
-                    <Text style={[typography.caption, { color: isUser ? colors.textInverse : colors.textSecondary }]}>
-                      Clarity: {turn.tacticalAnalysis.clarityScore}%
-                    </Text>
-                    <Text style={[typography.caption, { color: isUser ? colors.textInverse : colors.textSecondary }]}>
-                      Boundary: {turn.tacticalAnalysis.boundaryScore}%
-                    </Text>
-                  </View>
-                )}
               </View>
             </View>
           );
         })}
+
+        {!session && !loadError && (
+          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+
+        {loadError && (
+          <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
+            <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}>{loadError}</Text>
+            <TouchableOpacity
+              onPress={initSession}
+              style={[styles.endRehearsalBtn, { backgroundColor: colors.primarySubtle, borderColor: colors.primary }]}
+            >
+              <Text style={[typography.buttonSmall, { color: colors.primary }]}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {sendError && (
+          <Text style={[typography.caption, { color: colors.error || '#DC2626', textAlign: 'center', paddingVertical: 6 }]}>
+            {sendError}
+          </Text>
+        )}
 
         {isSending && (
           <View style={[styles.messageBubbleContainer, styles.counterpartContainer]}>

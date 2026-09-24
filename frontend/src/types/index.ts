@@ -240,6 +240,10 @@ export interface HistoryEntry {
   listening: number;
   growthAreas: string[];
   completedAt: string;
+  // The conversation itself and its full scorecard, kept so a past rehearsal
+  // can be reopened from Conversation History (older entries won't have them).
+  turns?: { speaker: 'user' | 'counterpart'; message: string }[];
+  scorecard?: Scorecard;
 }
 
 export interface UserProfile {
@@ -252,6 +256,9 @@ export interface UserProfile {
   audience?: Audience;
   milestoneFlags?: Record<string, boolean>;
   completedPuzzleDates?: string[];
+  // What was picked (and the result shown) for each day's challenge, keyed by
+  // local date, so reopening a finished challenge shows it instead of resetting.
+  puzzleResults?: Record<string, { puzzleId: string; selectedOptionId: string; result: any }>;
   completedStoryDates?: string[];
   readArticleIds?: string[];
   completedJourneyNodeIds?: string[];

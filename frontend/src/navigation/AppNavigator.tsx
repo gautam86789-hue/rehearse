@@ -17,6 +17,7 @@ enableFreeze(true);
 
 // Screens
 import { WelcomeScreen } from '../screens/WelcomeScreen';
+import { TutorialScreen } from '../screens/TutorialScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
@@ -252,6 +253,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Milestones" component={MilestonesScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+            <Stack.Screen name="Tutorial" component={TutorialScreen} options={{ animation: 'fade' }} />
             <Stack.Screen name="DescribeSituation" component={DescribeSituationScreen} />
             <Stack.Screen name="Scenarios" component={ScenariosScreen} />
             <Stack.Screen name="ScenarioDetail" component={ScenarioDetailScreen} />

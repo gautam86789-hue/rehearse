@@ -188,6 +188,15 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           <View style={[styles.cardGroup, elevation.sm, { backgroundColor: themeColors.surfaceCard, borderColor: themeColors.surfaceBorder }]}>
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
+              onPress={() => navigation.navigate('Tutorial')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]}>How Rehearse works</Text>
+              <ChevronRight size={16} color={themeColors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: themeColors.surfaceBorder }]}
               onPress={() => navigation.navigate('HelpSupport')}
               activeOpacity={0.7}
             >

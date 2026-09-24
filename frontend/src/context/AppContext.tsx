@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserProfile, RoleplaySession, Scorecard, HistoryEntry, Scenario, Audience, AppNotification } from '../types';
+import { UserProfile, RoleplaySession, Scorecard, HistoryEntry, Scenario, Audience, AppNotification, MessageTurn } from '../types';
 import { apiService } from '../services/api';
 import { useAuth } from './AuthContext';
 import { syncDailyReminder, syncTrialEndingReminder, getRemindersEnabled } from '../services/notificationService';
@@ -15,6 +15,7 @@ import {
 import { linkExternalUserId, isOneSignalSupported } from '../services/oneSignalService';
 import type { CustomerInfo } from 'react-native-purchases';
 import { SubscriptionPlanId } from '../data/subscriptionPlans';
+import { localDateKey, computeStreak } from '../utils/dates';
 
 interface AppContextType {
   user: UserProfile;
@@ -40,7 +41,7 @@ interface AppContextType {
   setIsPaywallVisible: (visible: boolean) => void;
   setPaywallPreferredPlan: (plan: SubscriptionPlanId | null) => void;
   setUnlockedBadge: (badge: { title: string; description: string; icon: string } | null) => void;
-  addHistoryEntry: (scenario: Scenario, scorecard: Scorecard) => Promise<void>;
+  addHistoryEntry: (scenario: Scenario, scorecard: Scorecard, turns?: MessageTurn[]) => Promise<void>;
   addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   dismissNotification: (id: string) => Promise<void>;
@@ -60,7 +61,7 @@ interface AppContextType {
 
 const createDynamicProfile = (userId: string, role = 'Executive Leader', email?: string): UserProfile => ({
   id: userId,
-  name: email || 'Professional',
+  name: email && !email.endsWith('@rehearse.local') && email.includes('@') ? email.split('@')[0] : 'Professional',
   email: email,
   avatarUri: undefined,
   role,
@@ -134,6 +135,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadUserState = useCallback(async (userId: string) => {
     const myToken = ++loadRequestToken.current;
     const isStale = () => loadRequestToken.current !== myToken;
+    apiService.warmUp();
 
     if (suppressNextLoadingGateRef.current) {
       suppressNextLoadingGateRef.current = false;
@@ -175,18 +177,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // selection silently clobbered by the backend's older/default value.
       const locallyKnownAudience = activeProfile.audience;
 
-      // Sync with backend API dynamically
-      try {
-        const { user: apiUser } = await apiService.getProfile(userId);
-        if (apiUser) {
-          activeProfile = { ...activeProfile, ...apiUser, audience: locallyKnownAudience || apiUser.audience, id: userId };
-          await AsyncStorage.setItem(userKey, JSON.stringify(activeProfile));
+      // Whatever name the account has, "Professional" is only a placeholder —
+      // once there's a real sign-in email, that email's local part is the name.
+      const withRealName = (p: UserProfile): UserProfile => {
+        const email = p.email || authUser?.email;
+        const isPlaceholder = !p.name || p.name === 'Professional';
+        if (isPlaceholder && email && !email.endsWith('@rehearse.local') && email.includes('@')) {
+          const n = email.split('@')[0];
+          return { ...p, email, name: n, fullName: n };
         }
-      } catch (err) {
-        // Fallback to local profile
-      }
-
-      if (isStale()) return;
+        return p;
+      };
 
       // Merge onto whatever's already in memory for this same id, rather than
       // blindly replacing — this effect can legitimately re-fire (Supabase's
@@ -194,46 +195,71 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // and a blind replace would wipe frontend-only fields set moments ago
       // (completedPuzzleDates, milestoneFlags) with a storage read that may
       // predate that write.
-      setUserState((prev) =>
-        prev.id === userId
-          ? {
-              ...activeProfile,
-              audience: prev.audience || activeProfile.audience,
-              avatarUri: prev.avatarUri || activeProfile.avatarUri,
-              milestoneFlags: { ...activeProfile.milestoneFlags, ...prev.milestoneFlags },
-              completedPuzzleDates:
-                (prev.completedPuzzleDates?.length || 0) >= (activeProfile.completedPuzzleDates?.length || 0)
-                  ? prev.completedPuzzleDates
-                  : activeProfile.completedPuzzleDates,
-              completedStoryDates:
-                (prev.completedStoryDates?.length || 0) >= (activeProfile.completedStoryDates?.length || 0)
-                  ? prev.completedStoryDates
-                  : activeProfile.completedStoryDates,
-              readArticleIds:
-                (prev.readArticleIds?.length || 0) >= (activeProfile.readArticleIds?.length || 0)
-                  ? prev.readArticleIds
-                  : activeProfile.readArticleIds,
-              completedJourneyNodeIds:
-                (prev.completedJourneyNodeIds?.length || 0) >= (activeProfile.completedJourneyNodeIds?.length || 0)
-                  ? prev.completedJourneyNodeIds
-                  : activeProfile.completedJourneyNodeIds,
-              savedScenarioIds:
-                (prev.savedScenarioIds?.length || 0) >= (activeProfile.savedScenarioIds?.length || 0)
-                  ? prev.savedScenarioIds
-                  : activeProfile.savedScenarioIds
-            }
-          : activeProfile
-      );
+      const commitProfile = (profile: UserProfile) => {
+        setUserState((prev) =>
+          prev.id === userId
+            ? {
+                ...profile,
+                audience: prev.audience || profile.audience,
+                avatarUri: prev.avatarUri || profile.avatarUri,
+                milestoneFlags: { ...profile.milestoneFlags, ...prev.milestoneFlags },
+                completedPuzzleDates:
+                  (prev.completedPuzzleDates?.length || 0) >= (profile.completedPuzzleDates?.length || 0)
+                    ? prev.completedPuzzleDates
+                    : profile.completedPuzzleDates,
+                completedStoryDates:
+                  (prev.completedStoryDates?.length || 0) >= (profile.completedStoryDates?.length || 0)
+                    ? prev.completedStoryDates
+                    : profile.completedStoryDates,
+                puzzleResults: { ...profile.puzzleResults, ...prev.puzzleResults },
+                readArticleIds:
+                  (prev.readArticleIds?.length || 0) >= (profile.readArticleIds?.length || 0)
+                    ? prev.readArticleIds
+                    : profile.readArticleIds,
+                completedJourneyNodeIds:
+                  (prev.completedJourneyNodeIds?.length || 0) >= (profile.completedJourneyNodeIds?.length || 0)
+                    ? prev.completedJourneyNodeIds
+                    : profile.completedJourneyNodeIds,
+                savedScenarioIds:
+                  (prev.savedScenarioIds?.length || 0) >= (profile.savedScenarioIds?.length || 0)
+                    ? prev.savedScenarioIds
+                    : profile.savedScenarioIds
+              }
+            : profile
+        );
+      };
 
-      const historyKey = `@rehearse_history_${userId}`;
-      const storedHistory = await AsyncStorage.getItem(historyKey);
+      // Local data first — this is everything the UI needs to render, so the
+      // app opens straight away instead of waiting on a network round trip
+      // (Render's free tier can take ~50s to wake a cold backend).
+      activeProfile = withRealName(activeProfile);
+      const storedHistory = await AsyncStorage.getItem(`@rehearse_history_${userId}`);
+      const storedNotifications = await AsyncStorage.getItem(`@rehearse_notifications_${userId}`);
       if (isStale()) return;
+      commitProfile(activeProfile);
       setHistory(storedHistory ? JSON.parse(storedHistory) : []);
-
-      const notificationsKey = `@rehearse_notifications_${userId}`;
-      const storedNotifications = await AsyncStorage.getItem(notificationsKey);
-      if (isStale()) return;
       setNotifications(storedNotifications ? JSON.parse(storedNotifications) : []);
+      setIsLoading(false);
+
+      // Then reconcile with the backend in the background; the merged result
+      // just refreshes state in place when (if) it arrives.
+      apiService
+        .getProfile(userId)
+        .then(async ({ user: apiUser }) => {
+          if (!apiUser || isStale()) return;
+          const merged = withRealName({
+            ...activeProfile,
+            ...apiUser,
+            audience: locallyKnownAudience || apiUser.audience,
+            id: userId
+          });
+          await AsyncStorage.setItem(userKey, JSON.stringify(merged));
+          if (isStale()) return;
+          commitProfile(merged);
+        })
+        .catch(() => {
+          // Offline / backend asleep — the local profile above already stands.
+        });
     } catch (e) {
       console.warn('Failed to load dynamic user state', e);
     } finally {
@@ -363,6 +389,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [user]);
 
+  // The streak shown everywhere is derived from what the user actually did, by
+  // LOCAL calendar day: any scored rehearsal, completed daily challenge or
+  // story counts. It keeps running through "yesterday" and drops to 0 once a
+  // whole day is missed — so it also resets on days the app is merely opened,
+  // not only when a rehearsal finishes. (The backend's own count uses UTC days
+  // and never resets on its own, so it's only a fallback for a fresh install
+  // that has no local activity to derive from.)
+  useEffect(() => {
+    if (isLoading) return;
+    const keys: string[] = [
+      ...history.map((h) => localDateKey(new Date(h.completedAt))),
+      ...(user.completedPuzzleDates || []),
+      ...(user.completedStoryDates || [])
+    ];
+    let current: number;
+    let longest: number;
+    let lastActive: string | undefined;
+    if (keys.length > 0) {
+      const info = computeStreak(keys);
+      current = info.current;
+      longest = Math.max(info.longest, user.longestStreak || 0);
+      lastActive = info.lastActive;
+    } else {
+      // No local activity: trust the backend count only while it's still live.
+      const last = user.lastPracticeDate;
+      const live = !!last && computeStreak([last]).current > 0;
+      current = live ? user.currentStreak || 0 : 0;
+      longest = user.longestStreak || 0;
+      lastActive = last;
+    }
+    if (
+      current !== user.currentStreak ||
+      longest !== user.longestStreak ||
+      (lastActive && lastActive !== user.lastPracticeDate)
+    ) {
+      setUser((prev) => ({
+        ...prev,
+        currentStreak: current,
+        longestStreak: longest,
+        lastPracticeDate: lastActive || prev.lastPracticeDate
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, history, user.completedPuzzleDates, user.completedStoryDates, user.currentStreak, user.longestStreak, user.lastPracticeDate]);
+
   // Re-derives today's single reminder (see notificationService.ts) whenever
   // the fields that actually determine its content change — not on every
   // `user` change, so editing a name/avatar doesn't touch notifications at
@@ -414,6 +485,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           milestoneFlags: { ...base.milestoneFlags, ...refreshed.milestoneFlags },
           completedPuzzleDates: refreshed.completedPuzzleDates || base.completedPuzzleDates,
           completedStoryDates: refreshed.completedStoryDates || base.completedStoryDates,
+          puzzleResults: { ...refreshed.puzzleResults, ...base.puzzleResults },
           readArticleIds: refreshed.readArticleIds || base.readArticleIds,
           completedJourneyNodeIds: refreshed.completedJourneyNodeIds || base.completedJourneyNodeIds,
           savedScenarioIds: refreshed.savedScenarioIds || base.savedScenarioIds
@@ -426,6 +498,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           milestoneFlags: { ...prev.milestoneFlags, ...refreshed.milestoneFlags },
           completedPuzzleDates: refreshed.completedPuzzleDates || prev.completedPuzzleDates,
           completedStoryDates: refreshed.completedStoryDates || prev.completedStoryDates,
+          puzzleResults: { ...refreshed.puzzleResults, ...prev.puzzleResults },
           readArticleIds: refreshed.readArticleIds || prev.readArticleIds,
           completedJourneyNodeIds: refreshed.completedJourneyNodeIds || prev.completedJourneyNodeIds,
           savedScenarioIds: refreshed.savedScenarioIds || prev.savedScenarioIds
@@ -522,7 +595,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addHistoryEntry = async (scenario: Scenario, scorecard: Scorecard) => {
+  const addHistoryEntry = async (scenario: Scenario, scorecard: Scorecard, turns?: MessageTurn[]) => {
     const entry: HistoryEntry = {
       id: scorecard.id,
       scenarioTitle: scenario.title,
@@ -534,7 +607,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assertiveness: scorecard.assertiveness,
       listening: scorecard.listening,
       growthAreas: scorecard.growthAreas || [],
-      completedAt: scorecard.generatedAt || new Date().toISOString()
+      completedAt: scorecard.generatedAt || new Date().toISOString(),
+      turns: turns?.map((t) => ({ speaker: t.speaker, message: t.message })),
+      scorecard
     };
     const updated = [entry, ...history].slice(0, 100);
     setHistory(updated);

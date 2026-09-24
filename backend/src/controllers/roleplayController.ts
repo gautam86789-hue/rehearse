@@ -23,17 +23,21 @@ export const scoreSessionSchema = z.object({
 });
 
 export class RoleplayController {
+  // Openers are deliberately short and casual — a real conversation starts
+  // with a hello, not with the full backstory. The substance comes out as
+  // the user talks.
   private getInitialGreeting(scenario: any): string {
-    if (scenario.category === 'negotiation') {
-      return `Thanks for stopping by. As you know, we're navigating a demanding budget cycle right now, but I wanted to hear what was on your mind.`;
-    }
-    if (scenario.category === 'feedback') {
-      return `Hey, thanks for setting up this 1-on-1. I have back-to-back reviews today, what did you want to sync on?`;
-    }
-    if (scenario.category === 'boundaries') {
-      return `Hey! Glad we could connect. Did you get my messages over the weekend? We really need to get that project over the line.`;
-    }
-    return `Hey there, good to see you. I have about 15 minutes before my next executive meeting—what's on your mind?`;
+    const byArchetype: Record<string, string[]> = {
+      defensive_boss: ['Hey! Got a few minutes. What\'s up?', 'Hey, come on in. What\'s on your mind?'],
+      guilt_tripper: ['Hey, good timing. What\'s up?', 'Oh hey! Perfect, I was hoping we\'d catch up. What\'s going on?'],
+      hard_negotiator: ['Hey, come on in. What did you want to chat about?', 'Hi! Have a seat. What\'s up?'],
+      passive_aggressive_peer: ['Oh hey, you wanted to talk?', 'Hey! Sure, what\'s up?'],
+      micromanager: ['Hey, perfect timing. What\'s going on?', 'Hey! What\'s up?'],
+      skeptical_investor: ['Hi, thanks for making time. So, what have you got for me?', 'Hey! Good to see you. What\'s on your mind?'],
+      startup_cofounder: ['Hey. So, what\'s on your mind?', 'Hey, you wanted to talk?']
+    };
+    const options = byArchetype[scenario.counterpartArchetype] || ['Hey! Good to see you. What\'s up?', 'Hey there, what\'s on your mind?'];
+    return options[Math.floor(Math.random() * options.length)];
   }
 
   startSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
