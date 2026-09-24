@@ -22,6 +22,22 @@ export const scoreSessionSchema = z.object({
   sessionId: z.string().min(1)
 });
 
+// The competency profile only changes when a rehearsal is scored, but building
+// it means loading and reassembling every past session from the database —
+// which got slower the more someone practiced, on EVERY reply. Cache it per
+// user and drop it when a new score lands.
+const profileCache = new Map<string, { profile: ReturnType<typeof computeCompetencyProfile>; at: number }>();
+const PROFILE_TTL_MS = 10 * 60 * 1000;
+
+async function getCompetencyProfile(userId: string) {
+  const hit = profileCache.get(userId);
+  if (hit && Date.now() - hit.at < PROFILE_TTL_MS) return hit.profile;
+  const priorSessions = await memoryDb.getUserSessions(userId);
+  const profile = computeCompetencyProfile(priorSessions);
+  profileCache.set(userId, { profile, at: Date.now() });
+  return profile;
+}
+
 export class RoleplayController {
   // Openers are deliberately short and casual — a real conversation starts
   // with a hello, not with the full backstory. The substance comes out as
@@ -135,8 +151,7 @@ export class RoleplayController {
       // performance profile so the same archetype reads as tougher for a
       // consistently strong user and slightly more forgiving on a skill
       // they're still building (see roleplayEngine.getDifficultyCalibration).
-      const priorSessions = await memoryDb.getUserSessions(session.userId);
-      const competencyProfile = computeCompetencyProfile(priorSessions);
+      const competencyProfile = await getCompetencyProfile(session.userId);
       const counterpartResponse = await roleplayEngine.generateCounterpartTurn(
         session.scenario,
         session.turns,
@@ -180,8 +195,7 @@ export class RoleplayController {
       // Prior sessions only — this one is still 'in_progress' with no
       // scorecard yet, so computeCompetencyProfile's own completed+scorecard
       // filter excludes it naturally without needing to slice it out here.
-      const priorSessions = await memoryDb.getUserSessions(session.userId);
-      const competencyProfile = computeCompetencyProfile(priorSessions);
+      const competencyProfile = await getCompetencyProfile(session.userId);
 
       // Calculate substance rubric
       const rubric = await scoringEngine.evaluateSession(session.scenario, session.turns, competencyProfile);
@@ -215,6 +229,7 @@ export class RoleplayController {
 
       await memoryDb.saveSession(session);
       await memoryDb.saveScorecard(scorecard);
+      profileCache.delete(session.userId); // next reply/score sees this session
 
       res.json({
         message: 'Rehearsal completed and scored',

@@ -64,7 +64,7 @@ Generate the complete Scenario Brief JSON now.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        { temperature: 0.6, responseFormat: 'json' }
+        { temperature: 0.6, responseFormat: 'json', thinking: 'low' }
       );
 
       const parsed = this.cleanAndParseJSON(rawResponse);

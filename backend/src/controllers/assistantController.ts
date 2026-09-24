@@ -14,6 +14,7 @@ export const assistantChatSchema = z.object({
     .optional(),
   userContext: z.object({
     name: z.string(),
+    dailyChallengeDone: z.boolean().optional(),
     audience: z.string().optional(),
     role: z.string(),
     totalRehearsals: z.number(),
@@ -42,14 +43,14 @@ export class AssistantController {
     try {
       const { message, conversationHistory, userContext, recentSessions } = req.body;
 
-      const reply = await assistantService.chat({
+      const { reply, actions } = await assistantService.chat({
         message,
         conversationHistory: conversationHistory || [],
         userContext,
         recentSessions: recentSessions || []
       });
 
-      res.json({ reply });
+      res.json({ reply, actions });
     } catch (err) {
       next(err);
     }

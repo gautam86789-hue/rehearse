@@ -4,6 +4,7 @@ import {
   registerSchema,
   loginSchema,
   onboardingSchema,
+  updateProfileSchema,
   sendVerificationSchema,
   verifyEmailSchema
 } from '../controllers/authController.js';
@@ -25,6 +26,7 @@ router.post('/verify-email', validateBody(verifyEmailSchema), authController.ver
 // User Profile & Onboarding
 router.get('/me', authController.getMe);
 router.get('/profile', authController.getProfile);
+router.put('/profile', validateBody(updateProfileSchema), authController.updateProfile);
 router.post('/onboarding', validateBody(onboardingSchema), authController.completeOnboarding);
 router.get('/progress', authController.getProgress);
 

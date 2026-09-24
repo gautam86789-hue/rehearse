@@ -53,12 +53,18 @@ const SKILL_VIEWS: TabSpec[] = [
   { id: 'ledger', label: 'Ledger' }
 ];
 
-export const ProgressScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+export const ProgressScreen: React.FC<{ navigation: any; route?: any }> = ({ navigation, route }) => {
   const { user, history } = useApp();
   const { colors: themeColors, isDark } = useTheme();
   const p = progressPalette(themeColors, isDark);
 
   const [tab, setTab] = useState<Tab>('standing');
+
+  // The Home streak button always lands on Standing — it passes a fresh `at`
+  // stamp every tap, so this fires even if another tab was left selected.
+  React.useEffect(() => {
+    if (route?.params?.tab === 'standing') setTab('standing');
+  }, [route?.params?.at]);
   const [skillView, setSkillView] = useState<SkillView>('field');
   const [selectedSkill, setSelectedSkill] = useState<ConstellationSkill | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);

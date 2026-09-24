@@ -5,7 +5,6 @@ import { MessageCircle, Target, TrendingUp, Flame } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
 import { RehearseEmblem } from '../components/brand/RehearseEmblem';
-import { markTutorialSeen } from '../utils/tutorial';
 
 const STEPS = [
   {
@@ -32,7 +31,7 @@ const STEPS = [
 
 export const TutorialScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
-  const { user } = useApp();
+  const { completeTutorial } = useApp();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const listRef = useRef<FlatList>(null);
@@ -40,7 +39,7 @@ export const TutorialScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const isLast = index === STEPS.length - 1;
 
   const finish = async () => {
-    await markTutorialSeen(user.id);
+    await completeTutorial();
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.navigate('HomeTabs');
   };

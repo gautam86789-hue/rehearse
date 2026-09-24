@@ -89,7 +89,7 @@ import { CustomTabBar } from '../components/common/CustomTabBar';
  * so the notification bell stays in sync.
  */
 const GlobalNotificationBanner: React.FC = () => {
-  const { notifications, dismissNotification } = useApp();
+  const { notifications, markNotificationRead } = useApp();
   // Only show unread notifications, newest-first, max 5 queued at once
   const unread = notifications.filter((n) => !n.read);
 
@@ -114,7 +114,7 @@ const GlobalNotificationBanner: React.FC = () => {
   });
 
   if (queue.length === 0) return null;
-  return <InAppNotification queue={queue} onDismiss={dismissNotification} />;
+  return <InAppNotification queue={queue} onDismiss={markNotificationRead} />;
 };
 
 const Stack = createNativeStackNavigator();

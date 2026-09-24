@@ -33,7 +33,6 @@ import { getFeatureIllustration } from '../data/generatedImages';
 import { CATEGORY_COLORS } from '../data/categoryColors';
 import { JOURNEYS } from '../data/journeys';
 import { localDateKey } from '../utils/dates';
-import { hasSeenTutorial } from '../utils/tutorial';
 import { Scenario, Audience, WordOfTheDay, FrameworkOfTheDay } from '../types';
 import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
@@ -85,7 +84,7 @@ const AUDIENCE_TILES: Record<Audience, PracticeTile[]> = {
 };
 
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user, refreshProfile, setIsPaywallVisible, notifications } = useApp();
+  const { user, refreshProfile, setIsPaywallVisible, notifications, tutorialSeen } = useApp();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -107,14 +106,8 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // First time on Home: show the short "how it works" walkthrough once.
   useEffect(() => {
-    let cancelled = false;
-    hasSeenTutorial(user.id).then((seen) => {
-      if (!seen && !cancelled) navigation.navigate('Tutorial');
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [user.id]);
+    if (tutorialSeen === false) navigation.navigate('Tutorial');
+  }, [tutorialSeen]);
 
   useEffect(() => {
     loadHomeData();
@@ -195,7 +188,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
           <TouchableOpacity
             style={[styles.streakPill, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-            onPress={() => navigation.navigate('ProgressTab')}
+            onPress={() => navigation.navigate('ProgressTab', { tab: 'standing', at: Date.now() })}
             activeOpacity={0.85}
           >
             <MilestoneIcon icon="flame" size={18} />

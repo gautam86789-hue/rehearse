@@ -18,8 +18,50 @@ export interface AssistantSessionSummary {
   completedAt: string;
 }
 
+export interface AssistantAction {
+  id: string;
+  label: string;
+}
+
+// Every button the assistant can offer. The frontend maps each id to a real
+// screen (see AICoachScreen's ACTION_ROUTES) — the model may only pick from
+// this list, so a button can never point somewhere that doesn't exist.
+const ACTION_CATALOG: Record<string, string> = {
+  start_practice: 'Start a practice',
+  practice_negotiation: 'Practice negotiation',
+  practice_feedback: 'Practice giving feedback',
+  practice_boundaries: 'Practice setting boundaries',
+  practice_managing_up: 'Practice managing up',
+  practice_difficult_decisions: 'Practice a hard decision',
+  practice_crisis: 'Practice a crisis talk',
+  daily_challenge: "Today's Challenge",
+  learn: 'Open Learn',
+  progress: 'See my progress',
+  history: 'Review my past rehearsals',
+  reply_coach: 'Get help replying',
+  custom_scenario: 'Practice my own situation',
+  tutorial: 'How Rehearse works'
+};
+
+const SKILL_TO_ACTION: Record<string, string> = {
+  assertiveness: 'practice_boundaries',
+  empathy: 'practice_feedback',
+  clarity: 'practice_negotiation',
+  listening: 'practice_difficult_decisions'
+};
+
+const CATEGORY_TO_ACTION: Record<string, string> = {
+  negotiation: 'practice_negotiation',
+  feedback: 'practice_feedback',
+  boundaries: 'practice_boundaries',
+  managing_up: 'practice_managing_up',
+  difficult_decisions: 'practice_difficult_decisions',
+  crisis: 'practice_crisis'
+};
+
 export interface AssistantUserContext {
   name: string;
+  dailyChallengeDone?: boolean;
   audience?: string;
   role: string;
   totalRehearsals: number;
@@ -57,7 +99,7 @@ const COMMUNICATION_KNOWLEDGE_BASE = `
 export class AssistantService {
   constructor(private llm: LLMService = llmService) {}
 
-  async chat(input: AssistantChatInput): Promise<string> {
+  async chat(input: AssistantChatInput): Promise<{ reply: string; actions: AssistantAction[] }> {
     const systemPrompt = this.buildSystemPrompt(input.userContext, input.recentSessions);
 
     const messages = [
@@ -67,12 +109,59 @@ export class AssistantService {
     ];
 
     try {
-      const response = await this.llm.generateCompletion(messages, { temperature: 0.6, maxTokens: 220 });
-      return this.stripMarkdown(response.trim()) || this.fallbackReply(input.message);
+      const response = await this.llm.generateCompletion(messages, { temperature: 0.6, maxTokens: 320, thinking: 'minimal' });
+      const { text, ids } = this.extractActions(response.trim());
+      const reply = this.stripMarkdown(text) || this.fallbackReply(input.message);
+      return { reply, actions: this.resolveActions(ids, input) };
     } catch (err) {
       console.warn('Assistant chat LLM call failed, using fallback:', err);
-      return this.fallbackReply(input.message);
+      return { reply: this.fallbackReply(input.message), actions: this.resolveActions([], input) };
     }
+  }
+
+  // The model ends its reply with "ACTIONS: id1, id2" — split that line off
+  // (it must never be shown to the user) and keep only ids in the catalog.
+  private extractActions(raw: string): { text: string; ids: string[] } {
+    const m = raw.match(/\n?\s*ACTIONS?\s*:\s*([^\n]*)\s*$/i);
+    if (!m) return { text: raw.replace(/\n?\s*ACTIONS?\s*:.*$/is, '').trim(), ids: [] };
+    const ids = m[1]
+      .split(/[,\s]+/)
+      .map((s) => s.trim().toLowerCase().replace(/[^a-z_]/g, ''))
+      .filter((id) => id in ACTION_CATALOG);
+    return { text: raw.slice(0, m.index).trim(), ids };
+  }
+
+  // 2–3 buttons: the model's own picks first, then topped up from what we
+  // know about this user (weakest skill, unfinished daily challenge, brand
+  // new, what they just asked about) so there's always a useful next step.
+  private resolveActions(modelIds: string[], input: AssistantChatInput): AssistantAction[] {
+    const chosen: string[] = [];
+    const add = (id?: string) => {
+      if (id && id in ACTION_CATALOG && !chosen.includes(id)) chosen.push(id);
+    };
+    modelIds.forEach(add);
+
+    const msg = input.message.toLowerCase();
+    const sessions = input.recentSessions || [];
+    const ctx = input.userContext;
+
+    if (/reply|respond|message|email|text back|what (do|should) i say/.test(msg)) add('reply_coach');
+    if (/own situation|custom|specific situation|real situation/.test(msg)) add('custom_scenario');
+    if (/how (does|do) (this|the app|rehearse)|tutorial|get started/.test(msg)) add('tutorial');
+
+    if (ctx.totalRehearsals === 0 || sessions.length === 0) {
+      add('start_practice');
+    } else {
+      const profile = computeCompetencyProfileFromScores(sessions) as any;
+      add(SKILL_TO_ACTION[profile?.weakestSkill]);
+      add(CATEGORY_TO_ACTION[sessions[0]?.category]);
+    }
+    if (!ctx.dailyChallengeDone) add('daily_challenge');
+    add('start_practice');
+    add('progress');
+    add('learn');
+
+    return chosen.slice(0, 3).map((id) => ({ id, label: ACTION_CATALOG[id] }));
   }
 
   private buildSystemPrompt(user: AssistantUserContext, sessions: AssistantSessionSummary[]): string {
@@ -107,6 +196,10 @@ You can do three things:
 1. App guidance: recommend which Rehearse feature fits what the user is trying to do (Free Practice, Guided Practice, Quick Drill, Custom Scenario, Learn, Progress). Be specific and brief.
 2. Personal pattern coaching: use the rolling performance profile and recent rehearsal data below to name a SPECIFIC recurring pattern in their communication — not just a restated score. E.g. instead of "you scored 72", say something like "you tend to lose specificity when the counterpart pushes back — that's shown up in 3 of your last sessions." The profile's weakest/strongest skill and trend are already computed for you; lean on those numbers rather than re-deriving them from the raw list.
 3. Reply assistant: if the user describes an incoming message or a situation and asks what to say, give ONE clear, ready-to-send suggested reply (not multiple options unless they ask for alternatives), plus a one-line reason it works.
+
+BUTTONS: After your reply, on a new final line, list 2 or 3 action ids for buttons that take the user straight to the most useful next step, in this exact form:
+ACTIONS: id1, id2, id3
+Only use ids from this list, and pick the ones that match what you just suggested and this user's history: ${Object.keys(ACTION_CATALOG).join(', ')}. Never mention the ids or this line in your reply text itself.
 
 Draw on this communication knowledge base when relevant, but never dump it verbatim — apply it to their specific situation:
 ${COMMUNICATION_KNOWLEDGE_BASE}

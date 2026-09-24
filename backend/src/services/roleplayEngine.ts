@@ -32,6 +32,7 @@ export class RoleplayEngine {
     const turnNumber = history.filter(t => t.speaker === 'counterpart').length + 1;
     const conversationArc = this.getConversationArc(turnNumber, cleanUserMessage, history);
     const userSentiment = this.classifyUserSentiment(cleanUserMessage);
+    const lengthRule = this.getLengthRule(cleanUserMessage);
 
     const systemPrompt = `You are roleplaying as ${scenario.counterpartName}, who is ${scenario.counterpartRole}.
 
@@ -53,7 +54,7 @@ USER'S COMMUNICATION QUALITY THIS TURN: ${userSentiment}
 
 RESPONSE GUIDELINES — FOLLOW THESE CAREFULLY:
 1. DIRECT RESPONSE: Address what the user literally typed in their message. Directly reference their specific numbers, deadlines, percentages, claims, or questions.
-2. PRECISE & REALISTIC DIALOGUE (50-90 WORDS): Provide a sharp, natural, multi-sentence response of 2 to 4 complete sentences, strictly between 50 and 90 words. Never output under 40 words, and NEVER exceed 100 words.
+2. REPLY LENGTH — THIS MATTERS: Real people don't give speeches in a conversation. ${lengthRule} Make one point per reply and ask at most one question. No lists, no lectures, no recapping what was already said. Match the user's energy: a short message gets a short reply.
 3. EMOTIONAL REALISM: Speak with authentic authority and professional tension as ${scenario.counterpartName} (${scenario.counterpartRole}). Express your pushbacks, operational constraints, or conditional next steps clearly.
 4. BANNED PHRASES: Never say "I understand your concern", "I appreciate you bringing this up", "as an AI", "fair point", or "I hear you". Speak like a real person in a real workplace scenario.
 5. EVOLUTION: Adapt your posture turn-by-turn based on how the user speaks (firm vs hedging). Stay 100% in character.
@@ -76,12 +77,13 @@ ${difficultyCalibration}`;
       const responseText = await this.llm.generateCompletion(messages, {
         temperature: 0.7,
         maxTokens: 1200,
-        strict: true
+        strict: true,
+        thinking: 'minimal'
       });
 
       const metrics = this.analyzeUserTurn(cleanUserMessage);
       return {
-        message: responseText.trim(),
+        message: this.capReplyLength(responseText),
         tacticalAnalysis: metrics
       };
     } catch (err) {
@@ -168,6 +170,30 @@ ${difficultyCalibration}`;
       lines.push(`- Performance trending up — run this at or slightly above normal difficulty.`);
     }
     return lines.join('\n');
+  }
+
+  // Reply length follows the user's own message — someone who typed one short
+  // line shouldn't get a paragraph back.
+  private getLengthRule(userMessage: string): string {
+    const words = userMessage.trim().split(/\s+/).filter(Boolean).length;
+    if (words <= 8) return 'Reply in ONE short sentence, about 8 to 18 words.';
+    if (words <= 25) return 'Reply in 1 to 2 short sentences, about 15 to 35 words total.';
+    return 'Reply in 2 short sentences, about 25 to 45 words total. Never more than 55 words.';
+  }
+
+  // Safety net if the model still runs long: keep whole sentences up to a cap
+  // rather than cutting mid-thought.
+  private capReplyLength(text: string, maxWords = 55): string {
+    const words = text.trim().split(/\s+/);
+    if (words.length <= maxWords) return text.trim();
+    const sentences = text.trim().match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [text.trim()];
+    let out = '';
+    for (const sent of sentences) {
+      const next = (out + sent).trim();
+      if (out && next.split(/\s+/).length > maxWords) break;
+      out = next + ' ';
+    }
+    return out.trim();
   }
 
   private analyzeUserTurn(message: string): { assertivenessScore: number; clarityScore: number; boundaryScore: number } {

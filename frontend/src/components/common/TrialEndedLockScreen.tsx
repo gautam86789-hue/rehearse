@@ -17,6 +17,7 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { apiService } from '../../services/api';
+import { isAccessLocked } from '../../utils/access';
 
 export const TrialEndedLockScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -32,33 +33,8 @@ export const TrialEndedLockScreen: React.FC = () => {
 
   // Determine locked state
   const isLocked = useMemo(() => {
-    if (!isAuthenticated || !isOnboarded || !user || !user.id) {
-      return false;
-    }
-
-    const hasActivePaidPlan =
-      isPro ||
-      user.subscription?.status === 'active_annual' ||
-      user.subscription?.status === 'active_three_month' ||
-      user.subscription?.status === 'active_monthly';
-
-    if (hasActivePaidPlan) {
-      return false;
-    }
-
-    if (user.subscription?.status === 'active_promo') {
-      const trialEndsAt = user.subscription?.trialEndsAt;
-      const isPromoValid = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
-      return !isPromoValid;
-    }
-
-    if (user.subscription?.status === 'free_trial' || user.subscription?.status === 'free_rehearsals') {
-      const remaining = user.subscription?.rehearsalsRemaining ?? 0;
-      return remaining <= 0;
-    }
-
-    // Any other status (e.g. expired, inactive) -> locked
-    return true;
+    if (!isAuthenticated || !isOnboarded) return false;
+    return isAccessLocked(user, isPro);
   }, [isAuthenticated, isOnboarded, user, isPro]);
 
   // Intercept hardware back button ONLY when locked so user cannot bypass

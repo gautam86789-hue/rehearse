@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Ellipse, Circle } from 'react-native-svg';
-import { ArrowLeft, Send } from 'lucide-react-native';
+import { ArrowLeft, Send, ArrowRight } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { localDateKey } from '../utils/dates';
 
 // A distinct mark for the Coach instead of a generic sparkle icon — two
 // rings rotating independently around a solid core, evoking "thinking"
@@ -62,10 +63,35 @@ const OrbitalMark: React.FC<{ size: number; ringColor: string; ringColor2: strin
   );
 };
 
+interface ChatAction {
+  id: string;
+  label: string;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  actions?: ChatAction[];
 }
+
+// Where each assistant button goes. Ids come from the backend's catalog
+// (assistantService.ts) — anything unknown is simply not shown.
+const ACTION_ROUTES: Record<string, { route: string; params?: any }> = {
+  start_practice: { route: 'Scenarios' },
+  practice_negotiation: { route: 'Scenarios', params: { category: 'negotiation' } },
+  practice_feedback: { route: 'Scenarios', params: { category: 'feedback' } },
+  practice_boundaries: { route: 'Scenarios', params: { category: 'boundaries' } },
+  practice_managing_up: { route: 'Scenarios', params: { category: 'managing_up' } },
+  practice_difficult_decisions: { route: 'Scenarios', params: { category: 'difficult_decisions' } },
+  practice_crisis: { route: 'Scenarios', params: { category: 'crisis' } },
+  daily_challenge: { route: 'DailyPuzzle' },
+  learn: { route: 'Learn' },
+  progress: { route: 'HomeTabs', params: { screen: 'ProgressTab' } },
+  history: { route: 'ConversationHistory' },
+  reply_coach: { route: 'ReplyCoach' },
+  custom_scenario: { route: 'DescribeSituation' },
+  tutorial: { route: 'Tutorial' }
+};
 
 const SUGGESTIONS = [
   'What should I practice next?',
@@ -113,7 +139,8 @@ export const AICoachScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           role: user.role,
           totalRehearsals: user.totalRehearsals || 0,
           currentStreak: user.currentStreak || 0,
-          longestStreak: user.longestStreak || 0
+          longestStreak: user.longestStreak || 0,
+          dailyChallengeDone: (user.completedPuzzleDates || []).includes(localDateKey())
         },
         recentSessions: history.slice(0, 10).map((h) => ({
           scenarioTitle: h.scenarioTitle,
@@ -127,7 +154,7 @@ export const AICoachScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           completedAt: h.completedAt
         }))
       });
-      setMessages((prev) => [...prev, { role: 'assistant', content: res.reply }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: res.reply, actions: res.actions }]);
     } catch (e) {
       setMessages((prev) => [
         ...prev,
@@ -183,19 +210,40 @@ export const AICoachScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           </View>
         ) : (
           messages.map((m, i) => (
-            <View
-              key={i}
-              style={[
-                styles.bubble,
-                m.role === 'user'
-                  ? [styles.bubbleUser, { backgroundColor: colors.primary }]
-                  : [styles.bubbleAssistant, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]
-              ]}
-            >
-              <Text style={[styles.bubbleText, { color: m.role === 'user' ? '#FFFFFF' : colors.textPrimary }]}>
-                {m.content}
-              </Text>
-            </View>
+            <React.Fragment key={i}>
+              <View
+                style={[
+                  styles.bubble,
+                  m.role === 'user'
+                    ? [styles.bubbleUser, { backgroundColor: colors.primary }]
+                    : [styles.bubbleAssistant, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]
+                ]}
+              >
+                <Text style={[styles.bubbleText, { color: m.role === 'user' ? '#FFFFFF' : colors.textPrimary }]}>
+                  {m.content}
+                </Text>
+              </View>
+              {m.role === 'assistant' && m.actions && m.actions.length > 0 && (
+                <View style={styles.actionsRow}>
+                  {m.actions
+                    .filter((a) => ACTION_ROUTES[a.id])
+                    .map((a) => (
+                      <TouchableOpacity
+                        key={a.id}
+                        style={[styles.actionBtn, { backgroundColor: colors.primarySubtle, borderColor: colors.primary }]}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          const target = ACTION_ROUTES[a.id];
+                          navigation.navigate(target.route, target.params);
+                        }}
+                      >
+                        <Text style={[styles.actionBtnText, { color: colors.primary }]}>{a.label}</Text>
+                        <ArrowRight size={14} color={colors.primary} />
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              )}
+            </React.Fragment>
           ))
         )}
         {isSending && (
@@ -235,6 +283,28 @@ export const AICoachScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 };
 
 const styles = StyleSheet.create({
+  actionsRow: {
+    alignSelf: 'flex-start',
+    maxWidth: '92%',
+    gap: 8,
+    marginBottom: 12,
+    marginTop: -2
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 11
+  },
+  actionBtnText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    flexShrink: 1
+  },
   container: {
     flex: 1
   },

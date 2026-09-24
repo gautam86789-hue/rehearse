@@ -47,6 +47,11 @@ export const onboardingSchema = z.object({
   audience: z.enum(['founders_investors', 'new_managers', 'mba_students', 'professionals', 'new_hires']).optional()
 });
 
+export const updateProfileSchema = z.object({
+  userId: z.string().optional(),
+  name: z.string().trim().min(1, 'Name cannot be empty').max(60, 'Name is too long')
+});
+
 export class AuthController {
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -194,6 +199,23 @@ export class AuthController {
       const userId = req.userId || (req.query.userId as string) || 'demo-user-1';
       const user = await memoryDb.getUser(userId);
       res.json({ user });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Lets a user rename themselves — the app used to keep the edited name only
+  // on the device, so the next server sync brought the old one back.
+  async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId, name } = req.body;
+      const resolvedUserId = userId || req.userId;
+      if (!resolvedUserId) {
+        res.status(400).json({ error: 'userId is required.' });
+        return;
+      }
+      const updated = await memoryDb.updateUser(resolvedUserId, { name, fullName: name } as any);
+      res.json({ user: updated });
     } catch (err) {
       next(err);
     }

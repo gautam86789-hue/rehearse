@@ -73,7 +73,7 @@ Evaluate this transcript and generate the complete Communication Rubric JSON now
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        { temperature: 0.4, responseFormat: 'json', strict: true }
+        { temperature: 0.4, responseFormat: 'json', strict: true, thinking: 'low' }
       );
 
       const parsed = this.cleanAndParseJSON(rawResponse);

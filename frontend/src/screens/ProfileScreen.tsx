@@ -1,3 +1,4 @@
+import { apiService } from '../services/api';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -81,7 +82,10 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     const trimmed = draftName.trim();
     setIsEditingName(false);
     if (trimmed && trimmed !== user.name) {
-      setUser((prev) => ({ ...prev, name: trimmed }));
+      setUser((prev) => ({ ...prev, name: trimmed, fullName: trimmed, nameCustomized: true }));
+      // Save to the account too, so it survives sync and other devices. If
+      // this fails (offline), the next sync retries — see AppContext.
+      apiService.updateProfileName(user.id, trimmed).catch(() => {});
       unlockMilestone('badge_profile_customized', 'Made It Yours', 'Personalized your profile.', 'shield-check');
     } else {
       setDraftName(user.name || 'Professional');

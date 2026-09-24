@@ -14,6 +14,13 @@ export interface LLMGenerateOptions {
   // instead of returning the canned simulator text — used where a scripted
   // stand-in would be passed off as a genuine AI reply or a real score.
   strict?: boolean;
+  // How much hidden "thinking" the model does before answering. It is the
+  // biggest share of latency: a conversational reply measured ~5s at the
+  // default and ~1.8s at 'minimal' with equally on-context answers. The full
+  // context (persona, scenario, history, user profile) is still in the prompt
+  // either way — this only trims scratch reasoning. Use 'low' where accuracy
+  // matters more than speed (scoring), 'minimal' for conversation.
+  thinking?: 'minimal' | 'low';
 }
 
 export class LLMService {
@@ -29,7 +36,7 @@ export class LLMService {
     messages: LLMMessage[],
     options: LLMGenerateOptions = {}
   ): Promise<string> {
-    const { temperature = 0.75, responseFormat = 'text', maxTokens, strict = false } = options;
+    const { temperature = 0.75, responseFormat = 'text', maxTokens, strict = false, thinking } = options;
 
     if (this.geminiApiKey) {
       // Two attempts: one transient timeout or empty completion shouldn't be
@@ -37,7 +44,7 @@ export class LLMService {
       let lastErr: unknown = null;
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          const response = await this.callGemini(messages, temperature, responseFormat, maxTokens);
+          const response = await this.callGemini(messages, temperature, responseFormat, maxTokens, thinking);
           if (response && response.trim().length > 0) return response;
           lastErr = new Error('Gemini returned an empty completion');
         } catch (err) {
@@ -56,7 +63,8 @@ export class LLMService {
     messages: LLMMessage[],
     temperature: number,
     responseFormat: string,
-    maxTokens?: number
+    maxTokens?: number,
+    thinking?: 'minimal' | 'low'
   ): Promise<string> {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`;
 
@@ -80,8 +88,8 @@ export class LLMService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 14000);
 
-    try {
-      const res = await fetch(endpoint, {
+    const send = (thinkingLevel?: 'minimal' | 'low') =>
+      fetch(endpoint, {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
@@ -91,10 +99,20 @@ export class LLMService {
           generationConfig: {
             temperature,
             responseMimeType: responseFormat === 'json' ? 'application/json' : 'text/plain',
-            maxOutputTokens: effectiveMaxTokens
+            maxOutputTokens: effectiveMaxTokens,
+            ...(thinkingLevel ? { thinkingConfig: { thinkingLevel } } : {})
           }
         })
       });
+
+    try {
+      let res = await send(thinking);
+      // If this model/version rejects the thinking setting, retry once with
+      // the plain request rather than failing the whole reply.
+      if (!res.ok && thinking && res.status === 400) {
+        console.warn('Gemini rejected thinkingConfig, retrying without it:', await res.text());
+        res = await send();
+      }
 
       if (!res.ok) {
         throw new Error(`Gemini returned ${res.status}: ${await res.text()}`);

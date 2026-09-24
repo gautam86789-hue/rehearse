@@ -16,6 +16,8 @@ import { linkExternalUserId, isOneSignalSupported } from '../services/oneSignalS
 import type { CustomerInfo } from 'react-native-purchases';
 import { SubscriptionPlanId } from '../data/subscriptionPlans';
 import { localDateKey, computeStreak } from '../utils/dates';
+import { hasSeenTutorial, markTutorialSeen } from '../utils/tutorial';
+import { isAccessLocked } from '../utils/access';
 
 interface AppContextType {
   user: UserProfile;
@@ -44,12 +46,16 @@ interface AppContextType {
   addHistoryEntry: (scenario: Scenario, scorecard: Scorecard, turns?: MessageTurn[]) => Promise<void>;
   addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
   dismissNotification: (id: string) => Promise<void>;
   unlockMilestone: (id: string, title: string, description: string, icon: string) => void;
   toggleSavedScenario: (scenarioId: string) => void;
   markArticleRead: (articleId: string) => void;
   markJourneyNodeComplete: (nodeId: string) => void;
   refreshProfile: () => Promise<UserProfile | undefined>;
+  // null until we've read whether this user has seen the how-it-works tutorial.
+  tutorialSeen: boolean | null;
+  completeTutorial: () => Promise<void>;
   completeOnboarding: (
     role: string,
     experienceLevel: string,
@@ -81,6 +87,18 @@ const createDynamicProfile = (userId: string, role = 'Executive Leader', email?:
   createdAt: new Date().toISOString()
 });
 
+// Which name wins when the local profile and the server's copy disagree: a
+// name the user typed themselves always does; otherwise a real server name;
+// "Professional" is only ever a placeholder of last resort.
+function reconcileName(local: UserProfile, server: UserProfile): { name: string; fullName: string } {
+  const isPlaceholder = (n?: string) => !n || n === 'Professional';
+  let name: string;
+  if (local.nameCustomized && !isPlaceholder(local.name)) name = local.name;
+  else if (!isPlaceholder(server.name)) name = server.name;
+  else name = local.name || server.name || 'Professional';
+  return { name, fullName: name };
+}
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -105,6 +123,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [unlockedBadge, setUnlockedBadge] = useState<{ title: string; description: string; icon: string } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [tutorialSeen, setTutorialSeen] = useState<boolean | null>(null);
 
   // One-shot escape hatch: completeOnboarding sets this right before calling
   // signInAsGuest(), whose isGuest flip changes currentUserId and re-triggers
@@ -239,6 +258,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       commitProfile(activeProfile);
       setHistory(storedHistory ? JSON.parse(storedHistory) : []);
       setNotifications(storedNotifications ? JSON.parse(storedNotifications) : []);
+      hasSeenTutorial(userId).then((seen) => {
+        if (!isStale()) setTutorialSeen(seen);
+      });
       setIsLoading(false);
 
       // Then reconcile with the backend in the background; the merged result
@@ -250,9 +272,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const merged = withRealName({
             ...activeProfile,
             ...apiUser,
+            ...reconcileName(activeProfile, apiUser),
+            nameCustomized: activeProfile.nameCustomized,
             audience: locallyKnownAudience || apiUser.audience,
             id: userId
           });
+          // A name edited while offline never reached the account — send it now.
+          if (activeProfile.nameCustomized && apiUser.name !== merged.name) {
+            apiService.updateProfileName(userId, merged.name).catch(() => {});
+          }
           await AsyncStorage.setItem(userKey, JSON.stringify(merged));
           if (isStale()) return;
           commitProfile(merged);
@@ -480,6 +508,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const merged: UserProfile = {
           ...base,
           ...refreshed,
+          ...reconcileName(base, refreshed),
+          nameCustomized: base.nameCustomized,
           audience: refreshed.audience || base.audience,
           avatarUri: refreshed.avatarUri || base.avatarUri,
           milestoneFlags: { ...base.milestoneFlags, ...refreshed.milestoneFlags },
@@ -493,6 +523,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setUser((prev) => ({
           ...prev,
           ...refreshed,
+          ...reconcileName(prev, refreshed),
+          nameCustomized: prev.nameCustomized,
           audience: refreshed.audience || prev.audience,
           avatarUri: refreshed.avatarUri || prev.avatarUri,
           milestoneFlags: { ...prev.milestoneFlags, ...refreshed.milestoneFlags },
@@ -542,7 +574,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await setUser({
         ...updated,
         audience: audience || updated.audience,
-        milestoneFlags: { ...updated.milestoneFlags, badge_onboarded: true }
+        milestoneFlags: { ...updated.milestoneFlags }
       });
     } catch (e) {
       // Local dynamic fallback
@@ -553,42 +585,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         experienceLevel,
         primaryDreadCategory,
         audience,
-        milestoneFlags: { ...user.milestoneFlags, badge_onboarded: true }
+        milestoneFlags: { ...user.milestoneFlags }
       });
     } finally {
-      // First "starting step" celebration — fires once, right after this
-      // profile object (with the flag already set above) lands in state.
-      setUnlockedBadge({
-        title: 'Welcome Aboard',
-        description: 'Completed onboarding and picked your focus.',
-        icon: 'sparkles'
-      });
-      // Written directly under targetUserId (not via addNotification, which
-      // closes over the pre-onboarding `user.id`/`notifications` and would
-      // otherwise persist this under the identity we're moving away from).
-      try {
-        const notifKey = `@rehearse_notifications_${targetUserId}`;
-        const existingRaw = await AsyncStorage.getItem(notifKey);
-        const existing = existingRaw ? JSON.parse(existingRaw) : [];
-        const entry: AppNotification = {
-          id: `notif-${Date.now()}`,
-          title: 'Milestone unlocked',
-          body: 'Welcome Aboard — Completed onboarding and picked your focus.',
-          icon: 'sparkles',
-          createdAt: new Date().toISOString(),
-          read: false
-        };
-        const updated = [entry, ...existing].slice(0, 50);
-        await AsyncStorage.setItem(notifKey, JSON.stringify(updated));
-        setNotifications(updated);
-      } catch (e) {
-        console.warn('Failed to save onboarding notification', e);
-      }
+      // The "Welcome Aboard" celebration is deliberately NOT fired here — it
+      // waits until the how-it-works tutorial is done and access is unlocked
+      // (see the effect below), so it doesn't land on top of those screens.
       setIsOnboarded(true);
       if (!isAuthenticated && signInAsGuest) {
         // About to flip isGuest -> changes currentUserId -> re-triggers
         // loadUserState. Suppress just that one reload's loading gate so the
-        // badge shown above doesn't get unmounted mid-celebration.
+        // app doesn't flash back to the loading screen mid-onboarding.
         suppressNextLoadingGateRef.current = true;
         await signInAsGuest();
       }
@@ -639,9 +646,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => (prev.every((n) => n.read) ? prev : prev.map((n) => ({ ...n, read: true }))));
   };
 
+  // The pop-up banner auto-hides after a few seconds — that should only mark
+  // the notification as seen, never delete it from the list.
+  const markNotificationRead = async (id: string) => {
+    setNotifications((prev) => (prev.some((n) => n.id === id && !n.read) ? prev.map((n) => (n.id === id ? { ...n, read: true } : n)) : prev));
+  };
+
   const dismissNotification = async (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
+
+  const completeTutorial = async () => {
+    setTutorialSeen(true);
+    await markTutorialSeen(userRef.current.id);
+  };
+
+  // "Welcome Aboard" — shown once, after the how-it-works tutorial AND once
+  // access is open (not sitting on the access-locked screen). The milestone
+  // flag makes it fire exactly once per account.
+  useEffect(() => {
+    if (isLoading || !isOnboarded || tutorialSeen !== true) return;
+    if (isAccessLocked(user, isPro)) return;
+    if (user.milestoneFlags?.badge_onboarded) return;
+    unlockMilestone('badge_onboarded', 'Welcome Aboard', 'Completed onboarding and picked your focus.', 'sparkles');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, isOnboarded, tutorialSeen, user.milestoneFlags?.badge_onboarded, user.subscription?.status, user.subscription?.rehearsalsRemaining, user.subscription?.trialEndsAt, isPro]);
 
   // Early "starting steps" milestones — celebrated once each, tracked via a
   // flag on the profile so they never re-fire. These exist specifically so a
@@ -754,12 +783,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addHistoryEntry,
         addNotification,
         markAllNotificationsRead,
+        markNotificationRead,
         dismissNotification,
         unlockMilestone,
         toggleSavedScenario,
         markArticleRead,
         markJourneyNodeComplete,
         refreshProfile,
+        tutorialSeen,
+        completeTutorial,
         completeOnboarding,
         upgradeSubscription
       }}

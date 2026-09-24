@@ -251,6 +251,9 @@ export interface UserProfile {
   email?: string;
   name: string;
   fullName?: string;
+  // True once the user has typed their own name in Profile — from then on
+  // that name wins over anything the server sends back.
+  nameCustomized?: boolean;
   avatarUri?: string;
   role: string;
   audience?: Audience;

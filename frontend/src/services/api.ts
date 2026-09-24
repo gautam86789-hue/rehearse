@@ -459,12 +459,19 @@ class ApiService {
   }
 
   // Profile
+  // Throws when the server can't be reached. It used to return a made-up
+  // default profile here, which the app then merged over the real one —
+  // resetting the user's name to "Professional" and their plan to defaults
+  // whenever the backend was asleep. Callers already handle the failure.
   async getProfile(userId: string): Promise<{ user: UserProfile }> {
-    try {
-      return await this.request<{ user: UserProfile }>(`/auth/profile?userId=${encodeURIComponent(userId)}`);
-    } catch {
-      return { user: DEFAULT_PROFILE(userId) };
-    }
+    return this.request<{ user: UserProfile }>(`/auth/profile?userId=${encodeURIComponent(userId)}`);
+  }
+
+  async updateProfileName(userId: string, name: string): Promise<{ user: UserProfile }> {
+    return this.request<{ user: UserProfile }>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ userId, name })
+    });
   }
 
   async completeOnboarding(data: {
@@ -794,6 +801,7 @@ class ApiService {
     conversationHistory: { role: 'user' | 'assistant'; content: string }[];
     userContext: {
       name: string;
+      dailyChallengeDone?: boolean;
       audience?: string;
       role: string;
       totalRehearsals: number;
@@ -811,7 +819,7 @@ class ApiService {
       growthAreas: string[];
       completedAt: string;
     }[];
-  }): Promise<{ reply: string }> {
+  }): Promise<{ reply: string; actions?: { id: string; label: string }[] }> {
     const baseUrl = getApiBaseUrl();
     if (!baseUrl) {
       return { reply: this.localAssistantFallback(data.message) };
@@ -827,7 +835,7 @@ class ApiService {
       });
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`Assistant request failed with status ${res.status}`);
-      return (await res.json()) as { reply: string };
+      return (await res.json()) as { reply: string; actions?: { id: string; label: string }[] };
     } catch (err) {
       clearTimeout(timeoutId);
       return { reply: this.localAssistantFallback(data.message) };
