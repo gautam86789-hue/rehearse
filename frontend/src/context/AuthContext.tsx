@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -155,6 +155,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearError = () => setAuthError(null);
+
+  // If the server no longer recognises our sign-in token, sign out with a clear
+  // message so the user just signs in again (their progress is kept on their
+  // account and comes straight back).
+  const signOutRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    apiService.setSessionExpiredHandler(() => {
+      setAuthError('Your session expired. Please sign in again.');
+      signOutRef.current();
+    });
+    return () => apiService.setSessionExpiredHandler(null);
+  }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
     setAuthError(null);
@@ -461,6 +473,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null);
     setUser(null);
   };
+
+  signOutRef.current = signOut;
 
   const isAuthenticated = !!session || !!user || isGuest;
 

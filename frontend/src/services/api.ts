@@ -357,6 +357,15 @@ class ApiService {
     this.authToken = token;
   }
 
+  // Called when the server rejects our sign-in token (expired or no longer
+  // known) — lets the app ask the user to sign in again instead of failing
+  // quietly on every sync.
+  private onSessionExpired: (() => void) | null = null;
+  private lastSessionExpiredAt = 0;
+  setSessionExpiredHandler(fn: (() => void) | null) {
+    this.onSessionExpired = fn;
+  }
+
   getAuthToken(): string | null {
     return this.authToken;
   }
@@ -401,6 +410,10 @@ class ApiService {
         // switch to the right follow-up UI instead of just showing text.
         if (errData.code) (error as any).code = errData.code;
         (error as any).status = res.status;
+        if (res.status === 401 && this.authToken && this.onSessionExpired && Date.now() - this.lastSessionExpiredAt > 30000) {
+          this.lastSessionExpiredAt = Date.now();
+          this.onSessionExpired();
+        }
         throw error;
       }
 

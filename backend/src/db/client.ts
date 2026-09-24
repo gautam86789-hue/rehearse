@@ -759,7 +759,10 @@ class InMemoryDatabase {
 
   async createSession(userId: string): Promise<AuthSession> {
     const token = `tok_${crypto.randomBytes(32).toString('hex')}`;
-    const id = `sess_${crypto.randomUUID()}`;
+    // Must be a real UUID: user_sessions.id is a UUID column, and the old
+    // "sess_<uuid>" value made every insert fail (silently), so sign-in tokens
+    // only lived in memory and were lost whenever the server restarted.
+    const id = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const createdAt = new Date().toISOString();
 
@@ -767,13 +770,15 @@ class InMemoryDatabase {
 
     if (supabase) {
       try {
-        await supabase.from('user_sessions').insert({
+        const { error } = await supabase.from('user_sessions').insert({
           id,
           user_id: userId,
           token,
           expires_at: expiresAt,
           created_at: createdAt
         });
+        // supabase-js reports failures via `error` rather than throwing.
+        if (error) throw error;
       } catch (err) {
         console.warn('Supabase createSession failed, falling back to memory store:', err);
       }
