@@ -6,12 +6,14 @@ import {
   createCashfreeOrderSchema
 } from '../controllers/subscriptionController.js';
 import { validateBody } from '../middleware/errorHandler.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
 
 router.get('/plans', subscriptionController.getPlans);
 router.post('/upgrade', validateBody(upgradeSubscriptionSchema), subscriptionController.upgradePlan);
-router.post('/redeem-code', validateBody(redeemPromoCodeSchema), subscriptionController.redeemPromoCode);
+// Access codes are short and guessable — cap attempts.
+router.post('/redeem-code', rateLimit({ windowMs: 60_000, max: 8 }), validateBody(redeemPromoCodeSchema), subscriptionController.redeemPromoCode);
 router.post('/webhook', subscriptionController.handleRevenueCatWebhook);
 
 router.post('/cashfree/create-order', validateBody(createCashfreeOrderSchema), subscriptionController.createOrder);

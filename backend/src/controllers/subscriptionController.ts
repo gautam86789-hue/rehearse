@@ -1,3 +1,4 @@
+import { assertCanAccessUser } from '../middleware/ownership.js';
 import { Request, Response, NextFunction } from 'express';
 import { memoryDb } from '../db/client.js';
 import { z } from 'zod';
@@ -126,6 +127,16 @@ export class SubscriptionController {
 
   async upgradePlan(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      // This route grants a paid plan WITHOUT any payment check (it exists for
+      // local testing only). Real plans arrive via the payment webhooks, so it
+      // stays closed unless a developer explicitly opens it.
+      if (process.env.ALLOW_UNPAID_UPGRADE !== 'true' && process.env.NODE_ENV !== 'test') {
+        res.status(403).json({
+          error: 'Paid plans are not open yet. Use an access code to unlock Rehearse.',
+          code: 'PAYMENTS_NOT_OPEN'
+        });
+        return;
+      }
       const { userId, plan } = req.body;
       const resolvedUserId = userId || req.userId || 'demo-user-1';
       const user = await memoryDb.getUser(resolvedUserId);
@@ -161,6 +172,7 @@ export class SubscriptionController {
     try {
       const { userId, code } = req.body;
       const resolvedUserId = userId || req.userId || 'demo-user-1';
+      if (!(await assertCanAccessUser(req, res, resolvedUserId))) return;
       const normalizedCode = String(code).trim().toUpperCase();
       const promo = PROMO_CODES[normalizedCode];
 

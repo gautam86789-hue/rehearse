@@ -9,14 +9,18 @@ import {
   verifyEmailSchema
 } from '../controllers/authController.js';
 import { validateBody } from '../middleware/errorHandler.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
 
+// Slow down password / code guessing: 10 attempts a minute per client.
+const authLimiter = rateLimit({ windowMs: 60_000, max: 10, keyFrom: (req) => String(req.body?.email || '').toLowerCase() });
+
 // Registration & Login
-router.post('/register', validateBody(registerSchema), authController.register);
-router.post('/signup', validateBody(registerSchema), authController.register);
-router.post('/login', validateBody(loginSchema), authController.login);
-router.post('/signin', validateBody(loginSchema), authController.login);
+router.post('/register', authLimiter, validateBody(registerSchema), authController.register);
+router.post('/signup', authLimiter, validateBody(registerSchema), authController.register);
+router.post('/login', authLimiter, validateBody(loginSchema), authController.login);
+router.post('/signin', authLimiter, validateBody(loginSchema), authController.login);
 router.post('/logout', authController.logout);
 
 // Email Verification

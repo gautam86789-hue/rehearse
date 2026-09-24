@@ -54,10 +54,17 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
       setShowAuthGate(true);
       return;
     }
+    if (!__DEV__) {
+      // Real payments aren't open yet — the way in is an access code.
+      setIsPaywallVisible(true);
+      return;
+    }
     setIsSimulating(true);
     try {
       await upgradeSubscription(selectedPlan);
       setToast({ visible: true, message: 'Test purchase simulated — Pro features unlocked.', type: 'success' });
+    } catch {
+      setToast({ visible: true, message: 'The server did not allow that upgrade.', type: 'error' });
     } finally {
       setIsSimulating(false);
     }
@@ -270,10 +277,16 @@ export const MembershipBillingScreen: React.FC<{ navigation: any }> = ({ navigat
           // closure value from before this render, since the AuthContext
           // state update that just happened hasn't propagated here yet.
           setShowAuthGate(false);
+          if (!__DEV__) {
+            setIsPaywallVisible(true);
+            return;
+          }
           setIsSimulating(true);
           try {
             await upgradeSubscription(selectedPlan);
             setToast({ visible: true, message: 'Test purchase simulated — Pro features unlocked.', type: 'success' });
+          } catch {
+            setToast({ visible: true, message: 'The server did not allow that upgrade.', type: 'error' });
           } finally {
             setIsSimulating(false);
           }

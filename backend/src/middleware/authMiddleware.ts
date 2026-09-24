@@ -6,6 +6,8 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      /** True only when a valid session/Supabase token identified the caller (not the demo fallback). */
+      authenticated?: boolean;
     }
   }
 }
@@ -31,6 +33,7 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
         const sessionUser = await memoryDb.validateSession(token);
         if (sessionUser?.id) {
           req.userId = sessionUser.id;
+          req.authenticated = true;
           next();
           return;
         }
@@ -44,6 +47,7 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
           const { data, error } = await supabase.auth.getUser(token);
           if (!error && data?.user?.id) {
             req.userId = data.user.id;
+            req.authenticated = true;
             next();
             return;
           }

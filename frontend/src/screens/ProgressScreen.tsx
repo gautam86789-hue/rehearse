@@ -1,3 +1,4 @@
+import { TabHeader, TAB_PADDING_H, TAB_PADDING_BOTTOM } from '../components/common/TabHeader';
 import { localDateKey } from '../utils/dates';
 import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Animated } from 'react-native';
@@ -153,11 +154,7 @@ export const ProgressScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <Header
-        title="Your Progress"
-        rightAction="none"
-        navigation={navigation}
-      />
+      <TabHeader title="Progress" />
 
       <View style={styles.tabZone}>
         <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
@@ -438,14 +435,14 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   tabZone: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: TAB_PADDING_H,
+    paddingTop: 0,
     paddingBottom: 8
   },
   scroll: {
-    paddingHorizontal: 16,
+    paddingHorizontal: TAB_PADDING_H,
     paddingTop: 6,
-    paddingBottom: 110
+    paddingBottom: TAB_PADDING_BOTTOM
   },
   factRow: {
     flexDirection: 'row',

@@ -25,7 +25,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: Math.max(insets.top, 24) }]}>
       <View style={styles.center}>
-        <RehearseEmblem size={96} />
+        <RehearseEmblem size={64} />
         <View style={styles.wordmarkRow}>
           <Text style={[styles.wordmark, { color: colors.textPrimary }]}>REHEARSE</Text>
           <Text style={[styles.wordmark, { color: colors.primary }]}>.</Text>
@@ -39,7 +39,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           {CUES.map(({ icon: Icon, label }) => (
             <View key={label} style={styles.cue}>
               <View style={[styles.cueCircle, { backgroundColor: colors.primarySubtle }]}>
-                <Icon size={22} color={colors.primary} />
+                <Icon size={18} color={colors.primary} />
               </View>
               <Text style={[styles.cueLabel, { color: colors.textSecondary }]}>{label}</Text>
             </View>
@@ -75,15 +75,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-  wordmarkRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 18, marginBottom: 22 },
-  wordmark: { fontSize: 26, fontWeight: '900', letterSpacing: 2.5 },
-  headline: { fontSize: 25, fontWeight: '800', textAlign: 'center', lineHeight: 33, letterSpacing: -0.4 },
-  cueRow: { flexDirection: 'row', gap: 28, marginTop: 40 },
-  cue: { alignItems: 'center', gap: 8 },
-  cueCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  cueLabel: { fontSize: 12.5, fontWeight: '600' },
+  wordmarkRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 12, marginBottom: 36 },
+  wordmark: { fontSize: 15, fontWeight: '800', letterSpacing: 3 },
+  headline: { fontSize: 32, fontWeight: '800', textAlign: 'center', lineHeight: 40, letterSpacing: -0.8 },
+  cueRow: { flexDirection: 'row', gap: 24, marginTop: 36 },
+  cue: { alignItems: 'center', gap: 6 },
+  cueCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  cueLabel: { fontSize: 11.5, fontWeight: '600' },
   bottom: { paddingHorizontal: 24, alignItems: 'center' },
-  button: { height: 56, borderRadius: 28, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  button: { height: 54, borderRadius: 27, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  legal: { fontSize: 11.5, textAlign: 'center', marginTop: 16, lineHeight: 17 }
+  legal: { fontSize: 11, textAlign: 'center', marginTop: 14, lineHeight: 16 }
 });

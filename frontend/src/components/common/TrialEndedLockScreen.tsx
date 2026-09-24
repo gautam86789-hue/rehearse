@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   BackHandler,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView
@@ -25,6 +26,23 @@ export const TrialEndedLockScreen: React.FC = () => {
   const { colors, elevation, isDark } = useTheme();
   const { user, isPro, isOnboarded, refreshProfile, unlockMilestone } = useApp();
   const { isAuthenticated, signOut } = useAuth();
+
+  const scrollRef = useRef<ScrollView>(null);
+  // On edge-to-edge Android the window no longer shrinks for the keyboard, so
+  // the code field ended up hidden underneath it. Track the keyboard's height
+  // ourselves, pad the content by it, and scroll the field into view.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates?.height || 0);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,12 +116,13 @@ export const TrialEndedLockScreen: React.FC = () => {
     <View style={[styles.lockContainer, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }
+            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 + keyboardHeight }
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

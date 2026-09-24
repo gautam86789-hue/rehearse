@@ -1,3 +1,4 @@
+import { TabHeader, TabIconButton, TAB_PADDING_H, TAB_PADDING_BOTTOM } from '../components/common/TabHeader';
 import { apiService } from '../services/api';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -135,39 +136,29 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <TabHeader
+        title="Profile"
+        right={
+          <>
+            {(user.currentStreak || 0) > 0 && (
+              <TabIconButton onPress={() => shareStreak('Share your streak')} disabled={isSharingStreak} label="Share my streak">
+                <Share2 size={20} color={isSharingStreak ? colors.textMuted : colors.primary} />
+              </TabIconButton>
+            )}
+            <TabIconButton onPress={() => navigation.navigate('Settings')} label="Settings">
+              <SettingsIcon size={20} color={colors.textSecondary} />
+            </TabIconButton>
+          </>
+        }
+      />
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 12) + 8 }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         scrollEnabled={fitScroll.scrollEnabled}
         onLayout={fitScroll.onLayout}
         onContentSizeChange={fitScroll.onContentSizeChange}
       >
-        {/* Header row */}
-        <View style={styles.headerRow}>
-          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Profile</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {(user.currentStreak || 0) > 0 && (
-              <TouchableOpacity
-                style={styles.settingsGear}
-                onPress={() => shareStreak('Share your streak')}
-                disabled={isSharingStreak}
-                activeOpacity={0.7}
-                accessibilityLabel="Share my streak"
-              >
-                <Share2 size={20} color={isSharingStreak ? colors.textMuted : colors.primary} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.settingsGear}
-              onPress={() => navigation.navigate('Settings')}
-              activeOpacity={0.7}
-            >
-              <SettingsIcon size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Avatar + name */}
         <View style={styles.identityBlock}>
           <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.85} style={styles.avatarWrap}>
@@ -337,8 +328,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 110
+    paddingHorizontal: TAB_PADDING_H,
+    paddingBottom: TAB_PADDING_BOTTOM
   },
   headerRow: {
     flexDirection: 'row',

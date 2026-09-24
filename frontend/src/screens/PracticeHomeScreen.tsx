@@ -9,6 +9,7 @@ import { useTheme, CardCategoryKey } from '../context/ThemeContext';
 import { CURATED_SCENARIOS } from '../data/scenariosData';
 import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
+import { TabHeader, TAB_PADDING_H, TAB_PADDING_BOTTOM } from '../components/common/TabHeader';
 
 // Flagship, audience-matched personas — one-tap fast path straight into a
 // Roleplay session, skipping the multi-step Describe-Your-Situation form.
@@ -84,24 +85,21 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <TabHeader title="Practice" />
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 12) + 8 }]}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         scrollEnabled={fitScroll.scrollEnabled}
         onLayout={fitScroll.onLayout}
         onContentSizeChange={fitScroll.onContentSizeChange}
       >
-        <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Practice</Text>
-        </View>
-
         <View style={styles.list}>
           {PRACTICE_MODES.map((mode) => (
             <ThemedFeatureCard
               key={mode.id}
-              size="tile"
               title={mode.title}
+              subtitle={mode.subtitle}
               icon={mode.icon}
               categoryColor={mode.categoryColor}
               illustration={getFeatureIllustration(mode.id)}
@@ -111,7 +109,7 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
         </View>
 
         <Text style={[styles.title, { color: colors.textPrimary, fontSize: 17, marginTop: 28, marginBottom: 14 }]}>
-          Talk to
+          Talk to...
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarRow}>
           {TALK_TO_AVATARS.map((avatar) => (
@@ -133,6 +131,7 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
                 <PersonaAvatar archetypeId={avatar.archetypeId} size={52} />
               )}
               <Text style={[styles.avatarCardLabel, { color: colors.textPrimary }]}>{avatar.label}</Text>
+              <Text style={[styles.avatarCardSub, { color: colors.textSecondary }]}>{avatar.sub}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -146,14 +145,14 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: TAB_PADDING_H,
     // The floating AI Assistant button always rests in the same bottom-
     // right spot above the tab bar (that consistency is the point of a
     // FAB) — on shorter content the "Talk to..." row was the last thing on
     // screen and landed right in that spot, so it needs enough trailing
     // space to end above it instead. Fixed here, on the content side, so
     // the button itself never has to move to make room for a card.
-    paddingBottom: 170
+    paddingBottom: TAB_PADDING_BOTTOM + 20
   },
   headerRow: {
     marginBottom: 22
@@ -164,8 +163,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4
   },
   list: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12
   },
   avatarRow: {

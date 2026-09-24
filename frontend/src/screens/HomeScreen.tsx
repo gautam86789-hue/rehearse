@@ -38,6 +38,7 @@ import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
 import { WordOfDayModal } from '../components/common/WordOfDayModal';
 import { MilestoneIcon } from '../components/common/MilestoneIcon';
+import { TabHeader, TabIconButton, TAB_PADDING_H, TAB_PADDING_BOTTOM } from '../components/common/TabHeader';
 
 interface PracticeTile {
   id: string;
@@ -174,9 +175,32 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <TabHeader
+        caption={`${greeting},`}
+        title={firstName}
+        right={
+          <>
+            <TouchableOpacity
+              style={[styles.streakPill, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
+              onPress={() => navigation.navigate('ProgressTab', { tab: 'standing', at: Date.now() })}
+              activeOpacity={0.85}
+              accessibilityLabel={`${streak} day streak`}
+            >
+              <MilestoneIcon icon="flame" size={18} />
+              <Text style={[styles.streakPillText, { color: colors.textPrimary }]}>{streak}</Text>
+            </TouchableOpacity>
+            <TabIconButton onPress={() => navigation.navigate('Notifications')} label="Notifications">
+              <Bell size={20} color={colors.textPrimary} />
+              {unreadNotifications > 0 && (
+                <View style={[styles.bellDot, { backgroundColor: colors.ruby, borderColor: colors.background }]} />
+              )}
+            </TabIconButton>
+          </>
+        }
+      />
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, 12) + 8 }]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
@@ -185,34 +209,6 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         onLayout={fitScroll.onLayout}
         onContentSizeChange={fitScroll.onContentSizeChange}
       >
-        {/* GREETING + streak + notifications — kept to one quiet row */}
-        <View style={styles.greetingRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={[styles.greetingHello, { color: colors.textSecondary }]}>{greeting},</Text>
-            <Text style={[styles.greetingName, { color: colors.textPrimary }]} numberOfLines={1}>
-              {firstName}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.streakPill, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-            onPress={() => navigation.navigate('ProgressTab', { tab: 'standing', at: Date.now() })}
-            activeOpacity={0.85}
-          >
-            <MilestoneIcon icon="flame" size={18} />
-            <Text style={[styles.streakPillText, { color: colors.textPrimary }]}>{streak}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.bellButton, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-            onPress={() => navigation.navigate('Notifications')}
-            activeOpacity={0.8}
-          >
-            <Bell size={20} color={colors.textPrimary} />
-            {unreadNotifications > 0 && (
-              <View style={[styles.bellDot, { backgroundColor: colors.ruby, borderColor: colors.background }]} />
-            )}
-          </TouchableOpacity>
-        </View>
-
         {/* TODAY'S CHALLENGE — the one thing to do today. Once done, it stays
             marked done (with what you picked) until tomorrow. */}
         <TouchableOpacity
@@ -367,8 +363,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 110
+    paddingHorizontal: TAB_PADDING_H,
+    paddingBottom: TAB_PADDING_BOTTOM
   },
   greetingRow: {
     flexDirection: 'row',
@@ -393,8 +389,7 @@ const styles = StyleSheet.create({
     height: 44,
     paddingHorizontal: 12,
     borderRadius: 22,
-    borderWidth: 1,
-    marginRight: 10
+    borderWidth: 1
   },
   streakPillText: {
     fontSize: 15,

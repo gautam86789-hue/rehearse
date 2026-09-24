@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { memoryDb } from '../db/client.js';
 import { validateBody } from '../middleware/errorHandler.js';
+import { assertCanAccessUser } from '../middleware/ownership.js';
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       res.status(400).json({ error: 'userId is required.' });
       return;
     }
+    if (!(await assertCanAccessUser(req, res, userId))) return;
     res.json(await memoryDb.getNotificationState(userId));
   } catch (err) {
     next(err);
@@ -36,6 +38,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.put('/', validateBody(saveSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId, notifications, dismissedIds } = req.body;
+    if (!(await assertCanAccessUser(req, res, userId))) return;
     await memoryDb.saveNotificationState(userId, { notifications, dismissedIds });
     res.json({ ok: true });
   } catch (err) {

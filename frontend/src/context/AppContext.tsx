@@ -805,26 +805,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const planNameFor = (p: typeof plan) =>
       p === 'annual' ? 'Annual Masterclass Pass' : p === 'three_month' ? 'Three Month Pass' : 'Monthly Professional';
 
-    try {
-      const { subscription } = await apiService.upgradePlan(user.id, plan);
-      const updatedUser = {
-        ...user,
-        subscription
-      };
-      await setUser(updatedUser);
-      setIsPaywallVisible(false);
-    } catch (e) {
-      const updatedUser: UserProfile = {
-        ...user,
-        subscription: {
-          status: statusFor(plan),
-          rehearsalsRemaining: 99999,
-          planName: planNameFor(plan)
-        }
-      };
-      await setUser(updatedUser);
-      setIsPaywallVisible(false);
-    }
+    // Only the server can grant a plan. If it refuses (or can't be reached),
+    // nothing changes locally — a client must never unlock Pro on its own.
+    const { subscription } = await apiService.upgradePlan(user.id, plan);
+    await setUser({ ...user, subscription });
+    setIsPaywallVisible(false);
   };
 
   return (

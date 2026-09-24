@@ -1,3 +1,4 @@
+import { assertCanAccessUser } from '../middleware/ownership.js';
 import { Request, Response, NextFunction } from 'express';
 import { memoryDb } from '../db/client.js';
 import { sendVerificationEmail } from '../services/emailService.js';
@@ -214,6 +215,7 @@ export class AuthController {
         res.status(400).json({ error: 'userId is required.' });
         return;
       }
+      if (!(await assertCanAccessUser(req, res, resolvedUserId))) return;
       const updated = await memoryDb.updateUser(resolvedUserId, { name, fullName: name } as any);
       res.json({ user: updated });
     } catch (err) {
