@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   },
   headerBtn: { padding: 6 },
   headerTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 110 },
   section: { marginBottom: 20 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   sectionLabel: { fontSize: 13, fontWeight: '700' },

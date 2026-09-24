@@ -325,6 +325,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await AsyncStorage.setItem(userKey, JSON.stringify(merged));
           if (isStale()) return;
           commitProfile(merged);
+          // Signing in to an existing account on a new/reinstalled device: the
+          // "onboarded" flag only lives on the device, so a returning user
+          // would be walked through onboarding again. An account that already
+          // has practice on the server has clearly been through it.
+          if (storedOnboarded !== 'true' && ((apiUser.totalRehearsals || 0) > 0 || (apiUser.totalXP || 0) > 0)) {
+            await AsyncStorage.setItem(onboardedKey, 'true');
+            if (!isStale()) setIsOnboarded(true);
+          }
         })
         .catch(() => {
           // Offline / backend asleep — the local profile above already stands.

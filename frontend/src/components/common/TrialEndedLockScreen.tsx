@@ -98,7 +98,7 @@ export const TrialEndedLockScreen: React.FC = () => {
     <View style={[styles.lockContainer, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={[
@@ -110,15 +110,7 @@ export const TrialEndedLockScreen: React.FC = () => {
         >
           {/* Header Icon */}
           <View style={styles.iconContainer}>
-            <RehearseEmblem size={84} />
-          </View>
-
-          {/* Status Badge */}
-          <View style={[styles.statusBadge, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
-            <ShieldAlert size={14} color={colors.warning} style={{ marginRight: 6 }} />
-            <Text style={[styles.statusBadgeText, { color: colors.textSecondary }]}>
-              Early Access • Payment Gateway Pending
-            </Text>
+            <RehearseEmblem size={72} />
           </View>
 
           {/* Titles */}
@@ -126,24 +118,8 @@ export const TrialEndedLockScreen: React.FC = () => {
             Access Locked
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Your free trial rehearsals or 7-day tester access have ended.
+            Your free rehearsals have ended. Enter an access code to keep practicing.
           </Text>
-
-          {/* Info Card */}
-          <View style={[styles.card, elevation.sm, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
-            <View style={styles.cardHeaderRow}>
-              <Sparkles size={18} color={colors.primary} />
-              <Text style={[styles.cardHeading, { color: colors.textPrimary }]}>
-                Awaiting Public Launch
-              </Text>
-            </View>
-            <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-              Payment gateway verification is currently underway for live billing. In the meantime, Rehearse is available exclusively to testers and early reviewers with an access pass code.
-            </Text>
-            <Text style={[styles.cardBodySub, { color: colors.textMuted }]}>
-              Enter a new code provided by your administrator or tester team to unlock your session immediately.
-            </Text>
-          </View>
 
           {/* Error / Success Feedback */}
           {!!errorMessage && (
@@ -228,10 +204,6 @@ export const TrialEndedLockScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Notice Footer */}
-          <Text style={[styles.footerNotice, { color: colors.textMuted }]}>
-            Need a fresh code? Contact support@rehearse.ai or request an updated tester pass.
-          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -258,8 +230,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   iconContainer: {
-    width: 76,
-    height: 76,
+    width: 72,
+    height: 72,
     borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
