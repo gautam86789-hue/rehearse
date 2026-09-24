@@ -74,7 +74,7 @@ export const TutorialScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           return (
             <View style={[styles.page, { width }]}>
               <View style={[styles.iconCircle, { backgroundColor: colors.primarySubtle }]}>
-                <Icon size={40} color={colors.primary} />
+                <Icon size={32} color={colors.primary} />
               </View>
               <Text style={[styles.title, { color: colors.textPrimary }]}>{item.title}</Text>
               <Text style={[styles.body, { color: colors.textSecondary }]}>{item.body}</Text>
@@ -105,12 +105,12 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, height: 40 },
   skip: { fontSize: 14, fontWeight: '600' },
   page: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36 },
-  iconCircle: { width: 104, height: 104, borderRadius: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 32 },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.4, textAlign: 'center', marginBottom: 14 },
-  body: { fontSize: 15.5, lineHeight: 23, textAlign: 'center' },
+  iconCircle: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
+  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6, textAlign: 'center', marginBottom: 12 },
+  body: { fontSize: 14.5, lineHeight: 22, textAlign: 'center' },
   footer: { paddingHorizontal: 24, gap: 20 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { height: 8, borderRadius: 4 },
-  cta: { height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  cta: { height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
   ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
 });
