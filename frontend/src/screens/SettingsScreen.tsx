@@ -153,11 +153,11 @@ export const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
               onPress={() => setIsPaywallVisible(true)}
               activeOpacity={0.7}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
                 <Ticket size={16} color={themeColors.primary} />
-                <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]}>Redeem Access Code</Text>
+                <Text style={[styles.rowLabel, { color: themeColors.textPrimary }]} numberOfLines={1}>Access code</Text>
               </View>
-              <View style={styles.rowRight}>
+              <View style={[styles.rowRight, { marginLeft: 12 }]}>
                 <Text style={[styles.rowValueText, { color: themeColors.textSecondary }]}>
                   {formatPlanName()}
                 </Text>

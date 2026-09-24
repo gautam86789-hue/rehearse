@@ -85,7 +85,7 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TabHeader title="Practice" />
+      <TabHeader title="Practice" caption="Pick a way to practice" />
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}

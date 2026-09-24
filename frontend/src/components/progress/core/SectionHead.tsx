@@ -48,7 +48,11 @@ const styles = StyleSheet.create({
     flex: 1
   },
   title: {
-    ...T.title
+    // Same heading style as the other tabs (sans, 17/800) instead of the
+    // serif the Progress tab used on its own.
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3
   },
   sub: {
     ...T.body,

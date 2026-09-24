@@ -138,6 +138,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <TabHeader
         title="Profile"
+        caption="Your account"
         right={
           <>
             {(user.currentStreak || 0) > 0 && (

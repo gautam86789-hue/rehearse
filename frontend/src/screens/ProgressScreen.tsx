@@ -154,7 +154,7 @@ export const ProgressScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <TabHeader title="Progress" />
+      <TabHeader title="Progress" caption="Your skills and streak" />
 
       <View style={styles.tabZone}>
         <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
