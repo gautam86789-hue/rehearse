@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ticket, X } from 'lucide-react-native';
 import { useTheme, RADII } from '../../context/ThemeContext';
+import { RehearseEmblem } from '../brand/RehearseEmblem';
 
 interface PromoCodeGateProps {
   visible: boolean;
@@ -58,9 +59,7 @@ export const PromoCodeGate: React.FC<PromoCodeGateProps> = ({ visible, onRedeem,
             </TouchableOpacity>
           )}
 
-          <View style={[styles.iconCircle, { backgroundColor: colors.primarySubtle }]}>
-            <Ticket size={22} color={colors.primary} />
-          </View>
+          <RehearseEmblem size={52} style={{ marginBottom: 14 }} />
           <Text style={[styles.title, { color: colors.textPrimary }]}>
             {canSkip ? 'Unlock Rehearse Access' : 'Access Locked'}
           </Text>

@@ -121,7 +121,7 @@ async function ensureChannel() {
     name: 'Practice reminders',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#6366F1'
+    lightColor: '#5B5FEF'
   });
   channelReady = true;
 }

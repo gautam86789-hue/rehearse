@@ -726,9 +726,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isLoading || !isOnboarded || tutorialSeen !== true) return;
     if (isAccessLocked(user, isPro)) return;
     if (user.milestoneFlags?.badge_onboarded) return;
+    if (unlockedBadge) return; // let another badge (e.g. an access-code pass) finish first
     unlockMilestone('badge_onboarded', 'Welcome Aboard', 'Completed onboarding and picked your focus.', 'sparkles');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, isOnboarded, tutorialSeen, user.milestoneFlags?.badge_onboarded, user.subscription?.status, user.subscription?.rehearsalsRemaining, user.subscription?.trialEndsAt, isPro]);
+  }, [isLoading, isOnboarded, tutorialSeen, unlockedBadge, user.milestoneFlags?.badge_onboarded, user.subscription?.status, user.subscription?.rehearsalsRemaining, user.subscription?.trialEndsAt, isPro]);
 
   // Early "starting steps" milestones — celebrated once each, tracked via a
   // flag on the profile so they never re-fire. These exist specifically so a

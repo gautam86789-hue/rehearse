@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { apiService } from '../../services/api';
 import { isAccessLocked } from '../../utils/access';
+import { RehearseEmblem } from '../brand/RehearseEmblem';
 
 export const TrialEndedLockScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -108,8 +109,8 @@ export const TrialEndedLockScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Header Icon */}
-          <View style={[styles.iconContainer, { backgroundColor: colors.primarySubtle }]}>
-            <Lock size={36} color={colors.primary} />
+          <View style={styles.iconContainer}>
+            <RehearseEmblem size={84} />
           </View>
 
           {/* Status Badge */}

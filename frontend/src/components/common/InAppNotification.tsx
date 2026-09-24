@@ -46,7 +46,7 @@ type InAppNotificationProps = QueueProps | SingleProps;
 const TYPE_CONFIG: Record<NotificationType, { accent: string; bg: string }> = {
   success:     { accent: '#22C55E', bg: '#F0FDF4' },
   error:       { accent: '#EF4444', bg: '#FEF2F2' },
-  info:        { accent: '#6366F1', bg: '#EEF2FF' },
+  info:        { accent: '#5B5FEF', bg: '#EEF2FF' },
   achievement: { accent: '#F59E0B', bg: '#FFFBEB' },
   warning:     { accent: '#F97316', bg: '#FFF7ED' }
 };

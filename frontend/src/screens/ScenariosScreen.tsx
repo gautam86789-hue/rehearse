@@ -237,8 +237,9 @@ export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ na
         {/* Difficulty Filter Tabs */}
         <View style={styles.difficultyRow}>
           {[
-            { id: 'all', label: 'All Stakes' },
-            { id: 'Intermediate', label: 'Intermediate' },
+            { id: 'all', label: 'All' },
+            { id: 'Beginner', label: 'Beginner' },
+            { id: 'Intermediate', label: 'Medium' },
             { id: 'High Stakes', label: 'High Stakes' }
           ].map((d) => {
             const isSelected = selectedDifficulty === d.id;
@@ -408,96 +409,6 @@ export const ScenariosScreen: React.FC<{ navigation: any; route?: any }> = ({ na
             </View>
           )}
         </View>
-
-        {/* Explore the full library — a discovery highlight, below whatever the user came here to find */}
-        {featuredScenario && (
-          <View style={[styles.pageHeaderBlock, { borderTopColor: themeColors.surfaceBorder }]}>
-            <Text style={[styles.pageHeading, { color: themeColors.textPrimary }]}>Picked For You</Text>
-            <Text style={[styles.pageSub, { color: themeColors.textSecondary }]}>
-              {allScenarios.length} scenarios matched to your goals.
-            </Text>
-          </View>
-        )}
-
-        {featuredScenario && (
-          <View style={styles.featuredSection}>
-            <View style={styles.sectionHeaderRow}>
-              <View style={styles.sectionHeaderLeft}>
-                <Sparkles size={14} color={themeColors.primary} />
-                <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>
-                  {featuredScenario.difficulty === 'High Stakes' ? 'FEATURED HIGH-STAKES DRILL' : 'RECOMMENDED FOR YOU'}
-                </Text>
-              </View>
-              <View style={[styles.featuredTag, { backgroundColor: themeColors.primary }]}>
-                <Text style={[styles.featuredTagText, { color: themeColors.textInverse }]}>
-                  SPOTLIGHT
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.featuredCard,
-                elevation.md,
-                {
-                  backgroundColor: themeColors.surfaceCard,
-                  borderColor: themeColors.primary
-                }
-              ]}
-              onPress={() => handleOpenBrief(featuredScenario)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.featuredTopRow}>
-                <PersonaAvatar
-                  archetypeId={featuredScenario.counterpartArchetype}
-                  size={46}
-                  showBadge={false}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <View style={styles.featuredMetaRow}>
-                    <Text style={[styles.featuredCategory, { color: themeColors.primary }]}>
-                      {featuredScenario.category.toUpperCase()}
-                    </Text>
-                    <Text style={[styles.metaDot, { color: themeColors.textSecondary }]}>•</Text>
-                    <View style={styles.timeInline}>
-                      <Clock size={11} color={themeColors.textSecondary} style={{ marginRight: 3 }} />
-                      <Text style={[styles.timeInlineText, { color: themeColors.textSecondary }]}>
-                        {featuredScenario.estimatedMinutes} min
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.featuredTitle, { color: themeColors.textPrimary }]}>
-                    {featuredScenario.title}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={[styles.featuredDesc, { color: themeColors.textSecondary }]} numberOfLines={2}>
-                {featuredScenario.situation}
-              </Text>
-
-              <View style={[styles.featuredFooter, { borderTopColor: themeColors.surfaceBorder }]}>
-                <View style={styles.featuredGoalBox}>
-                  <Text style={[styles.goalLabel, { color: themeColors.primary }]}>Goal: </Text>
-                  <Text style={[styles.goalSnippet, { color: themeColors.textPrimary }]} numberOfLines={1}>
-                    {featuredScenario.userGoal}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.featuredActionBtn, { backgroundColor: themeColors.primary }]}
-                  onPress={() => handleStartRehearsal(featuredScenario)}
-                  activeOpacity={0.8}
-                >
-                  <Play size={12} color={themeColors.textInverse} style={{ marginRight: 4 }} />
-                  <Text style={[styles.featuredActionText, { color: themeColors.textInverse }]}>
-                    Rehearse
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
       </ScrollView>
     </View>
   );

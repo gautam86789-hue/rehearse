@@ -146,13 +146,26 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         {/* Header row */}
         <View style={styles.headerRow}>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Profile</Text>
-          <TouchableOpacity
-            style={styles.settingsGear}
-            onPress={() => navigation.navigate('Settings')}
-            activeOpacity={0.7}
-          >
-            <SettingsIcon size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {(user.currentStreak || 0) > 0 && (
+              <TouchableOpacity
+                style={styles.settingsGear}
+                onPress={() => shareStreak('Share your streak')}
+                disabled={isSharingStreak}
+                activeOpacity={0.7}
+                accessibilityLabel="Share my streak"
+              >
+                <Share2 size={20} color={isSharingStreak ? colors.textMuted : colors.primary} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.settingsGear}
+              onPress={() => navigation.navigate('Settings')}
+              activeOpacity={0.7}
+            >
+              <SettingsIcon size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Avatar + name */}
@@ -191,10 +204,6 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               <Pencil size={13} color={colors.textMuted} />
             </TouchableOpacity>
           )}
-
-          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            Building better conversations{'\n'}one day at a time.
-          </Text>
         </View>
 
         {/* Stats row — real, synced data (rehearsals, streak, XP, badges) */}
@@ -211,22 +220,6 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             </React.Fragment>
           ))}
         </View>
-
-        {/* Share streak — proven Duolingo pattern: a bold, spoiler-free
-            number, never any conversation content, safe for LinkedIn */}
-        {(user.currentStreak || 0) > 0 && (
-          <TouchableOpacity
-            style={[styles.shareStreakBtn, elevation.sm, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}
-            onPress={() => shareStreak('Share your streak')}
-            disabled={isSharingStreak}
-            activeOpacity={0.8}
-          >
-            <Share2 size={15} color={colors.primary} />
-            <Text style={[styles.shareStreakText, { color: colors.primary }]}>
-              {isSharingStreak ? 'Preparing…' : 'Share my streak'}
-            </Text>
-          </TouchableOpacity>
-        )}
 
         <View style={styles.offscreenCard} pointerEvents="none">
           <StreakMilestoneCard
@@ -307,13 +300,6 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               thumbColor={remindersOn ? colors.primary : '#FFFFFF'}
             />
           </View>
-        </View>
-
-        {/* Quote card */}
-        <View style={[styles.quoteCard, { backgroundColor: colors.primarySubtle }]}>
-          <Text style={[styles.quoteText, { color: colors.primary }]}>
-            "Confident people aren't born.{'\n'}They're rehearsed."
-          </Text>
         </View>
       </ScrollView>
 
