@@ -467,6 +467,17 @@ class ApiService {
     return this.request<{ user: UserProfile }>(`/auth/profile?userId=${encodeURIComponent(userId)}`);
   }
 
+  async getNotificationState(userId: string): Promise<{ notifications: any[]; dismissedIds: string[] }> {
+    return this.request(`/notifications?userId=${encodeURIComponent(userId)}`);
+  }
+
+  async saveNotificationState(userId: string, notifications: any[], dismissedIds: string[]): Promise<void> {
+    await this.request('/notifications', {
+      method: 'PUT',
+      body: JSON.stringify({ userId, notifications, dismissedIds })
+    });
+  }
+
   async updateProfileName(userId: string, name: string): Promise<{ user: UserProfile }> {
     return this.request<{ user: UserProfile }>('/auth/profile', {
       method: 'PUT',
@@ -666,9 +677,12 @@ class ApiService {
     }
   }
 
-  async getDailyPuzzle(audience?: string): Promise<{ puzzle: DailyPuzzle }> {
+  async getDailyPuzzle(audience?: string, priorCompleted = 0): Promise<{ puzzle: DailyPuzzle }> {
     try {
-      const qs = audience ? `?audience=${encodeURIComponent(audience)}` : '';
+      const params: string[] = [];
+      if (audience) params.push(`audience=${encodeURIComponent(audience)}`);
+      if (priorCompleted > 0) params.push(`priorCompleted=${priorCompleted}`);
+      const qs = params.length ? `?${params.join('&')}` : '';
       return await this.request(`/daily/puzzle${qs}`);
     } catch {
       return { puzzle: DEFAULT_PUZZLE };

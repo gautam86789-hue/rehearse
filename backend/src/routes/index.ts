@@ -7,6 +7,7 @@ import replyCoachRoutes from './replyCoachRoutes.js';
 import subscriptionRoutes from './subscriptionRoutes.js';
 import assistantRoutes from './assistantRoutes.js';
 import storyRoutes from './storyRoutes.js';
+import notificationRoutes from './notificationRoutes.js';
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.use('/reply-coach', replyCoachRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/assistant', assistantRoutes);
 router.use('/story', storyRoutes);
+router.use('/notifications', notificationRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({

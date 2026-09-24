@@ -93,15 +93,15 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
         onContentSizeChange={fitScroll.onContentSizeChange}
       >
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Choose Your Practice Mode</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Practice</Text>
         </View>
 
         <View style={styles.list}>
           {PRACTICE_MODES.map((mode) => (
             <ThemedFeatureCard
               key={mode.id}
+              size="tile"
               title={mode.title}
-              subtitle={mode.subtitle}
               icon={mode.icon}
               categoryColor={mode.categoryColor}
               illustration={getFeatureIllustration(mode.id)}
@@ -111,7 +111,7 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
         </View>
 
         <Text style={[styles.title, { color: colors.textPrimary, fontSize: 17, marginTop: 28, marginBottom: 14 }]}>
-          Talk to...
+          Talk to
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarRow}>
           {TALK_TO_AVATARS.map((avatar) => (
@@ -133,7 +133,6 @@ export const PracticeHomeScreen: React.FC<{ navigation: any }> = ({ navigation }
                 <PersonaAvatar archetypeId={avatar.archetypeId} size={52} />
               )}
               <Text style={[styles.avatarCardLabel, { color: colors.textPrimary }]}>{avatar.label}</Text>
-              <Text style={[styles.avatarCardSub, { color: colors.textSecondary }]}>{avatar.sub}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -165,6 +164,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4
   },
   list: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12
   },
   avatarRow: {

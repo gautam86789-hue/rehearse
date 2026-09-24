@@ -153,6 +153,16 @@ CREATE TABLE IF NOT EXISTS reply_assistant_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 9. In-app notifications, synced across a user's devices. One row per user
+-- holding the whole (small, capped) list plus the ids they've dismissed, so a
+-- dismissal on one phone isn't undone by another phone's older copy.
+CREATE TABLE IF NOT EXISTS user_notification_state (
+    user_id TEXT PRIMARY KEY,
+    notifications JSONB NOT NULL DEFAULT '[]'::jsonb,
+    dismissed_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for lightning fast lookups
 CREATE INDEX IF NOT EXISTS idx_rehearsal_sessions_user ON rehearsal_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_session_turns_session ON session_turns(session_id, turn_order);

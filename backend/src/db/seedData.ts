@@ -828,6 +828,7 @@ export const WORDS_CATALOG: WordOfTheDay[] = [
 export const DAILY_PUZZLES: DailyPuzzle[] = [
   {
     id: 'puzzle-2026-09-07',
+    level: 1,
     date: '2026-09-07',
     title: 'The "Quick Weekend Favor" Dilemma',
     audiences: ['professionals', 'new_managers', 'new_hires'],
@@ -868,6 +869,7 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
   },
   {
     id: 'puzzle-2026-09-08',
+    level: 2,
     date: '2026-09-08',
     title: 'The Vague "HR Budget Freeze" Pushback',
     audiences: ['professionals', 'founders_investors'],
@@ -908,6 +910,7 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
   },
   {
     id: 'puzzle-runway-checkin',
+    level: 2,
     date: '2026-09-09',
     title: 'The Investor Update Nobody Wants to Send',
     audiences: ['founders_investors'],
@@ -948,6 +951,7 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
   },
   {
     id: 'puzzle-defensive-report',
+    level: 2,
     date: '2026-09-10',
     title: 'When Feedback Lands as an Attack',
     audiences: ['new_managers'],
@@ -988,6 +992,7 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
   },
   {
     id: 'puzzle-lowball-anchor',
+    level: 3,
     date: '2026-09-11',
     title: 'The Signing Bonus Anchor',
     audiences: ['mba_students'],
@@ -1028,6 +1033,7 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
   },
   {
     id: 'puzzle-early-project-lead',
+    level: 1,
     date: '2026-09-12',
     title: 'Leading a Project in Week 2',
     audiences: ['new_hires'],
@@ -1065,5 +1071,151 @@ export const DAILY_PUZZLES: DailyPuzzle[] = [
       optionB: 64,
       optionC: 12
     }
+  },
+  {
+    id: 'puzzle-lvl1-meeting-agenda',
+    date: '2026-09-20',
+    level: 1,
+    title: 'The Meeting With No Agenda',
+    theme: 'clarity',
+    scenarioContext: 'A colleague invites you to a one-hour meeting tomorrow. The invite has no agenda and no description, and you already have a full day.',
+    counterpartOpeningLine: 'Hey, I put an hour on your calendar tomorrow. Can you make it?',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Go Along Silently',
+        responseText: 'Sure, whatever works for you. I will move things around.',
+        isOptimal: false,
+        score: 45,
+        explanation: 'Agreeing without knowing the purpose wastes your time and teaches people they can book you without context.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Ask for the Purpose',
+        responseText: 'Happy to help. Could you share what we need to decide or cover? That way I can come prepared, or tell you if someone else fits better.',
+        isOptimal: true,
+        score: 92,
+        explanation: 'Friendly, specific and low-conflict. You get the context you need and keep the relationship warm.'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Push Back Sharply',
+        responseText: 'I am not joining meetings without an agenda. Send one or do not book me.',
+        isOptimal: false,
+        score: 40,
+        explanation: 'The point is fair, but the tone turns a simple question into a standoff.'
+      }
+    ],
+    communityDistribution: { optionA: 30, optionB: 62, optionC: 8 }
+  },
+  {
+    id: 'puzzle-lvl1-ask-feedback',
+    date: '2026-09-21',
+    level: 1,
+    title: 'After a "Good Job"',
+    theme: 'feedback',
+    scenarioContext: 'You just finished a presentation. Your manager walks past and says, "Good job today." That is all.',
+    counterpartOpeningLine: 'Good job today.',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Just Say Thanks',
+        responseText: 'Thanks!',
+        isOptimal: false,
+        score: 55,
+        explanation: 'Polite, but it lets a chance to learn something slip by.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Thank + Ask for One Thing',
+        responseText: 'Thanks, that means a lot. What is one thing I could do even better next time?',
+        isOptimal: true,
+        score: 94,
+        explanation: 'Accepts the praise and invites specific, useful feedback with a small, easy-to-answer ask.'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Fish for Reassurance',
+        responseText: 'Really? You seemed unsure during the middle part. Was it actually okay?',
+        isOptimal: false,
+        score: 35,
+        explanation: 'Undercuts the compliment and puts the other person in the position of reassuring you.'
+      }
+    ],
+    communityDistribution: { optionA: 28, optionB: 64, optionC: 8 }
+  },
+  {
+    id: 'puzzle-lvl3-final-offer',
+    date: '2026-09-22',
+    level: 3,
+    audiences: ['professionals', 'mba_students', 'founders_investors', 'new_hires'],
+    title: 'The "Final Offer" With a Deadline',
+    theme: 'anchoring',
+    scenarioContext: 'A recruiter calls with a job offer you like, but the base salary is below what you were hoping for. She says, "This is our final number, and it expires in 24 hours."',
+    counterpartOpeningLine: 'This is the best we can do, and I need your answer by tomorrow. Can I count on you?',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Accept on the Spot',
+        responseText: 'Okay, that works. I accept.',
+        isOptimal: false,
+        score: 40,
+        explanation: 'You lose the chance to close the gap, and "final" numbers are often more flexible than they sound.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Enthusiasm + Specific Ask',
+        responseText: 'I am excited about the role. To say yes tomorrow, I would need the base closer to X, or a signing bonus to bridge the gap. Is there flexibility on either?',
+        isOptimal: true,
+        score: 95,
+        explanation: 'Signals real interest, names a concrete number and gives them two ways to solve it, all inside their timeline.'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Ultimatum',
+        responseText: 'If you cannot move on the base, I will walk away.',
+        isOptimal: false,
+        score: 30,
+        explanation: 'Creates a win-lose moment and burns goodwill before you have even tried a collaborative ask.'
+      }
+    ],
+    communityDistribution: { optionA: 22, optionB: 66, optionC: 12 }
+  },
+  {
+    id: 'puzzle-lvl3-is-my-job-safe',
+    date: '2026-09-23',
+    level: 3,
+    audiences: ['new_managers', 'founders_investors', 'professionals'],
+    title: '"Is My Job Safe?"',
+    theme: 'transparency',
+    scenarioContext: 'You have just learned that layoffs may be coming, but nothing is final and you are not allowed to share details. A team member pulls you aside.',
+    counterpartOpeningLine: 'Be honest with me. Is my job safe?',
+    options: [
+      {
+        id: 'opt_a',
+        strategyLabel: 'Reassure Falsely',
+        responseText: 'Yes, absolutely. Nothing to worry about at all.',
+        isOptimal: false,
+        score: 20,
+        explanation: 'A promise you cannot keep. If plans change, you lose their trust completely.'
+      },
+      {
+        id: 'opt_b',
+        strategyLabel: 'Honest About Limits',
+        responseText: 'I cannot share everything I know, and I will not tell you something untrue. What I can promise is that you will hear from me as soon as I am able to share, and I will fight for a fair process.',
+        isOptimal: true,
+        score: 93,
+        explanation: 'Truthful about what you can and cannot say, and commits to something you can actually deliver.'
+      },
+      {
+        id: 'opt_c',
+        strategyLabel: 'Leak the Rumor',
+        responseText: 'Honestly? There might be layoffs. Maybe start updating your resume.',
+        isOptimal: false,
+        score: 25,
+        explanation: 'Shares unconfirmed information you were asked to protect and causes panic.'
+      }
+    ],
+    communityDistribution: { optionA: 18, optionB: 70, optionC: 12 }
   }
 ];

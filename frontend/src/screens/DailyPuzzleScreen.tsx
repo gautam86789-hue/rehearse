@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getPuzzleHeroImage } from '../data/generatedImages';
 import { useShareCard } from '../components/share/useShareCard';
 import { DailyPuzzleShareCard } from '../components/share/DailyPuzzleShareCard';
-import { localDateKey } from '../utils/dates';
+import { localDateKey, priorChallengesCompleted } from '../utils/dates';
 
 const WEEK_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -36,7 +36,7 @@ export const DailyPuzzleScreen: React.FC<{ route: any; navigation: any }> = ({ r
   useEffect(() => {
     if (!puzzle) {
       apiService
-        .getDailyPuzzle(user.audience || 'professionals')
+        .getDailyPuzzle(user.audience || 'professionals', priorChallengesCompleted(user.completedPuzzleDates))
         .then((res) => setPuzzle(res.puzzle))
         .finally(() => setIsLoadingPuzzle(false));
     }

@@ -572,12 +572,21 @@ class InMemoryDatabase {
     return Array.from(this.frameworks.values());
   }
 
-  private memoryGetTodaysPuzzle(audience?: string): DailyPuzzle {
+  private memoryGetTodaysPuzzle(audience?: string, priorCompleted = 0): DailyPuzzle {
     const all = Array.from(this.dailyPuzzles.values());
-    const pool = audience ? (() => {
+    const audiencePool = audience ? (() => {
       const matching = all.filter((p) => !p.audiences || p.audiences.includes(audience as any));
       return matching.length > 0 ? matching : all;
     })() : all;
+
+    // Difficulty follows practice: a brand-new user gets gentle warm-ups, and
+    // the ceiling rises as they complete more daily challenges (counted BEFORE
+    // today, so today's puzzle can't change the moment they finish it).
+    const maxLevel = priorCompleted < 3 ? 1 : priorCompleted < 8 ? 2 : 3;
+    const levelOf = (p: DailyPuzzle) => p.level ?? 2;
+    let pool = audiencePool.filter((p) => levelOf(p) === maxLevel);
+    if (pool.length === 0) pool = audiencePool.filter((p) => levelOf(p) <= maxLevel);
+    if (pool.length === 0) pool = audiencePool;
 
     // Same theme-preference as the framework lookup — puzzle is the "apply
     // it" step, so it should test the same concept the word/framework just
@@ -1195,8 +1204,47 @@ class InMemoryDatabase {
     return this.memoryGetAllFrameworks();
   }
 
-  async getTodaysPuzzle(audience?: string): Promise<DailyPuzzle> {
-    return this.memoryGetTodaysPuzzle(audience);
+  // Notifications — Supabase when its table exists, otherwise in memory (which
+  // survives until the server restarts). Never throws: the app keeps its own
+  // local copy, this is only the cross-device mirror.
+  private notificationState = new Map<string, { notifications: any[]; dismissedIds: string[] }>();
+
+  async getNotificationState(userId: string): Promise<{ notifications: any[]; dismissedIds: string[] }> {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_notification_state')
+          .select('notifications, dismissed_ids')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) return { notifications: data.notifications || [], dismissedIds: data.dismissed_ids || [] };
+      } catch (err) {
+        console.warn('Supabase getNotificationState failed, using in-memory copy:', (err as any)?.message);
+      }
+    }
+    return this.notificationState.get(userId) || { notifications: [], dismissedIds: [] };
+  }
+
+  async saveNotificationState(userId: string, state: { notifications: any[]; dismissedIds: string[] }): Promise<void> {
+    this.notificationState.set(userId, state);
+    if (supabase) {
+      try {
+        const { error } = await supabase.from('user_notification_state').upsert({
+          user_id: userId,
+          notifications: state.notifications,
+          dismissed_ids: state.dismissedIds,
+          updated_at: new Date().toISOString()
+        });
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Supabase saveNotificationState failed, kept in memory only:', (err as any)?.message);
+      }
+    }
+  }
+
+  async getTodaysPuzzle(audience?: string, priorCompleted = 0): Promise<DailyPuzzle> {
+    return this.memoryGetTodaysPuzzle(audience, priorCompleted);
   }
 
   async getPuzzleById(puzzleId: string): Promise<DailyPuzzle | undefined> {

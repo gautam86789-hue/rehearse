@@ -162,6 +162,8 @@ export interface DailyPuzzle {
   audiences?: Audience[];
   /** See FrameworkOfTheDay.theme. */
   theme?: string;
+  /** 1 = gentle warm-up, 2 = realistic, 3 = high stakes. Missing = 2. */
+  level?: 1 | 2 | 3;
   scenarioContext: string;
   counterpartOpeningLine: string;
   options: DailyPuzzleOption[];

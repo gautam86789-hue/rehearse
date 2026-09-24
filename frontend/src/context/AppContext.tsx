@@ -99,6 +99,24 @@ function reconcileName(local: UserProfile, server: UserProfile): { name: string;
   return { name, fullName: name };
 }
 
+// Combine this device's notifications with the server's copy: everything from
+// both sides, minus anything dismissed on either, "read" if read on either.
+function mergeNotifications(
+  local: AppNotification[],
+  server: AppNotification[],
+  dismissed: Set<string>
+): AppNotification[] {
+  const byId = new Map<string, AppNotification>();
+  [...server, ...local].forEach((n) => {
+    if (dismissed.has(n.id)) return;
+    const existing = byId.get(n.id);
+    byId.set(n.id, existing ? { ...existing, read: existing.read || n.read } : n);
+  });
+  return Array.from(byId.values())
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 50);
+}
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -124,6 +142,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [tutorialSeen, setTutorialSeen] = useState<boolean | null>(null);
+  // Ids the user has dismissed — kept so a dismissal isn't undone by another
+  // device's older copy when notifications sync (see mergeNotifications).
+  const dismissedIdsRef = React.useRef<Set<string>>(new Set());
+  const notificationsSyncedRef = React.useRef(false);
 
   // One-shot escape hatch: completeOnboarding sets this right before calling
   // signInAsGuest(), whose isGuest flip changes currentUserId and re-triggers
@@ -258,6 +280,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       commitProfile(activeProfile);
       setHistory(storedHistory ? JSON.parse(storedHistory) : []);
       setNotifications(storedNotifications ? JSON.parse(storedNotifications) : []);
+      // Notifications: pull the account's copy and merge it with this device's.
+      // Guests have nothing to sync — the copy on the phone is all there is.
+      notificationsSyncedRef.current = false;
+      AsyncStorage.getItem(`@rehearse_notif_dismissed_${userId}`)
+        .then((raw) => {
+          dismissedIdsRef.current = new Set(raw ? JSON.parse(raw) : []);
+        })
+        .catch(() => {})
+        .then(() => apiService.getNotificationState(userId))
+        .then((server) => {
+          if (isStale() || !server) return;
+          const dismissed = new Set([...dismissedIdsRef.current, ...(server.dismissedIds || [])]);
+          dismissedIdsRef.current = dismissed;
+          setNotifications((prev) => mergeNotifications(prev, server.notifications || [], dismissed));
+          notificationsSyncedRef.current = true;
+        })
+        .catch(() => {
+          // Offline / server asleep: keep the local copy; syncing resumes on next launch.
+        });
       hasSeenTutorial(userId).then((seen) => {
         if (!isStale()) setTutorialSeen(seen);
       });
@@ -496,6 +537,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [notifications]);
 
+  // Push local notification changes to the account (debounced) once we've
+  // pulled its copy — so read/dismissed state follows the user across devices.
+  useEffect(() => {
+    if (isGuest || !notificationsSyncedRef.current || !user.id) return;
+    const t = setTimeout(() => {
+      apiService
+        .saveNotificationState(user.id, notifications, Array.from(dismissedIdsRef.current).slice(-200))
+        .catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [notifications, user.id, isGuest]);
+
   const refreshProfile = async (): Promise<UserProfile | undefined> => {
     try {
       const { user: refreshed } = await apiService.getProfile(user.id);
@@ -653,6 +706,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const dismissNotification = async (id: string) => {
+    dismissedIdsRef.current.add(id);
+    AsyncStorage.setItem(
+      `@rehearse_notif_dismissed_${userRef.current.id}`,
+      JSON.stringify(Array.from(dismissedIdsRef.current).slice(-200))
+    ).catch(() => {});
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 

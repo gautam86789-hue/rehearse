@@ -32,7 +32,7 @@ import { getDailyQuote } from '../data/dailyQuotes';
 import { getFeatureIllustration } from '../data/generatedImages';
 import { CATEGORY_COLORS } from '../data/categoryColors';
 import { JOURNEYS } from '../data/journeys';
-import { localDateKey } from '../utils/dates';
+import { localDateKey, priorChallengesCompleted } from '../utils/dates';
 import { Scenario, Audience, WordOfTheDay, FrameworkOfTheDay } from '../types';
 import { useFitScreenScroll } from '../hooks/useFitScreenScroll';
 import { ThemedFeatureCard } from '../components/common/ThemedFeatureCard';
@@ -109,11 +109,18 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     if (tutorialSeen === false) navigation.navigate('Tutorial');
   }, [tutorialSeen]);
 
+  // Today's challenge depends on how many the user has finished before today,
+  // so it (re)loads once the saved profile is in — the challenge screen uses
+  // the exact same inputs, so both always show the same puzzle.
+  const priorChallenges = priorChallengesCompleted(user.completedPuzzleDates);
   useEffect(() => {
-    loadHomeData();
-    apiService.getDailyPuzzle(audience).then((res) => {
+    apiService.getDailyPuzzle(audience, priorChallenges).then((res) => {
       if (res?.puzzle?.title) setPuzzleTitle(res.puzzle.title);
     }).catch(() => {});
+  }, [audience, priorChallenges]);
+
+  useEffect(() => {
+    loadHomeData();
     apiService.getWordOfTheDay(audience).then((res) => {
       if (res?.word) setWordOfDay(res.word);
     }).catch(() => {});

@@ -15,6 +15,13 @@ function keyToDayNumber(key: string): number {
   return Math.round(Date.UTC(y, m - 1, d) / 86400000);
 }
 
+// How many daily challenges the user finished BEFORE today — drives how hard
+// today's puzzle is. Excluding today keeps the puzzle from changing the moment
+// it's completed.
+export function priorChallengesCompleted(completedDates: string[] | undefined, today: string = localDateKey()): number {
+  return (completedDates || []).filter((d) => d !== today).length;
+}
+
 export interface StreakInfo {
   current: number;
   longest: number;

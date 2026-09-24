@@ -26,7 +26,9 @@ export class DailyController {
   async getDailyPuzzle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const audience = typeof req.query.audience === 'string' ? req.query.audience : undefined;
-      const puzzle = await memoryDb.getTodaysPuzzle(audience);
+      const priorRaw = Number(req.query.priorCompleted);
+      const priorCompleted = Number.isFinite(priorRaw) && priorRaw > 0 ? Math.floor(priorRaw) : 0;
+      const puzzle = await memoryDb.getTodaysPuzzle(audience, priorCompleted);
       res.json({ puzzle });
     } catch (err) {
       next(err);
