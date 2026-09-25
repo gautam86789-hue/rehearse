@@ -310,9 +310,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .getProfile(userId)
         .then(async ({ user: apiUser }) => {
           if (!apiUser || isStale()) return;
+          // An account that already has practice on the server is a returning
+          // user: they've done onboarding, the tutorial and the welcome moment.
+          const returning = (apiUser.totalRehearsals || 0) > 0 || (apiUser.totalXP || 0) > 0;
           const merged = withRealName({
             ...activeProfile,
             ...apiUser,
+            ...(returning ? { milestoneFlags: { ...activeProfile.milestoneFlags, ...apiUser.milestoneFlags, badge_onboarded: true } } : {}),
             ...reconcileName(activeProfile, apiUser),
             nameCustomized: activeProfile.nameCustomized,
             audience: locallyKnownAudience || apiUser.audience,
@@ -329,9 +333,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // "onboarded" flag only lives on the device, so a returning user
           // would be walked through onboarding again. An account that already
           // has practice on the server has clearly been through it.
-          if (storedOnboarded !== 'true' && ((apiUser.totalRehearsals || 0) > 0 || (apiUser.totalXP || 0) > 0)) {
-            await AsyncStorage.setItem(onboardedKey, 'true');
-            if (!isStale()) setIsOnboarded(true);
+          if (returning) {
+            if (storedOnboarded !== 'true') {
+              await AsyncStorage.setItem(onboardedKey, 'true');
+              if (!isStale()) setIsOnboarded(true);
+            }
+            await markTutorialSeen(userId);
+            if (!isStale()) setTutorialSeen(true);
           }
         })
         .catch(() => {

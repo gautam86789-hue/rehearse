@@ -188,9 +188,9 @@ export const TrialEndedLockScreen: React.FC<{ activeRouteName?: string }> = ({ a
             activeOpacity={0.85}
           >
             {isSubmitting ? (
-              <ActivityIndicator color={colors.textInverse} size="small" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+              <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>
                 Redeem & Unlock App
               </Text>
             )}

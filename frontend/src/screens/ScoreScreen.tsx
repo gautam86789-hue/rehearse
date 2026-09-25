@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, DimensionValue } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, DimensionValue, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Share2 } from 'lucide-react-native';
 import { Button } from '../components/common/Button';
@@ -27,6 +28,23 @@ export const ScoreScreen: React.FC<{ route: any; navigation: any }> = ({ route, 
   // edge-to-edge Android that put the back button under the status bar.
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 8;
+
+  // Finishing a rehearsal returns to Home (not back through the scenario
+  // brief) — that's also where the Access Locked screen appears after the
+  // last free rehearsal.
+  const goHome = useCallback(() => {
+    if (navigation.popToTop) navigation.popToTop();
+    else navigation.navigate('HomeTabs');
+  }, [navigation]);
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        goHome();
+        return true;
+      });
+      return () => sub.remove();
+    }, [goHome])
+  );
 
   const getScoreVerdict = (score: number) => {
     if (scorecard.attemptQuality === 'nonsense') return 'Not a real attempt';
@@ -58,7 +76,7 @@ export const ScoreScreen: React.FC<{ route: any; navigation: any }> = ({ route, 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.topHeader, { paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
+        <TouchableOpacity onPress={goHome} style={styles.headerBtn} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
           <ArrowLeft size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
