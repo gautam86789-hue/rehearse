@@ -29,10 +29,13 @@ export const ScoreScreen: React.FC<{ route: any; navigation: any }> = ({ route, 
   const topPadding = Math.max(insets.top, 12) + 8;
 
   const getScoreVerdict = (score: number) => {
+    if (scorecard.attemptQuality === 'nonsense') return 'Not a real attempt';
     if (score >= 90) return 'Outstanding!';
     if (score >= 75) return 'Good job!';
     if (score >= 60) return 'Solid effort!';
-    return 'Keep practicing!';
+    if (score >= 40) return 'Getting there';
+    if (score >= 20) return 'Needs work';
+    return 'Try again';
   };
 
   // Was hardcoded to "You handled this conversation well" regardless of
@@ -42,6 +45,7 @@ export const ScoreScreen: React.FC<{ route: any; navigation: any }> = ({ route, 
     if (score >= 90) return 'That was a masterclass in handling this conversation.';
     if (score >= 75) return 'You handled this conversation well.';
     if (score >= 60) return 'A solid attempt — a few sharp edges to smooth out.';
+    if (scorecard.verdict) return scorecard.verdict;
     return "This one was rough, but that's exactly what practice is for.";
   };
 

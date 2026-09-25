@@ -21,7 +21,12 @@ import { apiService } from '../../services/api';
 import { isAccessLocked } from '../../utils/access';
 import { RehearseEmblem } from '../brand/RehearseEmblem';
 
-export const TrialEndedLockScreen: React.FC = () => {
+// The lock only takes over on the main tabs. Finishing your last free rehearsal
+// leaves you on the Score/Feedback screens first, so you can read your feedback;
+// the lock appears when you go back Home.
+const TAB_ROUTES = ['HomeTab', 'PracticeTab', 'ProgressTab', 'ProfileTab', 'HomeTabs'];
+
+export const TrialEndedLockScreen: React.FC<{ activeRouteName?: string }> = ({ activeRouteName }) => {
   const insets = useSafeAreaInsets();
   const { colors, elevation, isDark } = useTheme();
   const { user, isPro, isOnboarded, refreshProfile, unlockMilestone } = useApp();
@@ -53,8 +58,9 @@ export const TrialEndedLockScreen: React.FC = () => {
   // Determine locked state
   const isLocked = useMemo(() => {
     if (!isAuthenticated || !isOnboarded) return false;
+    if (activeRouteName && !TAB_ROUTES.includes(activeRouteName)) return false;
     return isAccessLocked(user, isPro);
-  }, [isAuthenticated, isOnboarded, user, isPro]);
+  }, [isAuthenticated, isOnboarded, user, isPro, activeRouteName]);
 
   // Intercept hardware back button ONLY when locked so user cannot bypass
   useEffect(() => {

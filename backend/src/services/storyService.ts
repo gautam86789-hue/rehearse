@@ -146,9 +146,9 @@ export class StoryService {
     const fallback: any = this.buildFallbackTree(date);
     const options = { temperature: 0.8, responseFormat: 'json' as const, strict: true, thinking: 'minimal' as const };
 
-    const styleRules = `Each option must represent a distinct communication style tagged as exactly one of: "assertive", "diplomatic", "avoidant", "aggressive" — in the order A=assertive, B=diplomatic, C=avoidant, D=aggressive. Every narrative is at most 2 short sentences (under 40 words) and every option's "text" is one short sentence (under 15 words) of what the player says or does. Write in second person ("you"). Return ONLY valid JSON, no markdown.`;
+    const styleRules = `MAKE THE OPTIONS TRICKY. Each option represents a distinct communication style, tagged as exactly one of: "assertive", "diplomatic", "avoidant", "aggressive" (list them in the order assertive, diplomatic, avoidant, aggressive). All four must sound like something a reasonable person could genuinely say in the moment: same register, same sentence structure, and NEARLY THE SAME LENGTH (within 3 words of each other, about 12-16 words each). The weaker options must be just as polished and persuasive-sounding as the stronger ones, so the style is only obvious on careful thought: the avoidant one sounds like sensible caution, the aggressive one sounds like justified frustration. Never make the assertive or diplomatic options longer, more detailed or better worded than the others, and avoid giveaway words (no "I refuse", "whatever", "obviously"). Every narrative is at most 2 short sentences (under 40 words) and every option's "text" is one short sentence of what the player says or does. Write in second person ("you"). Return ONLY valid JSON, no markdown.`;
     const optionsShape = `"options":[{"id":"A","text":"...","trajectory":"assertive"},{"id":"B","text":"...","trajectory":"diplomatic"},{"id":"C","text":"...","trajectory":"avoidant"},{"id":"D","text":"...","trajectory":"aggressive"}]`;
-    const ask = async (system: string, user: string): Promise<any> => {
+    const once = async (system: string, user: string): Promise<any> => {
       const raw = await this.llm.generateCompletion(
         [
           { role: 'system', content: system },
@@ -157,6 +157,28 @@ export class StoryService {
         options
       );
       return this.cleanAndParseJSON(raw);
+    };
+    // If the four options of any scene differ in length by more than a few
+    // words, the longer (usually the "good") one gives itself away — ask once more.
+    const collectBeats = (o: any): any[] =>
+      o && typeof o === 'object' ? (Array.isArray(o.options) ? [o] : Object.values(o).flatMap(collectBeats)) : [];
+    const uneven = (o: any): boolean =>
+      collectBeats(o).some((b) => {
+        const w = b.options.map((x: any) => String(x?.text || '').trim().split(/\s+/).length);
+        return Math.max(...w) - Math.min(...w) > 5;
+      });
+    const ask = async (system: string, user: string): Promise<any> => {
+      const first = await once(system, user);
+      if (!uneven(first)) return first;
+      try {
+        const second = await once(
+          system,
+          `${user} IMPORTANT: in your last attempt the four options in some scenes differed too much in length. Rewrite so all four options in every scene are within 3 words of each other.`
+        );
+        return uneven(second) ? first : second;
+      } catch {
+        return first;
+      }
     };
 
     // ---- Stage 1: the opening ----

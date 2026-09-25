@@ -35,7 +35,10 @@ export const FeedbackScreen: React.FC<{ route: any; navigation: any }> = ({ rout
           <View style={{ flex: 1, marginLeft: 14 }}>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>What you did well</Text>
             <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-              {scorecard.strengths?.[0] || 'You stayed calm and acknowledged their concerns.'}
+              {scorecard.strengths?.[0] ||
+                (scorecard.attemptQuality === 'nonsense'
+                  ? 'Nothing to praise yet. Write real sentences about the situation and this section will fill up.'
+                  : 'No standout strength this time. The detailed feedback shows where to start.')}
             </Text>
           </View>
         </View>
@@ -47,36 +50,18 @@ export const FeedbackScreen: React.FC<{ route: any; navigation: any }> = ({ rout
           <View style={{ flex: 1, marginLeft: 14 }}>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>What to improve</Text>
             <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-              {scorecard.growthAreas?.[0] || 'Be more specific about next steps.'}
+              {scorecard.growthAreas?.[0] || 'Open the detailed feedback for line-by-line coaching.'}
             </Text>
           </View>
         </View>
 
-        {isPro ? (
-          <TouchableOpacity
-            style={[styles.proCard, { backgroundColor: colors.textPrimary }]}
-            onPress={() => navigation.navigate('DetailedFeedback', { scorecard, scenario })}
-            activeOpacity={0.88}
-          >
-            <Text style={[styles.proCardText, { color: colors.background }]}>View Detailed Feedback →</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={[styles.proCard, { backgroundColor: '#12121F' }]}>
-            <View style={styles.proLockRow}>
-              <View style={styles.proLockCircle}>
-                <Lock size={14} color="#12121F" />
-              </View>
-              <Text style={styles.proCardText}>Get suggested phrases and examples with Pro.</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.unlockBtn}
-              onPress={() => setIsPaywallVisible(true)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.unlockBtnText}>Unlock Pro</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <TouchableOpacity
+          style={[styles.proCard, { backgroundColor: colors.textPrimary }]}
+          onPress={() => navigation.navigate('DetailedFeedback', { scorecard, scenario })}
+          activeOpacity={0.88}
+        >
+          <Text style={[styles.proCardText, { color: colors.background }]}>View Detailed Feedback →</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

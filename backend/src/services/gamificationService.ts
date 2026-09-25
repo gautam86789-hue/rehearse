@@ -14,10 +14,31 @@ export interface GamificationUpdateResult {
 }
 
 export class GamificationService {
+  // `counted` is false for attempts that weren't a real try (gibberish, random
+  // words, one-word replies): they use up the attempt but earn no XP, don't
+  // extend a streak, don't count as a completed rehearsal and unlock no badge.
   processSessionCompletion(
     user: UserProfile,
-    score: number
+    score: number,
+    counted: boolean = true
   ): GamificationUpdateResult {
+    if (!counted) {
+      const updatedProfile: UserProfile = {
+        ...user,
+        subscription: {
+          ...user.subscription,
+          rehearsalsRemaining: Math.max(0, user.subscription.rehearsalsRemaining - 1)
+        }
+      };
+      return {
+        updatedProfile,
+        xpEarned: 0,
+        streakExtended: false,
+        newStreak: user.currentStreak,
+        badgeUnlocked: undefined
+      };
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const lastDate = user.lastPracticeDate;
 
@@ -49,7 +70,9 @@ export class GamificationService {
     const longestStreak = Math.max(user.longestStreak, newStreak);
 
     // XP Calculation
-    let xpEarned = 50; // Base completion XP
+    // XP follows the score, so a weak attempt earns a little and a good one
+    // earns the full amount — no flat reward for showing up with filler.
+    let xpEarned = Math.round(50 * Math.min(1, Math.max(0.2, score / 60))); // base completion XP
     if (score >= 90) xpEarned += 50; // Masterclass execution bonus
     else if (score >= 80) xpEarned += 25; // Strong proficiency bonus
 

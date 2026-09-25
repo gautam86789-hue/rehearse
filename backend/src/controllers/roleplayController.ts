@@ -204,7 +204,8 @@ export class RoleplayController {
       const user = await memoryDb.getUser(session.userId);
       const gamificationResult = gamificationService.processSessionCompletion(
         user,
-        rubric.overallScore
+        rubric.overallScore,
+        rubric.attemptQuality !== 'nonsense'
       );
       await memoryDb.updateUser(user.id, gamificationResult.updatedProfile);
       const persistError = getLastUpdateUserError();

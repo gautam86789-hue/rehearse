@@ -72,6 +72,21 @@ export const DetailedFeedbackScreen: React.FC<{ route: any; navigation: any }> =
               </View>
             </View>
 
+            {!!(scorecard.verdict || scorecard.summary) && (
+              <View style={[styles.flowCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
+                {!!scorecard.verdict && <Text style={[styles.verdictText, { color: colors.textPrimary }]}>{scorecard.verdict}</Text>}
+                {!!scorecard.summary && <Text style={[styles.flowText, { color: colors.textSecondary }]}>{scorecard.summary}</Text>}
+              </View>
+            )}
+
+            {!scorecard.strengths?.length && (
+              <View style={[styles.emptyNote, { backgroundColor: colors.surfaceHighlight }]}>
+                <Text style={[styles.coachBody, { color: colors.textSecondary }]}>
+                  No strengths to highlight yet. Full, on-topic sentences that respond to what the other person says are what earn credit here.
+                </Text>
+              </View>
+            )}
+
             {!!scorecard.strengths?.length && (
               <>
                 <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 22 }]}>What went well</Text>
@@ -103,6 +118,13 @@ export const DetailedFeedbackScreen: React.FC<{ route: any; navigation: any }> =
                 ))}
               </View>
             )}
+
+            {!!scorecard.progressNote && (
+              <View style={[styles.progressCard, { backgroundColor: colors.primarySubtle, borderColor: colors.primary }]}>
+                <Text style={[styles.progressTitle, { color: colors.primary }]}>YOUR PROGRESS</Text>
+                <Text style={[styles.coachBody, { color: colors.textPrimary }]}>{scorecard.progressNote}</Text>
+              </View>
+            )}
           </>
         ) : (
           <>
@@ -119,6 +141,42 @@ export const DetailedFeedbackScreen: React.FC<{ route: any; navigation: any }> =
                 </View>
               ))}
             </View>
+
+            {!!scorecard.turnAssessments?.length && (
+              <>
+                <Text style={[styles.sectionHeading, { color: colors.textPrimary, marginTop: 22 }]}>Your replies, one by one</Text>
+                <View style={styles.list}>
+                  {scorecard.turnAssessments.map((t) => {
+                    const tone =
+                      t.quality === 'strong' ? colors.success : t.quality === 'ok' ? colors.primary : t.quality === 'weak' ? colors.warning : colors.danger;
+                    const label =
+                      t.quality === 'strong' ? 'Strong' : t.quality === 'ok' ? 'Okay' : t.quality === 'weak' ? 'Weak' : t.quality === 'off_topic' ? 'Off topic' : 'Not a real reply';
+                    return (
+                      <View key={t.turn} style={[styles.turnCard, { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceBorder }]}>
+                        <View style={styles.turnHead}>
+                          <Text style={[styles.turnLabel, { color: colors.textMuted }]}>REPLY {t.turn}</Text>
+                          <View style={[styles.turnPill, { backgroundColor: tone + '1F' }]}>
+                            <Text style={{ color: tone, fontSize: 11, fontWeight: '800' }}>
+                              {label} · {t.score}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.turnSaid, { color: colors.textSecondary }]} numberOfLines={3}>
+                          "{t.youSaid}"
+                        </Text>
+                        <Text style={[styles.turnNote, { color: colors.textPrimary }]}>{t.note}</Text>
+                        {!!t.betterVersion && (
+                          <View style={[styles.turnBetter, { backgroundColor: colors.sageSubtle }]}>
+                            <Text style={[styles.rewriteTag, { color: colors.success }]}>STRONGER</Text>
+                            <Text style={[styles.turnBetterText, { color: colors.textPrimary }]}>"{t.betterVersion}"</Text>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            )}
 
             {!!scorecard.weakestLineRewrite?.originalLine && (
               <>
@@ -146,6 +204,23 @@ export const DetailedFeedbackScreen: React.FC<{ route: any; navigation: any }> =
                   )}
                 </View>
               </>
+            )}
+
+            {!!scorecard.nextPractice && (
+              <View style={[styles.progressCard, { backgroundColor: colors.primarySubtle, borderColor: colors.primary, marginTop: 22 }]}>
+                <Text style={[styles.progressTitle, { color: colors.primary }]}>DO THIS NEXT</Text>
+                <Text style={[styles.turnNote, { color: colors.textPrimary, marginTop: 0 }]}>{scorecard.nextPractice.focus}</Text>
+                <Text style={[styles.coachBody, { color: colors.textSecondary, marginTop: 6 }]}>{scorecard.nextPractice.drill}</Text>
+                <TouchableOpacity
+                  style={[styles.practiceBtn, { backgroundColor: colors.primary }]}
+                  onPress={() =>
+                    navigation.navigate('Scenarios', scorecard.nextPractice?.category ? { category: scorecard.nextPractice.category } : undefined)
+                  }
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.practiceBtnText}>Practice this now</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </>
         )}
@@ -236,6 +311,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19
   },
+  flowCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginTop: 16 },
+  verdictText: { fontSize: 15, fontWeight: '800', lineHeight: 21, marginBottom: 6 },
+  flowText: { fontSize: 13.5, lineHeight: 20 },
+  emptyNote: { borderRadius: 14, padding: 14, marginTop: 16 },
+  progressCard: { borderRadius: 16, borderWidth: 1.5, padding: 16, marginTop: 16 },
+  progressTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, marginBottom: 6 },
+  turnCard: { borderRadius: 16, borderWidth: 1, padding: 14 },
+  turnHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  turnLabel: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8 },
+  turnPill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 },
+  turnSaid: { fontSize: 13, fontStyle: 'italic', lineHeight: 18 },
+  turnNote: { fontSize: 13.5, lineHeight: 19, fontWeight: '600', marginTop: 8 },
+  turnBetter: { borderRadius: 12, padding: 12, marginTop: 10 },
+  turnBetterText: { fontSize: 13.5, lineHeight: 19, fontWeight: '600' },
+  practiceBtn: { height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  practiceBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   scoreCard: {
     flexDirection: 'row',
     alignItems: 'center',

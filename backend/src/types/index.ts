@@ -74,6 +74,25 @@ export interface WeakestLineRewrite {
   techniqueApplied: string;
 }
 
+// How one of the user's replies actually landed — graded individually so the
+// overall score can never rise above what the replies themselves earned.
+export type ReplyQuality = 'nonsense' | 'off_topic' | 'weak' | 'ok' | 'strong';
+
+export interface TurnAssessment {
+  turn: number;            // 1-based index among the user's replies
+  youSaid: string;
+  quality: ReplyQuality;
+  score: number;           // 0-100
+  note: string;            // what worked / what didn't, specific to this line
+  betterVersion?: string;  // a stronger way to say it in this scenario
+}
+
+export interface NextPractice {
+  focus: string;           // the one skill to work on next
+  drill: string;           // a concrete exercise for the next session
+  category?: string;       // scenario category to practise (negotiation, feedback, ...)
+}
+
 export interface SubstanceRubric {
   clarity: number;        // 0-100: Was the point stated directly, without hedging?
   empathy: number;        // 0-100: Did the user acknowledge the counterpart's perspective/feelings?
@@ -84,6 +103,14 @@ export interface SubstanceRubric {
   growthAreas: string[];
   weakestLineRewrite: WeakestLineRewrite;
   keyTakeaways: string[];
+  // Richer, scenario-specific feedback (optional so older saved scorecards still load)
+  goalProgress?: number;            // 0-100: how far the user moved toward the scenario goal
+  verdict?: string;                 // one honest sentence on the whole attempt
+  summary?: string;                 // how the conversation flowed, start to end
+  turnAssessments?: TurnAssessment[];
+  nextPractice?: NextPractice;
+  progressNote?: string;            // how this compares with the user's earlier sessions
+  attemptQuality?: 'ok' | 'low_effort' | 'nonsense';
 }
 
 export interface Scorecard extends SubstanceRubric {

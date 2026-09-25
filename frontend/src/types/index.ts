@@ -82,6 +82,30 @@ export interface SubstanceRubric {
   growthAreas: string[];
   weakestLineRewrite: WeakestLineRewrite;
   keyTakeaways: string[];
+  goalProgress?: number;
+  verdict?: string;
+  summary?: string;
+  turnAssessments?: TurnAssessment[];
+  nextPractice?: NextPractice;
+  progressNote?: string;
+  attemptQuality?: 'ok' | 'low_effort' | 'nonsense';
+}
+
+export type ReplyQuality = 'nonsense' | 'off_topic' | 'weak' | 'ok' | 'strong';
+
+export interface TurnAssessment {
+  turn: number;
+  youSaid: string;
+  quality: ReplyQuality;
+  score: number;
+  note: string;
+  betterVersion?: string;
+}
+
+export interface NextPractice {
+  focus: string;
+  drill: string;
+  category?: string;
 }
 
 export interface Scorecard extends SubstanceRubric {

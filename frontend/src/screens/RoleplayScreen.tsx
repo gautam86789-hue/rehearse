@@ -179,7 +179,11 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
       const res = await apiService.scoreSession(session.id);
       if (res?.scorecard) {
         setLastScorecard(res.scorecard);
-        addHistoryEntry(scenario, res.scorecard, turns);
+        // A non-attempt (gibberish / random / off-topic replies) isn't practice: it
+        // stays out of history, progress charts and the streak.
+        if (res.scorecard.attemptQuality !== 'nonsense') {
+          addHistoryEntry(scenario, res.scorecard, turns);
+        }
 
         const score = res.scorecard.overallScore;
 
@@ -204,6 +208,9 @@ export const RoleplayScreen: React.FC<{ route: any; navigation: any }> = ({ rout
         } else if (score >= 60) {
           scoreNotifTitle = 'Solid start. Now sharpen it.';
           scoreNotifBody = `${score}/100 — check the feedback. The gap between good and great is one specific thing.`;
+        } else if (res.scorecard.attemptQuality === 'nonsense') {
+          scoreNotifTitle = 'That attempt did not count';
+          scoreNotifBody = 'Write real, on-topic replies to the other person to earn a score and XP.';
         } else {
           scoreNotifTitle = 'Hard sessions build real skill.';
           scoreNotifBody = `${score}/100 today. The AI coach flagged exactly what to fix — that's the whole point.`;

@@ -99,6 +99,18 @@ function tierForScore(strongCount: number): string {
 
 const TONE_COLOR = { strong: 'sage', growth: 'champagne', mixed: 'flame' } as const;
 
+// The generated options arrive in a fixed style order; showing them that way
+// would let a player learn "the good one is always second". Every beat is
+// shown in a fresh random order (letters follow the new positions).
+const shuffleBeat = (beat: StoryBeat): StoryBeat => {
+  const opts = [...beat.options];
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  return { ...beat, options: opts.map((o, i) => ({ ...o, id: (['A', 'B', 'C', 'D'] as const)[i] })) };
+};
+
 // The story-scene player for one Journey node — reached from JourneyScreen's
 // preview modal. Unlike the old daily Story Mode, this story is generated
 // once per (user, node) and cached permanently server-side (see backend
@@ -149,7 +161,7 @@ export const JourneyStoryScreen: React.FC<{ navigation: any; route: any }> = ({ 
       })
       .then((res) => {
         setStory(res.story);
-        setCurrentBeat(res.story.q1);
+        setCurrentBeat(shuffleBeat(res.story.q1));
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -170,7 +182,7 @@ export const JourneyStoryScreen: React.FC<{ navigation: any; route: any }> = ({ 
     }
     const dominant = resolveDominantTrajectory(picks);
     const branchKey = (['q2', 'q3', 'q4', 'q5'] as const)[step];
-    setCurrentBeat(story[branchKey][dominant]);
+    setCurrentBeat(shuffleBeat(story[branchKey][dominant]));
     setStep(step + 1);
     setPhase('question');
   };

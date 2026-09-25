@@ -296,7 +296,7 @@ export const AppNavigator: React.FC = () => {
       {/* Global Modals */}
       <PaywallModal />
       <BadgeUnlockedModal />
-      <TrialEndedLockScreen />
+      <TrialEndedLockScreen activeRouteName={activeRouteName} />
 
       {/* Global 1-at-a-time notification banner — overlays every screen */}
       {isAuthenticated && isOnboarded && <GlobalNotificationBanner />}
