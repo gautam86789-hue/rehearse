@@ -71,6 +71,12 @@ export function resolveDominantTrajectory(picks: StoryTrajectory[]): StoryTrajec
   return best;
 }
 
+// The opening must at least have a title, premise and a first question with 4 options.
+function normalizeCheck(o: any): void {
+  if (!o || typeof o.title !== 'string' || typeof o.premise !== 'string') throw new Error('Story opening missing title/premise');
+  if (!o.q1 || !Array.isArray(o.q1.options) || o.q1.options.length < 4) throw new Error('Story opening missing first question');
+}
+
 export class StoryService {
   private cache = new Map<string, StoryTree>();
 
@@ -84,9 +90,22 @@ export class StoryService {
   // the scenario driver (a short authored seed instead of the user's
   // onboarding dread category) and adding one continuity line.
   async getNodeStory(input: GenerateNodeStoryInput): Promise<StoryTree> {
-    const cacheKey = `${input.userId}-node-${input.nodeId}`;
+    // Shared across users (same roadmap node + audience = same story), so only
+    // the first person to open a stage waits for it to be written. Concurrent
+    // opens of the same stage also share ONE generation instead of each starting their own.
+    const cacheKey = `node-${input.nodeId}-${input.audience || 'professionals'}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
+    const inFlight = this.pending.get(cacheKey);
+    if (inFlight) return inFlight;
+    const work = this.buildNodeStory(input, cacheKey).finally(() => this.pending.delete(cacheKey));
+    this.pending.set(cacheKey, work);
+    return work;
+  }
+
+  private pending = new Map<string, Promise<StoryTree>>();
+
+  private async buildNodeStory(input: GenerateNodeStoryInput, cacheKey: string): Promise<StoryTree> {
 
     let tree: StoryTree;
     try {
@@ -106,56 +125,117 @@ export class StoryService {
       console.warn('Node story generation failed, using fallback tree:', err);
       tree = this.buildFallbackTree(input.nodeId);
     }
-    this.cache.set(cacheKey, tree);
+    // A built-in stand-in shouldn't be remembered as if it were the real story.
+    if (!tree.id.startsWith('story-fallback')) this.cache.set(cacheKey, tree);
     return tree;
   }
 
+  // One giant "write the whole 50-beat branching story as one JSON" request
+  // took ~37s (and could be cut off and retried). It's now two quick stages:
+  //   1. title + premise + the first question (small, ~2s)
+  //   2. questions 2-5 and the four endings — FIVE small requests in parallel,
+  //      each told the premise and first scene so the story stays coherent.
+  // Any part that fails falls back to the matching part of the built-in story
+  // instead of throwing the whole thing away.
   private async generateViaLLM(
     input: { userId: string; audience?: string; name?: string; scenarioDriver: string; continuityContext?: string },
     date: string
   ): Promise<StoryTree> {
     const audience = input.audience || 'professionals';
-    const dread = input.scenarioDriver;
-    const name = input.name || 'the player';
+    const scenario = input.scenarioDriver;
+    const fallback: any = this.buildFallbackTree(date);
+    const options = { temperature: 0.8, responseFormat: 'json' as const, strict: true, thinking: 'minimal' as const };
 
-    const systemPrompt = `You are the Story Mode narrative engine for Rehearse, an app that helps people practice difficult conversations.
+    const styleRules = `Each option must represent a distinct communication style tagged as exactly one of: "assertive", "diplomatic", "avoidant", "aggressive" — in the order A=assertive, B=diplomatic, C=avoidant, D=aggressive. Every narrative is at most 2 short sentences (under 40 words) and every option's "text" is one short sentence (under 15 words) of what the player says or does. Write in second person ("you"). Return ONLY valid JSON, no markdown.`;
+    const optionsShape = `"options":[{"id":"A","text":"...","trajectory":"assertive"},{"id":"B","text":"...","trajectory":"diplomatic"},{"id":"C","text":"...","trajectory":"avoidant"},{"id":"D","text":"...","trajectory":"aggressive"}]`;
+    const ask = async (system: string, user: string): Promise<any> => {
+      const raw = await this.llm.generateCompletion(
+        [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ],
+        options
+      );
+      return this.cleanAndParseJSON(raw);
+    };
 
-Generate a 5-question interactive story, personalized for a "${audience}" user, built around this scenario: "${dread}".
-${input.continuityContext ? `\n${input.continuityContext}\n` : ''}
-The story follows ${name} through an escalating difficult conversation. At each of 5 questions, the player picks ONE of 4 options — each option must represent a distinct communication style tagged as one of exactly: "assertive", "diplomatic", "avoidant", "aggressive".
+    // ---- Stage 1: the opening ----
+    let opening: any;
+    try {
+      opening = await ask(
+        `You are the Story Mode narrative engine for Rehearse, an app that helps people practice difficult conversations. Write the OPENING of a 5-question interactive story for a "${audience}" user, built around this scenario: "${scenario}".${input.continuityContext ? ` ${input.continuityContext}` : ''} ${styleRules}
+Schema: {"title":"5-8 word title","premise":"1-2 sentence setup","q1":{"narrative":"...",${optionsShape}}}`,
+        'Write the opening now.'
+      );
+      normalizeCheck(opening);
+    } catch (err) {
+      console.warn('Story opening generation failed, using built-in story:', err);
+      return this.buildFallbackTree(date);
+    }
 
-The story BRANCHES: for questions 2-5 and the ending, you must write 4 separate narrative variants — one continuing as if the player has been mostly "assertive" so far, one for mostly "diplomatic", one for mostly "avoidant", one for mostly "aggressive". Each variant's narrative should visibly reflect how that communication style has been playing out, and each variant still offers its own 4 tagged options.
+    const context = `Story so far — Title: "${opening.title}". Premise: ${opening.premise} Opening scene: ${opening.q1?.narrative}`;
+    const branchPrompt = (n: number, styles: StoryTrajectory[]) =>
+      `You are the Story Mode narrative engine for Rehearse. ${context}
+Write QUESTION ${n} of 5 (the conversation escalates a little more each question). The story branches on the player's dominant style so far, so write ${styles.length} variants of this scene: ${styles.map((t) => `one continuing as if the player has mostly been "${t}"`).join(', ')} — each narrative should visibly reflect how that style has been playing out, and each offers its own 4 tagged options. ${styleRules}
+Schema: {${styles.map((t) => `"${t}":{"narrative":"...",${optionsShape}}`).join(',')}}`;
 
-Keep every narrative beat to 2-3 sentences. Keep every option's "text" to one sentence (what the player says or does).
+    // ---- Stage 2: everything else, in parallel ----
+    const part = async (label: string, fn: () => Promise<any>, fb: any) => {
+      try {
+        return await fn();
+      } catch (err) {
+        console.warn(`Story part "${label}" failed, using built-in scene:`, err);
+        return fb;
+      }
+    };
+    // Each question is written as two smaller requests (two variants each) so
+    // no single response is long — the whole stage takes as long as the slowest
+    // one of these short calls.
+    const HALVES: StoryTrajectory[][] = [['assertive', 'diplomatic'], ['avoidant', 'aggressive']];
+    const question = async (n: number, fb: any) => {
+      const halves = await Promise.all(
+        HALVES.map((styles) =>
+          part(`q${n}:${styles.join('+')}`, () => ask(branchPrompt(n, styles), `Write question ${n} now.`), null)
+        )
+      );
+      const merged: any = {};
+      HALVES.forEach((styles, i) => styles.forEach((t) => (merged[t] = halves[i]?.[t] ?? fb[t])));
+      return merged;
+    };
+    const [q2, q3, q4, q5, endings] = await Promise.all([
+      question(2, fallback.q2),
+      question(3, fallback.q3),
+      question(4, fallback.q4),
+      question(5, fallback.q5),
+      part(
+        'endings',
+        () =>
+          ask(
+            `You are the Story Mode narrative engine for Rehearse. ${context}\nWrite the FOUR possible endings, one per dominant style the player showed: assertive, diplomatic, avoidant, aggressive. Each is a title plus a 1-2 sentence narrative (under 35 words), with a "tone" of exactly "strong" (assertive, diplomatic), "growth" (avoidant) or "mixed" (aggressive) reflecting how well that style actually resolves the conversation. Return ONLY valid JSON, no markdown.\nSchema: {"assertive":{"title":"...","narrative":"...","tone":"strong"},"diplomatic":{...},"avoidant":{...},"aggressive":{...}}`,
+            'Write the endings now.'
+          ),
+        fallback.endings
+      )
+    ]);
 
-Return ONLY valid JSON matching EXACTLY this schema (no markdown, no commentary):
-{
-  "title": "Short story title (5-8 words)",
-  "premise": "1-2 sentence setup of the situation",
-  "q1": { "narrative": "...", "options": [{"id":"A","text":"...","trajectory":"assertive"},{"id":"B","text":"...","trajectory":"diplomatic"},{"id":"C","text":"...","trajectory":"avoidant"},{"id":"D","text":"...","trajectory":"aggressive"}] },
-  "q2": { "assertive": {"narrative":"...","options":[...4 tagged options]}, "diplomatic": {...}, "avoidant": {...}, "aggressive": {...} },
-  "q3": { same 4 keys as q2, each a beat with narrative + 4 tagged options },
-  "q4": { same 4 keys as q2, each a beat with narrative + 4 tagged options },
-  "q5": { same 4 keys as q2, each a beat with narrative + 4 tagged options },
-  "endings": {
-    "assertive": {"title":"...", "narrative":"2-3 sentence ending", "tone":"strong"},
-    "diplomatic": {"title":"...", "narrative":"2-3 sentence ending", "tone":"strong"},
-    "avoidant": {"title":"...", "narrative":"2-3 sentence ending", "tone":"growth"},
-    "aggressive": {"title":"...", "narrative":"2-3 sentence ending", "tone":"mixed"}
-  }
-}
-Every "options" array must have exactly 4 entries, one per trajectory, ids A/B/C/D in that order. The "tone" field for each ending must be one of exactly "strong", "growth", "mixed" and should reflect how well that communication style actually resolves the conversation (assertive/diplomatic generally resolve well = "strong"; avoidant leaves things unresolved = "growth"; aggressive damages the relationship = "mixed").`;
-
-    const raw = await this.llm.generateCompletion(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: 'Generate today\'s story JSON now.' }
-      ],
-      { temperature: 0.8, maxTokens: 2200, responseFormat: 'json' }
-    );
-
-    const parsed = this.cleanAndParseJSON(raw);
-    return this.validateAndNormalize(parsed, date);
+    try {
+      return this.validateAndNormalize({ ...opening, q2, q3, q4, q5, endings }, date);
+    } catch (err) {
+      // A part came back malformed — swap in the built-in version of just that part.
+      console.warn('Story assembly failed validation, patching with built-in scenes:', err);
+      const safe = (v: any, fb: any) => {
+        try {
+          this.validateAndNormalize({ ...fallback, q2: v }, date); // cheap shape probe
+          return v;
+        } catch {
+          return fb;
+        }
+      };
+      return this.validateAndNormalize(
+        { ...opening, q2: safe(q2, fallback.q2), q3: safe(q3, fallback.q3), q4: safe(q4, fallback.q4), q5: safe(q5, fallback.q5), endings: endings || fallback.endings },
+        date
+      );
+    }
   }
 
   private cleanAndParseJSON(text: string): any {

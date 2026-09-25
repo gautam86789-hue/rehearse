@@ -1,3 +1,4 @@
+import { apiService } from '../services/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Easing, useWindowDimensions, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -206,6 +207,29 @@ export const JourneyScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       useNativeDriver: false
     }).start();
   }, [completedCount]);
+
+  // Stories take a few seconds to write, so start writing them before the user
+  // asks: the stage they're looking at in the preview, and the next unfinished
+  // story on the road. The server keeps the result (and joins duplicate
+  // requests), so opening the story afterwards is near-instant.
+  const nextStoryId = journey.nodes.find((n) => !(user.completedJourneyNodeIds || []).includes(n.id) && n.type === 'story')?.id;
+  useEffect(() => {
+    const targets = [previewNode?.type === 'story' ? previewNode : undefined, journey.nodes.find((n) => n.id === nextStoryId)].filter(
+      (n): n is JourneyNode => !!n
+    );
+    targets.forEach((node) => {
+      apiService
+        .getNodeStory({
+          userId: user.id,
+          nodeId: node.id,
+          seed: node.storySeed || node.description,
+          journeyTitle: journey.title,
+          audience: user.audience,
+          name: user.name
+        })
+        .catch(() => {});
+    });
+  }, [previewNode?.id, nextStoryId]);
 
   const handleNodePress = (node: JourneyNode, isUnlocked: boolean) => {
     if (!isUnlocked) return;
